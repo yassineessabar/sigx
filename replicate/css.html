@@ -1,0 +1,1267 @@
+<html>
+
+<head>
+    <style>
+        .style-0 {
+            --vscode-sash-size: 4px;
+            --vscode-sash-hover-size: 4px;
+            cursor: auto;
+            --vscode-sash-hover-size: 4px;
+            cursor: auto;
+            --font-lora: 'Lora', 'Lora Fallback';
+            --font-geist-mono: 'GeistMono', ui-monospace, SFMono-Regular, Roboto Mono, Menlo, Monaco, Liberation Mono, DejaVu Sans Mono, Courier New, monospace;
+            --font-geist-sans: 'GeistSans', 'GeistSans Fallback';
+            counter-reset: katexEqnNo 0 mmlEqnNo 0;
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+            --vscode-foreground: #d1d5da;
+            --vscode-disabledForeground: rgba(204, 204, 204, 0.5);
+            --vscode-errorForeground: #f472b6;
+            --vscode-descriptionForeground: #959da5;
+            --vscode-icon-foreground: #c5c5c5;
+            --vscode-focusBorder: rgba(0, 0, 0, 0);
+            --vscode-textLink-foreground: #79b8ff;
+            --vscode-textLink-activeForeground: #c8e1ff;
+            --vscode-textSeparator-foreground: #586069;
+            --vscode-textPreformat-foreground: #d1d5da;
+            --vscode-textPreformat-background: rgba(255, 255, 255, 0.1);
+            --vscode-textBlockQuote-background: #0f0f10;
+            --vscode-textBlockQuote-border: #444d56;
+            --vscode-textCodeBlock-background: #2f363d;
+            --vscode-sash-hoverBorder: rgba(0, 0, 0, 0);
+            --vscode-badge-background: #044289;
+            --vscode-badge-foreground: #c8e1ff;
+            --vscode-activityWarningBadge-foreground: #000000;
+            --vscode-activityWarningBadge-background: #cca700;
+            --vscode-activityErrorBadge-foreground: #000000;
+            --vscode-activityErrorBadge-background: #f14c4c;
+            --vscode-scrollbar-shadow: rgba(0, 0, 0, 0.53);
+            --vscode-scrollbarSlider-background: rgba(161, 161, 170, 0.2);
+            --vscode-scrollbarSlider-hoverBackground: rgba(161, 161, 170, 0.27);
+            --vscode-scrollbarSlider-activeBackground: rgba(161, 161, 170, 0.53);
+            --vscode-progressBar-background: #0366d6;
+            --vscode-chart-line: #236b8e;
+            --vscode-chart-axis: rgba(191, 191, 191, 0.4);
+            --vscode-chart-guide: rgba(191, 191, 191, 0.2);
+            --vscode-editor-background: #0f0f10;
+            --vscode-editor-foreground: #e1e4e8;
+            --vscode-editorStickyScroll-background: #0f0f10;
+            --vscode-editorStickyScrollHover-background: #2a2d2e;
+            --vscode-editorStickyScroll-shadow: rgba(0, 0, 0, 0.53);
+            --vscode-editorWidget-background: #1f2428;
+            --vscode-editorWidget-foreground: #d1d5da;
+            --vscode-editorWidget-border: #454545;
+            --vscode-editorError-foreground: #f472b6;
+            --vscode-editorWarning-foreground: #ffea7f;
+            --vscode-editorInfo-foreground: #3794ff;
+            --vscode-editorHint-foreground: rgba(238, 238, 238, 0.7);
+            --vscode-editorLink-activeForeground: #4e94ce;
+            --vscode-editor-selectionBackground: rgba(51, 146, 255, 0.27);
+            --vscode-editor-inactiveSelectionBackground: rgba(51, 146, 255, 0.13);
+            --vscode-editor-selectionHighlightBackground: rgba(23, 229, 230, 0.2);
+            --vscode-editor-selectionHighlightBorder: rgba(23, 229, 230, 0);
+            --vscode-editor-compositionBorder: #ffffff;
+            --vscode-editor-findMatchBackground: rgba(255, 211, 61, 0.27);
+            --vscode-editor-findMatchHighlightBackground: rgba(255, 211, 61, 0.13);
+            --vscode-editor-findRangeHighlightBackground: rgba(58, 61, 65, 0.4);
+            --vscode-editor-hoverHighlightBackground: rgba(38, 79, 120, 0.25);
+            --vscode-editorHoverWidget-background: #1f2428;
+            --vscode-editorHoverWidget-foreground: #d1d5da;
+            --vscode-editorHoverWidget-border: #454545;
+            --vscode-editorHoverWidget-statusBarBackground: #252b30;
+            --vscode-editorInlayHint-foreground: #969696;
+            --vscode-editorInlayHint-background: rgba(4, 66, 137, 0.1);
+            --vscode-editorInlayHint-typeForeground: #969696;
+            --vscode-editorInlayHint-typeBackground: rgba(4, 66, 137, 0.1);
+            --vscode-editorInlayHint-parameterForeground: #969696;
+            --vscode-editorInlayHint-parameterBackground: rgba(4, 66, 137, 0.1);
+            --vscode-editorLightBulb-foreground: #ffcc00;
+            --vscode-editorLightBulbAutoFix-foreground: #75beff;
+            --vscode-editorLightBulbAi-foreground: #ffcc00;
+            --vscode-editor-snippetTabstopHighlightBackground: rgba(124, 124, 124, 0.3);
+            --vscode-editor-snippetFinalTabstopHighlightBorder: #525252;
+            --vscode-diffEditor-insertedTextBackground: rgba(40, 167, 69, 0.19);
+            --vscode-diffEditor-removedTextBackground: rgba(190, 24, 93, 0.19);
+            --vscode-diffEditor-insertedLineBackground: rgba(155, 185, 85, 0.2);
+            --vscode-diffEditor-removedLineBackground: rgba(255, 0, 0, 0.2);
+            --vscode-diffEditor-diagonalFill: rgba(204, 204, 204, 0.2);
+            --vscode-diffEditor-unchangedRegionBackground: #fafafa;
+            --vscode-diffEditor-unchangedRegionForeground: #d1d5da;
+            --vscode-diffEditor-unchangedCodeBackground: rgba(116, 116, 116, 0.16);
+            --vscode-widget-shadow: rgba(0, 0, 0, 0.36);
+            --vscode-widget-border: #303031;
+            --vscode-toolbar-hoverBackground: rgba(90, 93, 94, 0.31);
+            --vscode-toolbar-activeBackground: rgba(99, 102, 103, 0.31);
+            --vscode-breadcrumb-foreground: #959da5;
+            --vscode-breadcrumb-background: #0f0f10;
+            --vscode-breadcrumb-focusForeground: #e1e4e8;
+            --vscode-breadcrumb-activeSelectionForeground: #d1d5da;
+            --vscode-breadcrumbPicker-background: #2b3036;
+            --vscode-merge-currentHeaderBackground: rgba(64, 200, 174, 0.5);
+            --vscode-merge-currentContentBackground: rgba(64, 200, 174, 0.2);
+            --vscode-merge-incomingHeaderBackground: rgba(64, 166, 255, 0.5);
+            --vscode-merge-incomingContentBackground: rgba(64, 166, 255, 0.2);
+            --vscode-merge-commonHeaderBackground: rgba(96, 96, 96, 0.4);
+            --vscode-merge-commonContentBackground: rgba(96, 96, 96, 0.16);
+            --vscode-editorOverviewRuler-currentContentForeground: rgba(64, 200, 174, 0.5);
+            --vscode-editorOverviewRuler-incomingContentForeground: rgba(64, 166, 255, 0.5);
+            --vscode-editorOverviewRuler-commonContentForeground: rgba(96, 96, 96, 0.4);
+            --vscode-editorOverviewRuler-findMatchForeground: rgba(209, 134, 22, 0.49);
+            --vscode-editorOverviewRuler-selectionHighlightForeground: rgba(160, 160, 160, 0.8);
+            --vscode-problemsErrorIcon-foreground: #f472b6;
+            --vscode-problemsWarningIcon-foreground: #ffea7f;
+            --vscode-problemsInfoIcon-foreground: #3794ff;
+            --vscode-minimap-findMatchHighlight: #d18616;
+            --vscode-minimap-selectionOccurrenceHighlight: #676767;
+            --vscode-minimap-selectionHighlight: #264f78;
+            --vscode-minimap-infoHighlight: #3794ff;
+            --vscode-minimap-warningHighlight: #ffea7f;
+            --vscode-minimap-errorHighlight: rgba(255, 18, 18, 0.7);
+            --vscode-minimap-foregroundOpacity: #000000;
+            --vscode-minimapSlider-background: rgba(161, 161, 170, 0.1);
+            --vscode-minimapSlider-hoverBackground: rgba(161, 161, 170, 0.13);
+            --vscode-minimapSlider-activeBackground: rgba(161, 161, 170, 0.27);
+            --vscode-charts-foreground: #d1d5da;
+            --vscode-charts-lines: rgba(209, 213, 218, 0.5);
+            --vscode-charts-red: #f472b6;
+            --vscode-charts-blue: #3794ff;
+            --vscode-charts-yellow: #ffea7f;
+            --vscode-charts-orange: #d18616;
+            --vscode-charts-green: #89d185;
+            --vscode-charts-purple: #b180d7;
+            --vscode-input-background: #2f363d;
+            --vscode-input-foreground: #e1e4e8;
+            --vscode-input-border: #1b1f23;
+            --vscode-inputOption-activeBorder: #007acc;
+            --vscode-inputOption-hoverBackground: rgba(90, 93, 94, 0.5);
+            --vscode-inputOption-activeBackground: rgba(0, 0, 0, 0);
+            --vscode-inputOption-activeForeground: #ffffff;
+            --vscode-input-placeholderForeground: #959da5;
+            --vscode-inputValidation-infoBackground: #063b49;
+            --vscode-inputValidation-infoBorder: #007acc;
+            --vscode-inputValidation-warningBackground: #352a05;
+            --vscode-inputValidation-warningBorder: #b89500;
+            --vscode-inputValidation-errorBackground: #5a1d1d;
+            --vscode-inputValidation-errorBorder: #be1100;
+            --vscode-dropdown-background: #2f363d;
+            --vscode-dropdown-listBackground: #0f0f10;
+            --vscode-dropdown-foreground: #e1e4e8;
+            --vscode-dropdown-border: #1b1f23;
+            --vscode-button-foreground: #dcffe4;
+            --vscode-button-separator: rgba(220, 255, 228, 0.4);
+            --vscode-button-background: #176f2c;
+            --vscode-button-hoverBackground: #22863a;
+            --vscode-button-secondaryForeground: #ffffff;
+            --vscode-button-secondaryBackground: #444d56;
+            --vscode-button-secondaryHoverBackground: #586069;
+            --vscode-radio-activeForeground: #ffffff;
+            --vscode-radio-activeBackground: rgba(0, 0, 0, 0);
+            --vscode-radio-activeBorder: #007acc;
+            --vscode-radio-inactiveBorder: rgba(255, 255, 255, 0.2);
+            --vscode-radio-inactiveHoverBackground: rgba(90, 93, 94, 0.5);
+            --vscode-checkbox-background: #444d56;
+            --vscode-checkbox-selectBackground: #1f2428;
+            --vscode-checkbox-foreground: #e1e4e8;
+            --vscode-checkbox-border: #1b1f23;
+            --vscode-checkbox-selectBorder: #c5c5c5;
+            --vscode-keybindingLabel-background: rgba(128, 128, 128, 0.17);
+            --vscode-keybindingLabel-foreground: #cccccc;
+            --vscode-keybindingLabel-border: rgba(51, 51, 51, 0.6);
+            --vscode-keybindingLabel-bottomBorder: rgba(68, 68, 68, 0.6);
+            --vscode-list-focusBackground: #044289;
+            --vscode-list-focusOutline: rgba(0, 0, 0, 0);
+            --vscode-list-focusAndSelectionOutline: rgba(0, 0, 0, 0);
+            --vscode-list-activeSelectionBackground: rgba(0, 0, 0, 0.05);
+            --vscode-list-activeSelectionForeground: #18181b;
+            --vscode-list-activeSelectionIconForeground: #18181b;
+            --vscode-list-inactiveSelectionBackground: #282e34;
+            --vscode-list-inactiveSelectionForeground: #e1e4e8;
+            --vscode-list-inactiveFocusBackground: rgba(0, 0, 0, 0.02);
+            --vscode-list-hoverBackground: rgba(0, 0, 0, 0.02);
+            --vscode-list-hoverForeground: #18181b;
+            --vscode-list-dropBackground: #383b3d;
+            --vscode-list-dropBetweenBackground: #c5c5c5;
+            --vscode-list-highlightForeground: #2aaaff;
+            --vscode-list-focusHighlightForeground: #2aaaff;
+            --vscode-list-invalidItemForeground: #b89500;
+            --vscode-list-errorForeground: #f88070;
+            --vscode-list-warningForeground: #cca700;
+            --vscode-listFilterWidget-background: #1f2428;
+            --vscode-listFilterWidget-outline: rgba(0, 0, 0, 0);
+            --vscode-listFilterWidget-noMatchesOutline: #be1100;
+            --vscode-listFilterWidget-shadow: rgba(0, 0, 0, 0.36);
+            --vscode-list-filterMatchBackground: rgba(255, 211, 61, 0.13);
+            --vscode-list-deemphasizedForeground: #8c8c8c;
+            --vscode-tree-indentGuidesStroke: #2f363d;
+            --vscode-tree-inactiveIndentGuidesStroke: rgba(47, 54, 61, 0.4);
+            --vscode-tree-tableColumnsBorder: rgba(204, 204, 204, 0.13);
+            --vscode-tree-tableOddRowsBackground: rgba(209, 213, 218, 0.04);
+            --vscode-editorActionList-background: #1f2428;
+            --vscode-editorActionList-foreground: #d1d5da;
+            --vscode-editorActionList-focusForeground: #18181b;
+            --vscode-editorActionList-focusBackground: rgba(0, 0, 0, 0.05);
+            --vscode-menu-border: #454545;
+            --vscode-menu-foreground: #cccccc;
+            --vscode-menu-background: #252526;
+            --vscode-menu-selectionForeground: #18181b;
+            --vscode-menu-selectionBackground: #0078d4;
+            --vscode-menu-separatorBackground: #454545;
+            --vscode-quickInput-background: #0f0f10;
+            --vscode-quickInput-foreground: #e1e4e8;
+            --vscode-quickInputTitle-background: rgba(255, 255, 255, 0.1);
+            --vscode-pickerGroup-foreground: #e1e4e8;
+            --vscode-pickerGroup-border: #444d56;
+            --vscode-quickInputList-focusForeground: #18181b;
+            --vscode-quickInputList-focusIconForeground: #18181b;
+            --vscode-quickInputList-focusBackground: rgba(0, 0, 0, 0.05);
+            --vscode-search-resultsInfoForeground: rgba(209, 213, 218, 0.65);
+            --vscode-searchEditor-findMatchBackground: rgba(255, 211, 61, 0.09);
+            --vscode-editor-lineHighlightBackground: #2b3036;
+            --vscode-editor-lineHighlightBorder: #282828;
+            --vscode-editor-rangeHighlightBackground: rgba(255, 255, 255, 0.04);
+            --vscode-editor-symbolHighlightBackground: rgba(255, 211, 61, 0.13);
+            --vscode-editorCursor-foreground: #c8e1ff;
+            --vscode-editorMultiCursor-primary-foreground: #c8e1ff;
+            --vscode-editorMultiCursor-secondary-foreground: #c8e1ff;
+            --vscode-editorWhitespace-foreground: #444d56;
+            --vscode-editorLineNumber-foreground: #444d56;
+            --vscode-editorIndentGuide-background: #2f363d;
+            --vscode-editorIndentGuide-activeBackground: #444d56;
+            --vscode-editorIndentGuide-background1: #404040;
+            --vscode-editorIndentGuide-background2: rgba(0, 0, 0, 0);
+            --vscode-editorIndentGuide-background3: rgba(0, 0, 0, 0);
+            --vscode-editorIndentGuide-background4: rgba(0, 0, 0, 0);
+            --vscode-editorIndentGuide-background5: rgba(0, 0, 0, 0);
+            --vscode-editorIndentGuide-background6: rgba(0, 0, 0, 0);
+            --vscode-editorIndentGuide-activeBackground1: #707070;
+            --vscode-editorIndentGuide-activeBackground2: rgba(0, 0, 0, 0);
+            --vscode-editorIndentGuide-activeBackground3: rgba(0, 0, 0, 0);
+            --vscode-editorIndentGuide-activeBackground4: rgba(0, 0, 0, 0);
+            --vscode-editorIndentGuide-activeBackground5: rgba(0, 0, 0, 0);
+            --vscode-editorIndentGuide-activeBackground6: rgba(0, 0, 0, 0);
+            --vscode-editorActiveLineNumber-foreground: #c6c6c6;
+            --vscode-editorLineNumber-activeForeground: #e1e4e8;
+            --vscode-editorRuler-foreground: #5a5a5a;
+            --vscode-editorCodeLens-foreground: #999999;
+            --vscode-editorBracketMatch-background: rgba(23, 229, 230, 0.31);
+            --vscode-editorBracketMatch-border: rgba(23, 229, 230, 0);
+            --vscode-editorOverviewRuler-border: #1b1f23;
+            --vscode-editorGutter-background: #0f0f10;
+            --vscode-editorUnnecessaryCode-opacity: rgba(0, 0, 0, 0.67);
+            --vscode-editorGhostText-foreground: rgba(255, 255, 255, 0.34);
+            --vscode-editorOverviewRuler-rangeHighlightForeground: rgba(0, 122, 204, 0.6);
+            --vscode-editorOverviewRuler-errorForeground: rgba(255, 18, 18, 0.7);
+            --vscode-editorOverviewRuler-warningForeground: #ffea7f;
+            --vscode-editorOverviewRuler-infoForeground: #3794ff;
+            --vscode-editorBracketHighlight-foreground1: #79b8ff;
+            --vscode-editorBracketHighlight-foreground2: #ffab70;
+            --vscode-editorBracketHighlight-foreground3: #c084fc;
+            --vscode-editorBracketHighlight-foreground4: #79b8ff;
+            --vscode-editorBracketHighlight-foreground5: #ffab70;
+            --vscode-editorBracketHighlight-foreground6: #c084fc;
+            --vscode-editorBracketHighlight-unexpectedBracket-foreground: rgba(255, 18, 18, 0.8);
+            --vscode-editorBracketPairGuide-background1: rgba(0, 0, 0, 0);
+            --vscode-editorBracketPairGuide-background2: rgba(0, 0, 0, 0);
+            --vscode-editorBracketPairGuide-background3: rgba(0, 0, 0, 0);
+            --vscode-editorBracketPairGuide-background4: rgba(0, 0, 0, 0);
+            --vscode-editorBracketPairGuide-background5: rgba(0, 0, 0, 0);
+            --vscode-editorBracketPairGuide-background6: rgba(0, 0, 0, 0);
+            --vscode-editorBracketPairGuide-activeBackground1: rgba(0, 0, 0, 0);
+            --vscode-editorBracketPairGuide-activeBackground2: rgba(0, 0, 0, 0);
+            --vscode-editorBracketPairGuide-activeBackground3: rgba(0, 0, 0, 0);
+            --vscode-editorBracketPairGuide-activeBackground4: rgba(0, 0, 0, 0);
+            --vscode-editorBracketPairGuide-activeBackground5: rgba(0, 0, 0, 0);
+            --vscode-editorBracketPairGuide-activeBackground6: rgba(0, 0, 0, 0);
+            --vscode-editorUnicodeHighlight-border: #ffea7f;
+            --vscode-diffEditor-move-border: rgba(139, 139, 139, 0.61);
+            --vscode-diffEditor-moveActive-border: #ffa500;
+            --vscode-diffEditor-unchangedRegionShadow: #000000;
+            --vscode-multiDiffEditor-headerBackground: #262626;
+            --vscode-multiDiffEditor-background: #0f0f10;
+            --vscode-multiDiffEditor-border: #1b1f23;
+            --vscode-editor-foldBackground: rgba(88, 96, 105, 0.08);
+            --vscode-editor-foldPlaceholderForeground: #808080;
+            --vscode-editorGutter-foldingControlForeground: #c5c5c5;
+            --vscode-tab-activeBackground: #0f0f10;
+            --vscode-tab-unfocusedActiveBackground: #0f0f10;
+            --vscode-tab-inactiveBackground: #1f2428;
+            --vscode-tab-unfocusedInactiveBackground: #1f2428;
+            --vscode-tab-activeForeground: #e1e4e8;
+            --vscode-tab-inactiveForeground: #959da5;
+            --vscode-tab-unfocusedActiveForeground: rgba(225, 228, 232, 0.5);
+            --vscode-tab-unfocusedInactiveForeground: rgba(149, 157, 165, 0.5);
+            --vscode-tab-hoverBackground: #0f0f10;
+            --vscode-tab-unfocusedHoverBackground: #0f0f10;
+            --vscode-tab-border: #1b1f23;
+            --vscode-tab-lastPinnedBorder: rgba(204, 204, 204, 0.2);
+            --vscode-tab-activeBorder: #0f0f10;
+            --vscode-tab-unfocusedActiveBorder: #0f0f10;
+            --vscode-tab-activeBorderTop: #18181b;
+            --vscode-tab-unfocusedActiveBorderTop: #1b1f23;
+            --vscode-tab-selectedBorderTop: #18181b;
+            --vscode-tab-selectedBackground: #222222;
+            --vscode-tab-selectedForeground: rgba(255, 255, 255, 0.63);
+            --vscode-tab-dragAndDropBorder: #e1e4e8;
+            --vscode-tab-activeModifiedBorder: #3399cc;
+            --vscode-tab-inactiveModifiedBorder: rgba(51, 153, 204, 0.5);
+            --vscode-tab-unfocusedActiveModifiedBorder: rgba(51, 153, 204, 0.5);
+            --vscode-tab-unfocusedInactiveModifiedBorder: rgba(51, 153, 204, 0.25);
+            --vscode-editorPane-background: #0f0f10;
+            --vscode-editorGroupHeader-tabsBackground: #fafafa;
+            --vscode-editorGroupHeader-tabsBorder: #1b1f23;
+            --vscode-editorGroupHeader-noTabsBackground: #0f0f10;
+            --vscode-editorGroup-border: #1b1f23;
+            --vscode-editorGroup-dropBackground: rgba(83, 89, 93, 0.5);
+            --vscode-editorGroup-dropIntoPromptForeground: #d1d5da;
+            --vscode-editorGroup-dropIntoPromptBackground: #1f2428;
+            --vscode-sideBySideEditor-horizontalBorder: #1b1f23;
+            --vscode-sideBySideEditor-verticalBorder: #1b1f23;
+            --vscode-panel-background: #1f2428;
+            --vscode-panel-border: #1b1f23;
+            --vscode-panelTitle-activeForeground: #e1e4e8;
+            --vscode-panelTitle-inactiveForeground: #959da5;
+            --vscode-panelTitle-activeBorder: #f9826c;
+            --vscode-panelInput-border: #2f363d;
+            --vscode-panel-dropBorder: #e1e4e8;
+            --vscode-panelSection-dropBackground: rgba(83, 89, 93, 0.5);
+            --vscode-panelSectionHeader-background: rgba(128, 128, 128, 0.2);
+            --vscode-panelSection-border: #1b1f23;
+            --vscode-panelStickyScroll-background: #1f2428;
+            --vscode-panelStickyScroll-shadow: rgba(0, 0, 0, 0.53);
+            --vscode-banner-background: rgba(0, 0, 0, 0.05);
+            --vscode-banner-foreground: #18181b;
+            --vscode-banner-iconForeground: #3794ff;
+            --vscode-statusBar-foreground: #d1d5da;
+            --vscode-statusBar-noFolderForeground: #d1d5da;
+            --vscode-statusBar-background: #0f0f10;
+            --vscode-statusBar-noFolderBackground: #0f0f10;
+            --vscode-statusBar-border: #1b1f23;
+            --vscode-statusBar-focusBorder: #d1d5da;
+            --vscode-statusBar-noFolderBorder: #1b1f23;
+            --vscode-statusBarItem-activeBackground: rgba(255, 255, 255, 0.18);
+            --vscode-statusBarItem-focusBorder: #d1d5da;
+            --vscode-statusBarItem-hoverBackground: rgba(255, 255, 255, 0.12);
+            --vscode-statusBarItem-hoverForeground: #d1d5da;
+            --vscode-statusBarItem-compactHoverBackground: rgba(255, 255, 255, 0.2);
+            --vscode-statusBarItem-prominentForeground: #d1d5da;
+            --vscode-statusBarItem-prominentBackground: #282e34;
+            --vscode-statusBarItem-prominentHoverForeground: #d1d5da;
+            --vscode-statusBarItem-prominentHoverBackground: rgba(0, 0, 0, 0.3);
+            --vscode-statusBarItem-errorBackground: #c7106e;
+            --vscode-statusBarItem-errorForeground: #ffffff;
+            --vscode-statusBarItem-errorHoverForeground: #d1d5da;
+            --vscode-statusBarItem-errorHoverBackground: rgba(255, 255, 255, 0.12);
+            --vscode-statusBarItem-warningBackground: #e5bf00;
+            --vscode-statusBarItem-warningForeground: #ffffff;
+            --vscode-statusBarItem-warningHoverForeground: #d1d5da;
+            --vscode-statusBarItem-warningHoverBackground: rgba(255, 255, 255, 0.12);
+            --vscode-activityBar-background: #0f0f10;
+            --vscode-activityBar-foreground: #e1e4e8;
+            --vscode-activityBar-inactiveForeground: #a1a1aa;
+            --vscode-activityBar-border: #1b1f23;
+            --vscode-activityBar-activeBorder: #f9826c;
+            --vscode-activityBar-dropBorder: #e1e4e8;
+            --vscode-activityBarBadge-background: #0366d6;
+            --vscode-activityBarBadge-foreground: #ffffff;
+            --vscode-activityBarTop-foreground: #e7e7e7;
+            --vscode-activityBarTop-activeBorder: #e7e7e7;
+            --vscode-activityBarTop-inactiveForeground: rgba(231, 231, 231, 0.6);
+            --vscode-activityBarTop-dropBorder: #e7e7e7;
+            --vscode-profileBadge-background: #4d4d4d;
+            --vscode-profileBadge-foreground: #ffffff;
+            --vscode-statusBarItem-remoteBackground: #0f0f10;
+            --vscode-statusBarItem-remoteForeground: #d1d5da;
+            --vscode-statusBarItem-remoteHoverForeground: #d1d5da;
+            --vscode-statusBarItem-remoteHoverBackground: rgba(255, 255, 255, 0.12);
+            --vscode-statusBarItem-offlineBackground: #6c1717;
+            --vscode-statusBarItem-offlineForeground: #d1d5da;
+            --vscode-statusBarItem-offlineHoverForeground: #d1d5da;
+            --vscode-statusBarItem-offlineHoverBackground: rgba(255, 255, 255, 0.12);
+            --vscode-extensionBadge-remoteBackground: #0366d6;
+            --vscode-extensionBadge-remoteForeground: #ffffff;
+            --vscode-sideBar-background: #fafafa;
+            --vscode-sideBar-foreground: #d1d5da;
+            --vscode-sideBar-border: #ededed;
+            --vscode-sideBarTitle-background: #fafafa;
+            --vscode-sideBarTitle-foreground: #e1e4e8;
+            --vscode-sideBar-dropBackground: rgba(83, 89, 93, 0.5);
+            --vscode-sideBarSectionHeader-background: #1f2428;
+            --vscode-sideBarSectionHeader-foreground: #e1e4e8;
+            --vscode-sideBarSectionHeader-border: #1b1f23;
+            --vscode-sideBarActivityBarTop-border: #1b1f23;
+            --vscode-sideBarStickyScroll-background: #fafafa;
+            --vscode-sideBarStickyScroll-shadow: rgba(0, 0, 0, 0.53);
+            --vscode-titleBar-activeForeground: #e1e4e8;
+            --vscode-titleBar-inactiveForeground: #959da5;
+            --vscode-titleBar-activeBackground: #0f0f10;
+            --vscode-titleBar-inactiveBackground: #1f2428;
+            --vscode-titleBar-border: #1b1f23;
+            --vscode-menubar-selectionForeground: #e1e4e8;
+            --vscode-menubar-selectionBackground: rgba(90, 93, 94, 0.31);
+            --vscode-commandCenter-foreground: #e1e4e8;
+            --vscode-commandCenter-activeForeground: #e1e4e8;
+            --vscode-commandCenter-inactiveForeground: #959da5;
+            --vscode-commandCenter-background: rgba(255, 255, 255, 0.05);
+            --vscode-commandCenter-activeBackground: rgba(255, 255, 255, 0.08);
+            --vscode-commandCenter-border: rgba(225, 228, 232, 0.2);
+            --vscode-commandCenter-activeBorder: rgba(225, 228, 232, 0.3);
+            --vscode-commandCenter-inactiveBorder: rgba(149, 157, 165, 0.25);
+            --vscode-notificationCenter-border: #303031;
+            --vscode-notificationToast-border: #303031;
+            --vscode-notifications-foreground: #e1e4e8;
+            --vscode-notifications-background: #2f363d;
+            --vscode-notificationLink-foreground: #79b8ff;
+            --vscode-notificationCenterHeader-foreground: #959da5;
+            --vscode-notificationCenterHeader-background: #0f0f10;
+            --vscode-notifications-border: #1b1f23;
+            --vscode-notificationsErrorIcon-foreground: #ea4a5a;
+            --vscode-notificationsWarningIcon-foreground: #ffab70;
+            --vscode-notificationsInfoIcon-foreground: #79b8ff;
+            --vscode-peekViewTitle-background: #252526;
+            --vscode-peekViewTitleLabel-foreground: #ffffff;
+            --vscode-peekViewTitleDescription-foreground: rgba(204, 204, 204, 0.7);
+            --vscode-peekView-border: #3794ff;
+            --vscode-peekViewResult-background: #1f2428;
+            --vscode-peekViewResult-lineForeground: #bbbbbb;
+            --vscode-peekViewResult-fileForeground: #ffffff;
+            --vscode-peekViewResult-selectionBackground: rgba(51, 153, 255, 0.2);
+            --vscode-peekViewResult-selectionForeground: #ffffff;
+            --vscode-peekViewEditor-background: rgba(31, 36, 40, 0.53);
+            --vscode-peekViewEditorGutter-background: rgba(31, 36, 40, 0.53);
+            --vscode-peekViewEditorStickyScroll-background: rgba(31, 36, 40, 0.53);
+            --vscode-peekViewResult-matchHighlightBackground: rgba(255, 211, 61, 0.2);
+            --vscode-peekViewEditor-matchHighlightBackground: rgba(255, 211, 61, 0.2);
+            --vscode-editorGutter-modifiedBackground: #2188ff;
+            --vscode-editorGutter-addedBackground: #28a745;
+            --vscode-editorGutter-deletedBackground: #ea4a5a;
+            --vscode-minimapGutter-modifiedBackground: #2188ff;
+            --vscode-minimapGutter-addedBackground: #28a745;
+            --vscode-minimapGutter-deletedBackground: #ea4a5a;
+            --vscode-editorOverviewRuler-modifiedForeground: rgba(33, 136, 255, 0.6);
+            --vscode-editorOverviewRuler-addedForeground: rgba(40, 167, 69, 0.6);
+            --vscode-editorOverviewRuler-deletedForeground: rgba(234, 74, 90, 0.6);
+            --vscode-symbolIcon-arrayForeground: #d1d5da;
+            --vscode-symbolIcon-booleanForeground: #d1d5da;
+            --vscode-symbolIcon-classForeground: #ee9d28;
+            --vscode-symbolIcon-colorForeground: #d1d5da;
+            --vscode-symbolIcon-constantForeground: #d1d5da;
+            --vscode-symbolIcon-constructorForeground: #b180d7;
+            --vscode-symbolIcon-enumeratorForeground: #ee9d28;
+            --vscode-symbolIcon-enumeratorMemberForeground: #75beff;
+            --vscode-symbolIcon-eventForeground: #ee9d28;
+            --vscode-symbolIcon-fieldForeground: #75beff;
+            --vscode-symbolIcon-fileForeground: #d1d5da;
+            --vscode-symbolIcon-folderForeground: #d1d5da;
+            --vscode-symbolIcon-functionForeground: #b180d7;
+            --vscode-symbolIcon-interfaceForeground: #75beff;
+            --vscode-symbolIcon-keyForeground: #d1d5da;
+            --vscode-symbolIcon-keywordForeground: #d1d5da;
+            --vscode-symbolIcon-methodForeground: #b180d7;
+            --vscode-symbolIcon-moduleForeground: #d1d5da;
+            --vscode-symbolIcon-namespaceForeground: #d1d5da;
+            --vscode-symbolIcon-nullForeground: #d1d5da;
+            --vscode-symbolIcon-numberForeground: #d1d5da;
+            --vscode-symbolIcon-objectForeground: #d1d5da;
+            --vscode-symbolIcon-operatorForeground: #d1d5da;
+            --vscode-symbolIcon-packageForeground: #d1d5da;
+            --vscode-symbolIcon-propertyForeground: #d1d5da;
+            --vscode-symbolIcon-referenceForeground: #d1d5da;
+            --vscode-symbolIcon-snippetForeground: #d1d5da;
+            --vscode-symbolIcon-stringForeground: #d1d5da;
+            --vscode-symbolIcon-structForeground: #d1d5da;
+            --vscode-symbolIcon-textForeground: #d1d5da;
+            --vscode-symbolIcon-typeParameterForeground: #d1d5da;
+            --vscode-symbolIcon-unitForeground: #d1d5da;
+            --vscode-symbolIcon-variableForeground: #75beff;
+            --vscode-editorSuggestWidget-background: #1f2428;
+            --vscode-editorSuggestWidget-border: #454545;
+            --vscode-editorSuggestWidget-foreground: #e1e4e8;
+            --vscode-editorSuggestWidget-selectedForeground: #18181b;
+            --vscode-editorSuggestWidget-selectedIconForeground: #18181b;
+            --vscode-editorSuggestWidget-selectedBackground: rgba(0, 0, 0, 0.05);
+            --vscode-editorSuggestWidget-highlightForeground: #2aaaff;
+            --vscode-editorSuggestWidget-focusHighlightForeground: #2aaaff;
+            --vscode-editorSuggestWidgetStatus-foreground: rgba(225, 228, 232, 0.5);
+            --vscode-inlineEdit-indicator-foreground: #dcffe4;
+            --vscode-inlineEdit-indicator-background: #176f2c;
+            --vscode-inlineEdit-indicator-border: rgba(220, 255, 228, 0.4);
+            --vscode-inlineEdit-originalBackground: rgba(190, 24, 93, 0.07);
+            --vscode-inlineEdit-modifiedBackground: rgba(40, 167, 69, 0.07);
+            --vscode-inlineEdit-originalChangedLineBackground: rgba(0, 0, 0, 0);
+            --vscode-inlineEdit-originalChangedTextBackground: rgba(190, 24, 93, 0.19);
+            --vscode-inlineEdit-modifiedChangedLineBackground: rgba(0, 0, 0, 0);
+            --vscode-inlineEdit-modifiedChangedTextBackground: rgba(40, 167, 69, 0.19);
+            --vscode-inlineEdit-border: #3c3c3c;
+            --vscode-actionBar-toggledBackground: #383a49;
+            --vscode-editorOverviewRuler-bracketMatchForeground: #a0a0a0;
+            --vscode-editor-wordHighlightBackground: rgba(23, 229, 230, 0);
+            --vscode-editor-wordHighlightStrongBackground: rgba(23, 229, 230, 0);
+            --vscode-editor-wordHighlightTextBackground: rgba(23, 229, 230, 0);
+            --vscode-editor-wordHighlightBorder: rgba(23, 229, 230, 0.6);
+            --vscode-editor-wordHighlightStrongBorder: rgba(23, 229, 230, 0.4);
+            --vscode-editor-wordHighlightTextBorder: rgba(23, 229, 230, 0.6);
+            --vscode-editorOverviewRuler-wordHighlightForeground: rgba(160, 160, 160, 0.8);
+            --vscode-editorOverviewRuler-wordHighlightStrongForeground: rgba(192, 160, 192, 0.8);
+            --vscode-editorOverviewRuler-wordHighlightTextForeground: rgba(160, 160, 160, 0.8);
+            --vscode-editorMarkerNavigationError-background: #f472b6;
+            --vscode-editorMarkerNavigationError-headerBackground: rgba(244, 114, 182, 0.1);
+            --vscode-editorMarkerNavigationWarning-background: #ffea7f;
+            --vscode-editorMarkerNavigationWarning-headerBackground: rgba(255, 234, 127, 0.1);
+            --vscode-editorMarkerNavigationInfo-background: #3794ff;
+            --vscode-editorMarkerNavigationInfo-headerBackground: rgba(55, 148, 255, 0.1);
+            --vscode-editorMarkerNavigation-background: #0f0f10;
+            --vscode-editor-linkedEditingBackground: rgba(51, 146, 255, 0.13);
+            --vscode-editorHoverWidget-highlightForeground: #2aaaff;
+            --vscode-editor-placeholder-foreground: rgba(255, 255, 255, 0.34);
+            --vscode-editorWatermark-foreground: rgba(225, 228, 232, 0.6);
+            --vscode-terminal-foreground: #d1d5da;
+            --vscode-terminalCursor-foreground: #79b8ff;
+            --vscode-terminalCursor-background: #586069;
+            --vscode-terminal-selectionBackground: rgba(51, 146, 255, 0.27);
+            --vscode-terminal-inactiveSelectionBackground: #3a3d41;
+            --vscode-terminalCommandDecoration-defaultBackground: rgba(255, 255, 255, 0.25);
+            --vscode-terminalCommandDecoration-successBackground: #1b81a8;
+            --vscode-terminalCommandDecoration-errorBackground: #f14c4c;
+            --vscode-terminalOverviewRuler-cursorForeground: rgba(160, 160, 160, 0.8);
+            --vscode-terminal-border: #1b1f23;
+            --vscode-terminalOverviewRuler-border: #1b1f23;
+            --vscode-terminal-findMatchBackground: rgba(255, 211, 61, 0.27);
+            --vscode-terminal-hoverHighlightBackground: rgba(38, 79, 120, 0.13);
+            --vscode-terminal-findMatchHighlightBackground: rgba(255, 211, 61, 0.13);
+            --vscode-terminalOverviewRuler-findMatchForeground: rgba(209, 134, 22, 0.49);
+            --vscode-terminal-dropBackground: rgba(83, 89, 93, 0.5);
+            --vscode-terminal-tab-activeBorder: #f9826c;
+            --vscode-terminal-initialHintForeground: rgba(255, 255, 255, 0.34);
+            --vscode-scmGraph-historyItemRefColor: #3794ff;
+            --vscode-scmGraph-historyItemRemoteRefColor: #b180d7;
+            --vscode-scmGraph-historyItemBaseRefColor: #ea5c00;
+            --vscode-scmGraph-historyItemHoverDefaultLabelForeground: #d1d5da;
+            --vscode-scmGraph-historyItemHoverDefaultLabelBackground: #044289;
+            --vscode-scmGraph-historyItemHoverLabelForeground: #dcffe4;
+            --vscode-scmGraph-historyItemHoverAdditionsForeground: #81b88b;
+            --vscode-scmGraph-historyItemHoverDeletionsForeground: #c74e39;
+            --vscode-scmGraph-foreground1: #ffb000;
+            --vscode-scmGraph-foreground2: #dc267f;
+            --vscode-scmGraph-foreground3: #994f00;
+            --vscode-scmGraph-foreground4: #40b0a6;
+            --vscode-scmGraph-foreground5: #b66dff;
+            --vscode-commentsView-resolvedIcon: rgba(204, 204, 204, 0.5);
+            --vscode-commentsView-unresolvedIcon: rgba(0, 0, 0, 0);
+            --vscode-editorCommentsWidget-replyInputBackground: #252526;
+            --vscode-editorCommentsWidget-resolvedBorder: rgba(204, 204, 204, 0.5);
+            --vscode-editorCommentsWidget-unresolvedBorder: rgba(0, 0, 0, 0);
+            --vscode-editorCommentsWidget-rangeBackground: rgba(0, 0, 0, 0);
+            --vscode-editorCommentsWidget-rangeActiveBackground: rgba(0, 0, 0, 0);
+            --vscode-editorGutter-commentRangeForeground: #282e34;
+            --vscode-editorOverviewRuler-commentForeground: #282e34;
+            --vscode-editorOverviewRuler-commentUnresolvedForeground: #282e34;
+            --vscode-editorGutter-commentGlyphForeground: #e1e4e8;
+            --vscode-editorGutter-commentUnresolvedGlyphForeground: #e1e4e8;
+            --vscode-simpleFindWidget-sashBorder: #454545;
+            --vscode-ports-iconRunningProcessForeground: #369432;
+            --vscode-mergeEditor-change-background: rgba(155, 185, 85, 0.2);
+            --vscode-mergeEditor-change-word-background: rgba(156, 204, 44, 0.2);
+            --vscode-mergeEditor-changeBase-background: #4b1818;
+            --vscode-mergeEditor-changeBase-word-background: #6f1313;
+            --vscode-mergeEditor-conflict-unhandledUnfocused-border: rgba(255, 166, 0, 0.48);
+            --vscode-mergeEditor-conflict-unhandledFocused-border: #ffa600;
+            --vscode-mergeEditor-conflict-handledUnfocused-border: rgba(134, 134, 134, 0.29);
+            --vscode-mergeEditor-conflict-handledFocused-border: rgba(193, 193, 193, 0.8);
+            --vscode-mergeEditor-conflict-handled-minimapOverViewRuler: rgba(173, 172, 168, 0.93);
+            --vscode-mergeEditor-conflict-unhandled-minimapOverViewRuler: #fcba03;
+            --vscode-mergeEditor-conflictingLines-background: rgba(255, 234, 0, 0.28);
+            --vscode-mergeEditor-conflict-input1-background: rgba(64, 200, 174, 0.2);
+            --vscode-mergeEditor-conflict-input2-background: rgba(64, 166, 255, 0.2);
+            --vscode-settings-headerForeground: #e1e4e8;
+            --vscode-settings-settingsHeaderHoverForeground: rgba(225, 228, 232, 0.7);
+            --vscode-settings-modifiedItemIndicator: #0366d6;
+            --vscode-settings-headerBorder: #1b1f23;
+            --vscode-settings-sashBorder: #1b1f23;
+            --vscode-settings-dropdownBackground: #2f363d;
+            --vscode-settings-dropdownForeground: #e1e4e8;
+            --vscode-settings-dropdownBorder: #1b1f23;
+            --vscode-settings-dropdownListBorder: #454545;
+            --vscode-settings-checkboxBackground: #444d56;
+            --vscode-settings-checkboxForeground: #e1e4e8;
+            --vscode-settings-checkboxBorder: #1b1f23;
+            --vscode-settings-textInputBackground: #2f363d;
+            --vscode-settings-textInputForeground: #e1e4e8;
+            --vscode-settings-textInputBorder: #1b1f23;
+            --vscode-settings-numberInputBackground: #2f363d;
+            --vscode-settings-numberInputForeground: #e1e4e8;
+            --vscode-settings-numberInputBorder: #1b1f23;
+            --vscode-settings-focusedRowBackground: rgba(0, 0, 0, 0.01);
+            --vscode-settings-rowHoverBackground: rgba(0, 0, 0, 0.01);
+            --vscode-settings-focusedRowBorder: rgba(0, 0, 0, 0);
+            --vscode-keybindingTable-headerBackground: rgba(209, 213, 218, 0.04);
+            --vscode-keybindingTable-rowsBackground: rgba(209, 213, 218, 0.04);
+            --vscode-debugToolBar-background: #2b3036;
+            --vscode-debugIcon-startForeground: #89d185;
+            --vscode-inlineChat-foreground: #d1d5da;
+            --vscode-inlineChat-background: #1f2428;
+            --vscode-inlineChat-border: #454545;
+            --vscode-inlineChat-shadow: rgba(0, 0, 0, 0.36);
+            --vscode-inlineChatInput-border: #454545;
+            --vscode-inlineChatInput-focusBorder: rgba(0, 0, 0, 0);
+            --vscode-inlineChatInput-placeholderForeground: #959da5;
+            --vscode-inlineChatInput-background: #2f363d;
+            --vscode-inlineChatDiff-inserted: rgba(40, 167, 69, 0.09);
+            --vscode-editorOverviewRuler-inlineChatInserted: rgba(40, 167, 69, 0.11);
+            --vscode-inlineChatDiff-removed: rgba(190, 24, 93, 0.09);
+            --vscode-editorOverviewRuler-inlineChatRemoved: rgba(190, 24, 93, 0.11);
+            --vscode-extensionButton-background: #176f2c;
+            --vscode-extensionButton-foreground: #dcffe4;
+            --vscode-extensionButton-hoverBackground: #22863a;
+            --vscode-extensionButton-separator: rgba(220, 255, 228, 0.4);
+            --vscode-extensionButton-prominentBackground: #176f2c;
+            --vscode-extensionButton-prominentForeground: #dcffe4;
+            --vscode-extensionButton-prominentHoverBackground: #22863a;
+            --vscode-chat-requestBorder: rgba(255, 255, 255, 0.1);
+            --vscode-chat-requestBackground: rgba(15, 15, 16, 0.62);
+            --vscode-chat-slashCommandBackground: rgba(52, 65, 75, 0.56);
+            --vscode-chat-slashCommandForeground: #40a6ff;
+            --vscode-chat-avatarBackground: #1f1f1f;
+            --vscode-chat-avatarForeground: #d1d5da;
+            --vscode-chat-editedFileForeground: #e2c08d;
+            --vscode-notebook-cellBorderColor: #282e34;
+            --vscode-notebook-focusedEditorBorder: rgba(0, 0, 0, 0);
+            --vscode-notebookStatusSuccessIcon-foreground: #89d185;
+            --vscode-notebookEditorOverviewRuler-runningCellForeground: #89d185;
+            --vscode-notebookStatusErrorIcon-foreground: #f472b6;
+            --vscode-notebookStatusRunningIcon-foreground: #d1d5da;
+            --vscode-notebook-cellToolbarSeparator: rgba(128, 128, 128, 0.35);
+            --vscode-notebook-selectedCellBackground: #282e34;
+            --vscode-notebook-selectedCellBorder: #282e34;
+            --vscode-notebook-focusedCellBorder: rgba(0, 0, 0, 0);
+            --vscode-notebook-inactiveFocusedCellBorder: #282e34;
+            --vscode-notebook-cellStatusBarItemHoverBackground: rgba(255, 255, 255, 0.15);
+            --vscode-notebook-cellInsertionIndicator: rgba(0, 0, 0, 0);
+            --vscode-notebookScrollbarSlider-background: rgba(161, 161, 170, 0.2);
+            --vscode-notebookScrollbarSlider-hoverBackground: rgba(161, 161, 170, 0.27);
+            --vscode-notebookScrollbarSlider-activeBackground: rgba(161, 161, 170, 0.53);
+            --vscode-notebook-symbolHighlightBackground: rgba(255, 255, 255, 0.04);
+            --vscode-notebook-cellEditorBackground: #fafafa;
+            --vscode-notebook-editorBackground: #0f0f10;
+            --vscode-searchEditor-textInputBorder: #1b1f23;
+            forced-color-adjust: none;
+            transition: opacity 0.2s ease-in;
+        }
+
+        .style-1 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-2 {
+            max-height: 721px;
+            min-height: 721px;
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-3 {
+            pointer-events: nonescrollbar-width:thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+            scrollbar-width: thin;
+        }
+
+        .style-4 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-5 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-6 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-7 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-8 {
+            -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-9 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-10 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-11 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-12 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-13 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-14 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-15 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-16 {
+            position: relativescrollbar-width:thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+            scrollbar-width: thin;
+        }
+
+        .style-17 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-18 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-19 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-20 {
+            color: currentColorscrollbar-width:thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+            scrollbar-width: thin;
+        }
+
+        .style-21 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-22 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-23 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-24 {
+            color: currentColorscrollbar-width:thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+            scrollbar-width: thin;
+        }
+
+        .style-25 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-26 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-27 {
+            -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-28 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-29 {
+            -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-30 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-31 {
+            -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-32 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-33 {
+            -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-34 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-35 {
+            -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-36 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-37 {
+            -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-38 {
+            -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-39 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-40 {
+            color: currentColorscrollbar-width:thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+            scrollbar-width: thin;
+        }
+
+        .style-41 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-42 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-43 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-44 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-45 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-46 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-47 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-48 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-49 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-50 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-51 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-52 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-53 {
+            opacity: 0;
+            pointer-events: none;
+            transition-property: opacity;
+            transition-duration: 0ms;
+            transition-timing-function: cubic-bezier(0.31, 0.1, 0.08, 0.96);
+            transition-delay: 0ms;
+            will-change: autoscrollbar-width:thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+            scrollbar-width: thin;
+        }
+
+        .style-54 {
+            transition-property: border-color, background, color;
+            transition-duration: 150ms;
+            transition-timing-function: cubic-bezier(0.31, 0.1, 0.08, 0.96);
+            transition-delay: 0ms;
+            will-change: border-color, background, color;
+            --bob-multiplier: 1.00;
+            transition-duration: 0.15s;
+            transition-timing-function: cubic-bezier(0.31, 0.1, 0.08, 0.96);
+            transition-delay: 0s;
+            will-change: border-color, background, color;
+            --bob-multiplier: 1.00;
+            animation: 2s ease-in-out infinite floating-action-module__6MyO0a__bob;
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-55 {
+            transition-property: width, height;
+            transition-duration: 0s;
+            transition-timing-function: cubic-bezier(0.3, 0.1, 0.1, 0.95);
+            transition-delay: 0ms;
+            will-change: width, height;
+            place-items: center;
+            place-content: center;
+            width: auto;
+            height: auto;
+            transition-duration: 0s;
+            transition-timing-function: cubic-bezier(0.3, 0.1, 0.1, 0.95);
+            transition-delay: 0s;
+            will-change: width, height;
+            place-items: center;
+            place-content: center;
+            width: auto;
+            height: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-56 {
+            transform: none;
+            opacity: 1;
+            opacity: 1;
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-57 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-58 {
+            color: currentColorscrollbar-width:thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+            scrollbar-width: thin;
+        }
+
+        .style-59 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-60 {
+            transform: translateY(34px);
+            opacity: 0;
+            pointer-events: none;
+            transition-property: opacity, transform;
+            transition-duration: 500ms;
+            transition-timing-function: cubic-bezier(0.31, 0.1, 0.08, 0.96);
+            transition-delay: 0ms;
+            will-change: autoscrollbar-width:thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+            scrollbar-width: thin;
+        }
+
+        .style-61 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-62 {
+            width: 100%;
+            transition-property: width, height;
+            transition-duration: 0s;
+            transition-timing-function: cubic-bezier(0.3, 0.1, 0.1, 0.95);
+            transition-delay: 0ms;
+            will-change: width, height;
+            height: auto;
+            transition-property: width, height;
+            transition-duration: 0s;
+            transition-timing-function: cubic-bezier(0.3, 0.1, 0.1, 0.95);
+            transition-delay: 0s;
+            will-change: width, height;
+            height: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-63 {
+            opacity: 1;
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-64 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-65 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-66 {
+            transition-property: border-color, box-shadow;
+            transition-duration: 200ms;
+            transition-timing-function: cubic-bezier(0.31, 0.1, 0.08, 0.96);
+            transition-delay: 0ms;
+            will-change: border-colorscrollbar-width:thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+            scrollbar-width: thin;
+        }
+
+        .style-67 {
+            margin-bottom: 0;
+            height: 0;
+            opacity: 0;
+            pointer-events: none;
+            transition-property: height, margin, opacity;
+            transition-duration: 300ms;
+            transition-timing-function: cubic-bezier(0.31, 0.1, 0.08, 0.96);
+            transition-delay: 0ms;
+            will-change: height, marginscrollbar-width:thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+            scrollbar-width: thin;
+        }
+
+        .style-68 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-69 {
+            width: 32pxscrollbar-width:thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+            scrollbar-width: thin;
+        }
+
+        .style-70 {
+            width: 32pxscrollbar-width:thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+            scrollbar-width: thin;
+        }
+
+        .style-71 {
+            position: relative;
+            --radix-scroll-area-corner-width: 0px;
+            --radix-scroll-area-corner-height: 0pxscrollbar-width:thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+            scrollbar-width: thin;
+        }
+
+        .style-72 {
+            overflow: scroll;
+            scrollbar-width: none;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-73 {
+            min-width: 100%;
+            display: tablescrollbar-width:thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+            scrollbar-width: thin;
+        }
+
+        .style-74 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-75 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-76 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+
+        .style-77 {
+            scrollbar-width: thin;
+            scrollbar-color: rgb(82, 82, 91) rgba(0, 0, 0, 0);
+        }
+    </style>
+</head>
+
+<body class="style-0">
+    <div hidden="" class="style-1">
+        <!--$-->
+        <!--/$-->
+    </div>
+    <!--&-->
+    <!--&-->
+    <!--&-->
+    <div class="style-2" vaul-drawer-wrapper="">
+        <!--$-->
+        <!--/$-->
+        <div role="region" aria-label="Notifications (F8)" tabindex="-1" class="style-3">
+            <ol tabindex="-1" class="style-4"></ol>
+        </div>
+        <section aria-label="Notifications alt+T" tabindex="-1" aria-live="polite" aria-relevant="additions text" aria-atomic="false" class="style-5"></section>
+        <!--$-->
+        <!--/$-->
+        <!--&-->
+        <!--&-->
+        <!--&-->
+        <!--&-->
+        <!--&-->
+        <header class="style-6">
+            <div class="style-7"><a data-testid="header-logo" class="style-8" href="/chat"><svg fill="currentColor" viewBox="0 0 147 70" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="style-9">
+                        <path d="M56 50.2031V14H70V60.1562C70 65.5928 65.5928 70 60.1562 70C57.5605 70 54.9982 68.9992 53.1562 67.1573L0 14H19.7969L56 50.2031Z" class="style-10"></path>
+                        <path d="M147 56H133V23.9531L100.953 56H133V70H96.6875C85.8144 70 77 61.1856 77 50.3125V14H91V46.1562L123.156 14H91V0H127.312C138.186 0 147 8.81439 147 19.6875V56Z" class="style-11"></path>
+                    </svg><span class="style-12">New Chat</span></a></div>
+            <div class="style-13">
+                <div class="style-14">
+                    <nav aria-label="Main" data-orientation="horizontal" dir="ltr" data-slot="navigation-menu" class="style-15" data-viewport="false">
+                        <div class="style-16">
+                            <ul data-orientation="horizontal" data-slot="navigation-menu-list" class="style-17" dir="ltr">
+                                <li data-slot="navigation-menu-item" class="style-18"><button data-state="closed" aria-expanded="false" aria-controls="radix-_R_blfiv5ubqivkhknpfivb_-content-radix-_R_3blfiv5ubqivkhknpfivb_" data-slot="navigation-menu-trigger" class="style-19" data-active="false" data-radix-collection-item="">Templates
+                                        <!-- --><svg class="style-20" data-testid="geist-icon" height="16" stroke-linejoin="round" viewBox="0 0 16 16" width="16" aria-hidden="true">
+                                            <path fill-rule="evenodd" clip-rule="evenodd" d="M14.0607 5.49999L13.5303 6.03032L8.7071 10.8535C8.31658 11.2441 7.68341 11.2441 7.29289 10.8535L2.46966 6.03032L1.93933 5.49999L2.99999 4.43933L3.53032 4.96966L7.99999 9.43933L12.4697 4.96966L13 4.43933L14.0607 5.49999Z" fill="currentColor" class="style-21"></path>
+                                        </svg>
+                                    </button></li>
+                                <li data-slot="navigation-menu-item" class="style-22"><button data-state="closed" aria-expanded="false" aria-controls="radix-_R_blfiv5ubqivkhknpfivb_-content-radix-_R_5blfiv5ubqivkhknpfivb_" data-slot="navigation-menu-trigger" class="style-23" data-active="false" data-radix-collection-item="">Resources
+                                        <!-- --><svg class="style-24" data-testid="geist-icon" height="16" stroke-linejoin="round" viewBox="0 0 16 16" width="16" aria-hidden="true">
+                                            <path fill-rule="evenodd" clip-rule="evenodd" d="M14.0607 5.49999L13.5303 6.03032L8.7071 10.8535C8.31658 11.2441 7.68341 11.2441 7.29289 10.8535L2.46966 6.03032L1.93933 5.49999L2.99999 4.43933L3.53032 4.96966L7.99999 9.43933L12.4697 4.96966L13 4.43933L14.0607 5.49999Z" fill="currentColor" class="style-25"></path>
+                                        </svg>
+                                    </button></li>
+                                <li data-slot="navigation-menu-item" class="style-26"><a href="/enterprise" data-active="false" class="style-27">Enterprise</a></li>
+                                <li data-slot="navigation-menu-item" class="style-28"><a data-active="false" class="style-29" href="/pricing">Pricing</a></li>
+                                <li data-slot="navigation-menu-item" class="style-30"><a href="/ios" data-active="false" class="style-31">iOS</a></li>
+                                <li data-slot="navigation-menu-item" class="style-32"><a href="/students" data-active="false" class="style-33">Students</a></li>
+                                <li data-slot="navigation-menu-item" class="style-34"><a href="/faq" data-active="false" class="style-35" target="_blank" rel="noopener noreferrer">FAQ</a></li>
+                            </ul>
+                        </div>
+                    </nav>
+                    <div class="style-36"><a class="style-37" href="/api/auth/login?next=%2F">Sign In</a><a class="style-38" href="/api/auth/login?next=%2F&amp;action=signup">Sign Up</a></div>
+                </div><button class="style-39" aria-label="Open menu" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="radix-_R_5lfiv5ubqivkhknpfivb_" data-state="closed"><svg data-testid="geist-icon" height="16" stroke-linejoin="round" viewBox="0 0 16 16" width="16" class="style-40">
+                        <path fill-rule="evenodd" clip-rule="evenodd" d="M1.75 4H1V5.5H1.75H14.25H15V4H14.25H1.75ZM1.75 10.5H1V12H1.75H14.25H15V10.5H14.25H1.75Z" fill="currentColor" class="style-41"></path>
+                    </svg></button>
+            </div>
+        </header>
+        <!--/&-->
+        <!--/&-->
+        <!--/&-->
+        <!--/&-->
+        <div class="style-42">
+            <!--&-->
+            <!--&-->
+            <!--$-->
+            <!--/$-->
+            <!--/&-->
+            <!--/&-->
+            <!--&-->
+            <!--&-->
+            <!--&-->
+            <!--&-->
+            <div class="style-43">
+                <!--$-->
+                <!--/$-->
+                <div class="style-44">
+                    <div class="style-45">
+                        <main class="style-46">
+                            <div class="style-47">
+                                <h1 data-testid="app-title" class="style-48">What do you want to create?</h1>
+                                <div class="style-49">
+                                    <div class="style-50">
+                                        <div class="style-51">
+                                            <div class="style-52">
+                                                <div class="style-53"><button class="style-54" type="button" inert="" aria-label="Scroll to bottom">
+                                                        <div class="style-55">
+                                                            <div class="style-56"><span class="style-57"><svg data-testid="geist-icon" height="16" stroke-linejoin="round" viewBox="0 0 16 16" width="16" class="style-58">
+                                                                        <path fill-rule="evenodd" clip-rule="evenodd" d="M12.0607 6.74999L11.5303 7.28032L8.7071 10.1035C8.31657 10.4941 7.68341 10.4941 7.29288 10.1035L4.46966 7.28032L3.93933 6.74999L4.99999 5.68933L5.53032 6.21966L7.99999 8.68933L10.4697 6.21966L11 5.68933L12.0607 6.74999Z" fill="currentColor" class="style-59"></path>
+                                                                    </svg></span></div>
+                                                        </div>
+                                                    </button></div>
+                                            </div>
+                                        </div>
+                                        <div inert="" class="style-60">
+                                            <div class="style-61">
+                                                <div class="style-62">
+                                                    <div class="style-63">
+                                                        <div class="style-64"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="style-65"></div>
+                                        </div>
+                                        <form class="style-66" data-prompt-form="true">
+                                            <div class="style-67" inert="">
+                                                <div class="style-68">
+                                                    <div class="style-69"></div>
+                                                    <div class="style-70"></div>
+                                                    <div dir="ltr" class="style-71">
+                                                        <div data-radix-scroll-area-viewport="" class="style-72">
+                                                            <div class="style-73">
+                                                                <div class="style-74">
+                                                                    <div class="style-75"></div>
+                                                                    <div class="style-76"></div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div><textarea placeholder="Ask v0 to build…" autofocus="" rows="1" class="style-77" spellcheck="false"></textarea>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </main>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
