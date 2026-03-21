@@ -33,17 +33,17 @@ const SUGGESTION_PILLS = [
 const EXAMPLE_PROMPTS = [
   {
     icon: TrendingUp,
-    text: 'London Breakout — Asian range breakout during London session. +$585 profit, PF 1.04.',
+    text: 'London Breakout — Trades breakouts of the Asian session range during the London open on XAUUSD H1',
     template: 'Build a London Breakout strategy',
   },
   {
     icon: BarChart3,
-    text: 'Trend Rider — EMA crossover with trend filter and trailing stop. +$5,208 profit, PF 1.10.',
+    text: 'Trend Rider — Multi-EMA crossover with trend filter and trailing stop on XAUUSD H1',
     template: 'Build a Trend Rider strategy',
   },
   {
     icon: Shield,
-    text: 'Mean Reversion — Bollinger Band bounce with RSI confirmation. +$2,296 profit, PF 1.02.',
+    text: 'Mean Reversion — Bollinger Band bounce strategy with RSI confirmation on XAUUSD H1',
     template: 'Build a Mean Reversion strategy',
   },
 ]
