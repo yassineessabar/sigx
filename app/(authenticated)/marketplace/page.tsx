@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { PageTransition } from '@/components/ui/page-transition'
 import { useAuth } from '@/lib/auth-context'
 import { supabase } from '@/lib/supabase'
+import { findClientTemplate } from '@/lib/templates/client'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
@@ -230,23 +231,25 @@ export default function MarketplacePage() {
         if (!res.ok) throw new Error(data.error)
         toast.success(data.purchased ? 'Strategy purchased!' : 'Strategy added!')
       } else {
-        // Mock strategy — create directly in user's strategies
-        let res = await fetch('/api/strategies', {
+        // Match to real template for accurate data
+        const tpl = findClientTemplate(strategy.name)
+
+        const res = await fetch('/api/strategies', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({
             name: strategy.name,
-            market: strategy.market,
+            market: tpl?.market || strategy.market,
             description: strategy.description,
             tags: strategy.tags,
             status: 'backtested',
-            mql5_code: strategy.mqlCode || null,
+            mql5_code: tpl?.mql5Code || strategy.mqlCode || null,
             platform: strategy.platform,
-            sharpe_ratio: strategy.sharpe,
-            max_drawdown: Math.abs(strategy.drawdown),
-            win_rate: strategy.winRate,
-            total_return: strategy.totalReturn,
-            strategy_summary: {
+            sharpe_ratio: tpl?.backtestResults.sharpe ?? strategy.sharpe,
+            max_drawdown: tpl?.backtestResults.max_drawdown ?? Math.abs(strategy.drawdown),
+            win_rate: tpl?.backtestResults.win_rate ?? strategy.winRate,
+            total_return: tpl?.backtestResults.total_return ?? strategy.totalReturn,
+            strategy_summary: tpl?.strategySnapshot || {
               entry_rules: strategy.entryRules,
               exit_rules: strategy.exitRules,
               risk_logic: strategy.riskLogic,
