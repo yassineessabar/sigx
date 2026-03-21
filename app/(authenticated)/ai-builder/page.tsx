@@ -534,7 +534,12 @@ export default function AIBuilderPage() {
             {/* Main prompt input */}
             <div className="mt-8 w-full max-w-[680px]">
               <PromptInput
-                onSend={handleSend}
+                onSend={(msg) => {
+                  setPendingTemplatePrompt(msg)
+                  const tpl = findClientTemplate(msg)
+                  setProjectName(tpl ? `${tpl.name} ${tpl.market} ${tpl.timeframe}` : msg.slice(0, 40))
+                  setShowNameModal(true)
+                }}
                 isGenerating={isGenerating}
                 onStop={handleStop}
                 variant="hero"
