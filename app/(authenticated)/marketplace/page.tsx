@@ -191,12 +191,15 @@ export default function MarketplacePage() {
   }
 
   const copyStrategyToCollection = async (strategy: MockStrategy) => {
-    if (!session?.access_token) return
+    if (!session?.access_token) { toast.error('Please sign in'); return }
     setPurchasing(true)
 
-    // Get fresh token
-    const { data: { session: freshSession } } = await supabase.auth.getSession()
-    const token = freshSession?.access_token || session.access_token
+    // Get fresh token — try refresh first
+    let token = session.access_token
+    try {
+      const { data } = await supabase.auth.refreshSession()
+      if (data.session?.access_token) token = data.session.access_token
+    } catch { /* use existing token */ }
 
     try {
       // For real DB strategies, use the purchase API
@@ -253,6 +256,7 @@ export default function MarketplacePage() {
       setShowPaymentConfirm(false)
       setSelectedStrategy(null)
     } catch (e: any) {
+      console.error('Add strategy error:', e)
       toast.error(e.message || 'Failed to add strategy')
     } finally {
       setPurchasing(false)
