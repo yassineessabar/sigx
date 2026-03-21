@@ -33,6 +33,9 @@ interface ChatTopBarProps {
   strategyId?: string | null
   chatId?: string | null
   accessToken?: string | null
+  mql5Code?: string | null
+  strategyName?: string | null
+  strategyMarket?: string | null
   onUpgradeClick?: () => void
 }
 
@@ -42,6 +45,9 @@ export function ChatTopBar({
   strategyId,
   chatId,
   accessToken,
+  mql5Code,
+  strategyName,
+  strategyMarket,
   onUpgradeClick,
 }: ChatTopBarProps) {
   const router = useRouter()
@@ -75,6 +81,52 @@ export function ChatTopBar({
     }
     setDeploying(true)
     try {
+      // If we have MQL5 code, try deploying via MT5 Worker first
+      if (mql5Code) {
+        const eaName = (strategyName || 'SigxEA').replace(/[^a-zA-Z0-9_]/g, '_')
+        const symbol = strategyMarket || 'XAUUSD'
+
+        const mt5Res = await fetch('/api/ai-builder/deploy', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            ea_name: eaName,
+            mq5_code: mql5Code,
+            symbol,
+            period: 'H1',
+          }),
+        })
+
+        if (mt5Res.ok) {
+          const mt5Result = await mt5Res.json()
+          if (mt5Result.success) {
+            // Also create the deployment record via the strategies API
+            await fetch(`/api/strategies/${strategyId}/deploy`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${accessToken}`,
+              },
+              body: JSON.stringify({
+                broker,
+                account_id: accountId || null,
+                lot_size: parseFloat(lotSize) || 0.1,
+              }),
+            })
+            toast.success('Strategy deployed to MT5 successfully!')
+            setShowPublishModal(false)
+            router.push('/live')
+            return
+          }
+          // MT5 deploy failed — fall through to standard deploy
+          console.warn('MT5 Worker deploy failed, falling back to standard deploy')
+        }
+      }
+
+      // Standard deploy (no MT5 Worker or MT5 deploy failed)
       const res = await fetch(`/api/strategies/${strategyId}/deploy`, {
         method: 'POST',
         headers: {
@@ -99,7 +151,7 @@ export function ChatTopBar({
     } finally {
       setDeploying(false)
     }
-  }, [strategyId, accessToken, broker, accountId, lotSize, router])
+  }, [strategyId, accessToken, broker, accountId, lotSize, router, mql5Code, strategyName, strategyMarket])
 
   return (
     <>

@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getUserFromToken } from '@/lib/api-auth'
+import { compileEA, backtestEA, isWorkerConfigured } from '@/lib/mt5-worker'
 import Anthropic from '@anthropic-ai/sdk'
 
 const anthropicKey = process.env.ANTHROPIC_API_KEY
@@ -11,209 +12,88 @@ const anthropic = isValidKey
   ? new Anthropic({ apiKey: anthropicKey })
   : null
 
-const SYSTEM_PROMPT = `You are SIGX, an expert AI assistant that builds MetaTrader 5 (MQL5) trading strategies.
+const SYSTEM_PROMPT = `You are SIGX, an expert MQL5 Expert Advisor developer. Your ONLY job is to generate COMPLETE, WORKING trading EAs that ACTUALLY OPEN AND CLOSE TRADES when backtested.
 
-When a user describes a trading idea, you MUST respond with:
+## CRITICAL RULES
 
-1. A clear strategy summary explaining entry rules, exit rules, and risk management
-2. A complete, compilable MQL5 Expert Advisor code
-3. Simulated backtest results
+1. Every EA you generate MUST contain real trading logic that opens positions based on indicator signals.
+2. The OnTick() function MUST call trade.Buy() or trade.Sell() when entry conditions are met.
+3. NEVER generate an EA with an empty OnTick() or one that only prints/comments without trading.
+4. ALWAYS include: entry conditions (using indicators), exit conditions (SL/TP or signal reversal), and position sizing.
 
-Format your response as follows:
+## Interactive behavior — ASK BEFORE BUILDING
 
-First, explain the strategy in plain text.
+You MUST gather enough information before generating code. Ask the user about missing details:
 
-Then output the strategy metadata as a JSON block between these markers:
+1. **Symbol/Market** — If not specified, ask: "Which symbol would you like to trade? (e.g. XAUUSD, EURUSD, GBPUSD, BTCUSD, NAS100)"
+2. **Strategy type / Indicators** — If vague (e.g. "build me a gold strategy"), ask: "What type of strategy? For example: EMA crossover, RSI reversal, Bollinger breakout, MACD, London session breakout, mean reversion..."
+3. **Timeframe** — If not specified, ask: "What timeframe? (M1, M5, M15, H1, H4, D1)"
+4. **Risk parameters** — If not specified, ask: "What risk per trade? I suggest 1% with ATR-based stops. Want to customize lot size, max drawdown, or SL/TP?"
+
+Only generate code once you have at least: symbol, strategy type/indicators, and timeframe. You can suggest defaults for risk if the user doesn't specify.
+
+Example conversation:
+- User: "Build me a gold strategy"
+- You: "Great! I can build a XAUUSD EA for you. A few questions:\n1. What type of strategy? (e.g. EMA crossover, breakout, mean reversion, scalping)\n2. What timeframe? (M5, M15, H1, H4)\n3. Any specific risk settings? (default: 1% risk per trade)"
+
+- User: "Build a EURUSD EMA crossover on H1 with 1% risk"
+- You: [Generate the full EA immediately — all info provided]
+
+## Response format
+
+1. Brief strategy explanation (2-3 sentences max)
+
+2. Strategy metadata:
 ---STRATEGY_JSON_START---
 {
   "name": "Strategy Name",
   "market": "XAUUSD",
   "entry_rules": ["rule1", "rule2"],
   "exit_rules": ["rule1", "rule2"],
-  "risk_logic": "description of risk management"
+  "risk_logic": "description"
 }
 ---STRATEGY_JSON_END---
 
-Then output the MQL5 code between these markers:
+3. Complete MQL5 EA code:
 ---MQL5_CODE_START---
-// Your complete MQL5 EA code here
+// Full EA code here
 ---MQL5_CODE_END---
 
-Then output simulated backtest results as JSON:
----BACKTEST_JSON_START---
-{
-  "sharpe": 1.45,
-  "max_drawdown": 5.2,
-  "win_rate": 52.3,
-  "total_return": 28.5,
-  "profit_factor": 1.35,
-  "total_trades": 156,
-  "equity_curve": [
-    {"date": "2024-01-01", "equity": 10000},
-    {"date": "2024-02-01", "equity": 10450},
-    {"date": "2024-03-01", "equity": 10200},
-    {"date": "2024-04-01", "equity": 10850},
-    {"date": "2024-05-01", "equity": 11200},
-    {"date": "2024-06-01", "equity": 10900},
-    {"date": "2024-07-01", "equity": 11500},
-    {"date": "2024-08-01", "equity": 11800},
-    {"date": "2024-09-01", "equity": 12100},
-    {"date": "2024-10-01", "equity": 11700},
-    {"date": "2024-11-01", "equity": 12400},
-    {"date": "2024-12-01", "equity": 12850}
-  ]
-}
----BACKTEST_JSON_END---
+## Mandatory code structure
 
-Make the backtest results realistic. Vary the equity curve naturally with some drawdowns.
-When iterating on a strategy, update the code and results accordingly.
-Always be concise but thorough in your explanations.`
+Every EA MUST include ALL of these:
 
-function parseAssistantResponse(content: string) {
-  const metadata: Record<string, unknown> = {}
-
-  const strategyMatch = content.match(/---STRATEGY_JSON_START---\s*([\s\S]*?)\s*---STRATEGY_JSON_END---/)
-  if (strategyMatch) {
-    try {
-      metadata.strategy_snapshot = JSON.parse(strategyMatch[1])
-      metadata.type = 'strategy'
-    } catch { /* ignore parse errors */ }
-  }
-
-  const codeMatch = content.match(/---MQL5_CODE_START---\s*([\s\S]*?)\s*---MQL5_CODE_END---/)
-  if (codeMatch) {
-    metadata.mql5_code = codeMatch[1].trim()
-  }
-
-  const backtestMatch = content.match(/---BACKTEST_JSON_START---\s*([\s\S]*?)\s*---BACKTEST_JSON_END---/)
-  if (backtestMatch) {
-    try {
-      metadata.backtest_snapshot = JSON.parse(backtestMatch[1])
-    } catch { /* ignore parse errors */ }
-  }
-
-  const displayContent = content
-    .replace(/---STRATEGY_JSON_START---[\s\S]*?---STRATEGY_JSON_END---/g, '')
-    .replace(/---MQL5_CODE_START---[\s\S]*?---MQL5_CODE_END---/g, '')
-    .replace(/---BACKTEST_JSON_START---[\s\S]*?---BACKTEST_JSON_END---/g, '')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
-
-  return { displayContent, metadata }
-}
-
-function generateMockResponse(userMessage: string): string {
-  const market = userMessage.toLowerCase().includes('eurusd') ? 'EURUSD'
-    : userMessage.toLowerCase().includes('gbpusd') ? 'GBPUSD'
-    : 'XAUUSD'
-
-  const strategyName = `${market} ${userMessage.includes('breakout') ? 'Breakout' : userMessage.includes('scalp') ? 'Scalping' : 'Momentum'} Strategy`
-
-  let equity = 10000
-  const curve = []
-  for (let m = 1; m <= 12; m++) {
-    const change = (Math.random() - 0.4) * 600
-    equity = Math.max(equity + change, 8000)
-    curve.push({ date: `2024-${String(m).padStart(2, '0')}-01`, equity: Math.round(equity) })
-  }
-
-  const totalReturn = ((equity - 10000) / 10000 * 100)
-
-  return `Here's your strategy based on your request.
-
-This strategy uses a combination of technical indicators to identify high-probability entry points on ${market}. It includes proper risk management with position sizing based on account equity and ATR-based stop losses.
-
----STRATEGY_JSON_START---
-{
-  "name": "${strategyName}",
-  "market": "${market}",
-  "entry_rules": [
-    "Price breaks above/below the 20-period EMA with momentum confirmation",
-    "RSI(14) confirms trend direction (above 50 for longs, below 50 for shorts)",
-    "ATR(14) filter ensures sufficient volatility for the trade"
-  ],
-  "exit_rules": [
-    "Take profit at 2x ATR from entry",
-    "Stop loss at 1.5x ATR from entry",
-    "Trailing stop activates after 1x ATR profit"
-  ],
-  "risk_logic": "Risk 1% of account per trade. Position size calculated from ATR-based stop loss distance. Maximum 2 concurrent positions."
-}
----STRATEGY_JSON_END---
-
----MQL5_CODE_START---
-//+------------------------------------------------------------------+
-//|                                          ${strategyName}.mq5      |
-//|                                          Generated by SIGX        |
-//+------------------------------------------------------------------+
+\`\`\`
 #property copyright "SIGX"
 #property version   "1.00"
-#property strict
-
 #include <Trade/Trade.mqh>
 
+// Input parameters (user-configurable)
 input double RiskPercent = 1.0;
-input int    EMA_Period = 20;
-input int    RSI_Period = 14;
-input int    ATR_Period = 14;
-input double TP_Multiplier = 2.0;
-input double SL_Multiplier = 1.5;
-input int    MaxPositions = 2;
-input int    MagicNumber = 100001;
+input int    MagicNumber = 123456;
+// ... indicator periods, SL/TP multipliers etc.
 
 CTrade trade;
-int handleEMA, handleRSI, handleATR;
+// Indicator handles declared globally
 
 int OnInit() {
     trade.SetExpertMagicNumber(MagicNumber);
-    handleEMA = iMA(_Symbol, PERIOD_CURRENT, EMA_Period, 0, MODE_EMA, PRICE_CLOSE);
-    handleRSI = iRSI(_Symbol, PERIOD_CURRENT, RSI_Period, PRICE_CLOSE);
-    handleATR = iATR(_Symbol, PERIOD_CURRENT, ATR_Period);
-    if(handleEMA == INVALID_HANDLE || handleRSI == INVALID_HANDLE || handleATR == INVALID_HANDLE) return INIT_FAILED;
-    return INIT_SUCCEEDED;
+    // Create indicator handles with iMA(), iRSI(), iATR() etc.
+    // Return INIT_SUCCEEDED or INIT_FAILED
 }
 
 void OnDeinit(const int reason) {
-    IndicatorRelease(handleEMA);
-    IndicatorRelease(handleRSI);
-    IndicatorRelease(handleATR);
+    // Release indicator handles
 }
 
 void OnTick() {
     if(!IsNewBar()) return;
 
-    double ema[], rsi[], atr[];
-    ArraySetAsSeries(ema, true);
-    ArraySetAsSeries(rsi, true);
-    ArraySetAsSeries(atr, true);
-
-    CopyBuffer(handleEMA, 0, 0, 3, ema);
-    CopyBuffer(handleRSI, 0, 0, 3, rsi);
-    CopyBuffer(handleATR, 0, 0, 3, atr);
-
-    double close1 = iClose(_Symbol, PERIOD_CURRENT, 1);
-    double close2 = iClose(_Symbol, PERIOD_CURRENT, 2);
-
-    int openPositions = CountPositions();
-    if(openPositions >= MaxPositions) return;
-
-    double atrValue = atr[1];
-    double sl = atrValue * SL_Multiplier;
-    double tp = atrValue * TP_Multiplier;
-
-    double lotSize = CalculateLotSize(sl);
-
-    // Long entry
-    if(close2 < ema[2] && close1 > ema[1] && rsi[1] > 50) {
-        double price = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-        trade.Buy(lotSize, _Symbol, price, price - sl, price + tp);
-    }
-
-    // Short entry
-    if(close2 > ema[2] && close1 < ema[1] && rsi[1] < 50) {
-        double price = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-        trade.Sell(lotSize, _Symbol, price, price + sl, price - tp);
-    }
+    // 1. Read indicator values using CopyBuffer()
+    // 2. Check entry conditions
+    // 3. If long signal → trade.Buy(lots, _Symbol, price, sl, tp)
+    // 4. If short signal → trade.Sell(lots, _Symbol, price, sl, tp)
+    // 5. Manage open positions (trailing stop, exit signals)
 }
 
 bool IsNewBar() {
@@ -232,30 +112,98 @@ int CountPositions() {
     return count;
 }
 
-double CalculateLotSize(double slPoints) {
+double CalculateLotSize(double slDistance) {
     double balance = AccountInfoDouble(ACCOUNT_BALANCE);
     double riskAmount = balance * RiskPercent / 100.0;
     double tickValue = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
     double tickSize = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
-    if(tickValue == 0 || tickSize == 0 || slPoints == 0) return 0.01;
-    double lots = riskAmount / (slPoints / tickSize * tickValue);
+    if(tickValue == 0 || tickSize == 0 || slDistance == 0) return 0.01;
+    double lots = riskAmount / (slDistance / tickSize * tickValue);
     lots = MathMax(lots, SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN));
     lots = MathMin(lots, SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX));
     return NormalizeDouble(lots, 2);
 }
----MQL5_CODE_END---
+\`\`\`
 
----BACKTEST_JSON_START---
-${JSON.stringify({
-    sharpe: parseFloat((0.8 + Math.random() * 1.2).toFixed(2)),
-    max_drawdown: parseFloat((3 + Math.random() * 7).toFixed(1)),
-    win_rate: parseFloat((45 + Math.random() * 15).toFixed(1)),
-    total_return: parseFloat(totalReturn.toFixed(1)),
-    profit_factor: parseFloat((1.05 + Math.random() * 0.6).toFixed(2)),
-    total_trades: Math.floor(80 + Math.random() * 120),
-    equity_curve: curve
-  }, null, 2)}
----BACKTEST_JSON_END---`
+## Common patterns that WORK (use these)
+
+- **EMA Crossover**: iMA fast vs iMA slow, buy when fast crosses above slow
+- **RSI Reversal**: iRSI, buy when RSI crosses above 30, sell when crosses below 70
+- **Bollinger Breakout**: iBands, buy on upper band break with volume
+- **MACD Signal**: iMACD, buy when MACD crosses signal line
+- **ATR Stops**: iATR for dynamic SL/TP: SL = 1.5*ATR, TP = 2*ATR
+
+## NEVER do these
+
+- Empty OnTick() with just comments or Print()
+- OrderSend() with 7+ parameters (that's MQL4, not MQL5)
+- Missing indicator handles (iMA returns INVALID_HANDLE if wrong params)
+- Using ArraySetAsSeries without CopyBuffer first
+- Forgetting to check CountPositions() before opening new trades
+
+## When iterating
+
+If user says "reduce drawdown", "add trailing stop", "change to M15" etc., output the FULL updated EA code. Never output partial code or diffs.
+
+## Important
+
+- Do NOT output simulated backtest results — real backtest runs on MT5 after compilation.
+- Keep text explanations SHORT (2-3 sentences). The code speaks for itself.
+- When user just says "hi" or asks a non-strategy question, respond conversationally without code.`
+
+function parseAssistantResponse(content: string) {
+  const metadata: Record<string, unknown> = {}
+
+  const strategyMatch = content.match(/---STRATEGY_JSON_START---\s*([\s\S]*?)\s*---STRATEGY_JSON_END---/)
+  if (strategyMatch) {
+    try {
+      metadata.strategy_snapshot = JSON.parse(strategyMatch[1])
+      metadata.type = 'strategy'
+    } catch { /* ignore parse errors */ }
+  }
+
+  const codeMatch = content.match(/---MQL5_CODE_START---\s*([\s\S]*?)\s*---MQL5_CODE_END---/)
+  if (codeMatch) {
+    metadata.mql5_code = codeMatch[1].trim()
+  }
+
+  // Also parse backtest if Claude includes it (for conversational context)
+  const backtestMatch = content.match(/---BACKTEST_JSON_START---\s*([\s\S]*?)\s*---BACKTEST_JSON_END---/)
+  if (backtestMatch) {
+    try {
+      metadata.backtest_snapshot = JSON.parse(backtestMatch[1])
+    } catch { /* ignore parse errors */ }
+  }
+
+  const displayContent = content
+    .replace(/---STRATEGY_JSON_START---[\s\S]*?---STRATEGY_JSON_END---/g, '')
+    .replace(/---MQL5_CODE_START---[\s\S]*?---MQL5_CODE_END---/g, '')
+    .replace(/---BACKTEST_JSON_START---[\s\S]*?---BACKTEST_JSON_END---/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+
+  return { displayContent, metadata }
+}
+
+async function mt5AutoFixCode(mq5Code: string, errors: string[]): Promise<string | null> {
+  if (!anthropic) return null
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4096,
+      system: 'You are an MQL5 compiler error fixer. Fix the compile errors while preserving ALL trading logic. The EA must still have trade.Buy() and trade.Sell() calls in OnTick(). Use MQL5 syntax only (CTrade, CopyBuffer, not MQL4 OrderSend). Output ONLY the fixed code.',
+      messages: [{
+        role: 'user',
+        content: `This MQL5 EA has compile errors. Fix them while keeping all trading logic intact.\n\nErrors:\n${errors.join('\n')}\n\nCode:\n${mq5Code}`,
+      }],
+    })
+
+    const textBlock = response.content.find((b) => b.type === 'text')
+    return textBlock?.text?.trim() || null
+  } catch {
+    return null
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -322,51 +270,128 @@ export async function POST(request: NextRequest) {
           send({ type: 'chat_created', chatId: currentChatId })
         }
 
+        // Immediate feedback
+        send({ type: 'status', message: 'Thinking...' })
+
         let fullContent = ''
 
         try {
-          if (anthropic) {
-            // Get chat history
-            const { data: history } = await supabaseAdmin
-              .from('chat_messages')
-              .select('role, content')
-              .eq('chat_id', currentChatId)
-              .order('created_at', { ascending: true })
-              .limit(20)
+          if (!anthropic) {
+            // No API key — send error as a chat message
+            const errorMsg = 'ANTHROPIC_API_KEY is not configured. Please set it in your environment variables to enable AI strategy generation.'
+            send({ type: 'status', message: '' })
+            send({ type: 'delta', text: errorMsg })
+            fullContent = errorMsg
 
-            const chatMessages: Anthropic.MessageParam[] = (history || []).map((m) => ({
-              role: m.role as 'user' | 'assistant',
-              content: m.content,
-            }))
-
-            const messageStream = anthropic.messages.stream({
-              model: 'claude-sonnet-4-20250514',
-              max_tokens: 4096,
-              system: SYSTEM_PROMPT,
-              messages: chatMessages,
+            await supabaseAdmin.from('chat_messages').insert({
+              chat_id: currentChatId,
+              user_id: user.id,
+              role: 'assistant',
+              content: errorMsg,
+              metadata: {},
             })
 
-            for await (const event of messageStream) {
-              if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-                fullContent += event.delta.text
-                send({ type: 'delta', text: event.delta.text })
-              }
-            }
-          } else {
-            // Mock streaming
-            const mockContent = generateMockResponse(message)
-            const words = mockContent.split(' ')
-            for (let i = 0; i < words.length; i++) {
-              const word = (i === 0 ? '' : ' ') + words[i]
-              fullContent += word
-              send({ type: 'delta', text: word })
-              await new Promise(r => setTimeout(r, 12))
+            send({
+              type: 'done',
+              message: {
+                id: crypto.randomUUID(),
+                chat_id: currentChatId,
+                user_id: user.id,
+                role: 'assistant',
+                content: errorMsg,
+                metadata: {},
+                created_at: new Date().toISOString(),
+              },
+            })
+            controller.close()
+            return
+          }
+
+          send({ type: 'status', message: 'Generating response...' })
+
+          // Get chat history
+          const { data: history } = await supabaseAdmin
+            .from('chat_messages')
+            .select('role, content')
+            .eq('chat_id', currentChatId)
+            .order('created_at', { ascending: true })
+            .limit(20)
+
+          const chatMessages: Anthropic.MessageParam[] = (history || []).map((m) => ({
+            role: m.role as 'user' | 'assistant',
+            content: m.content,
+          }))
+
+          // Stream Claude response
+          send({ type: 'status', message: '' }) // Clear status when streaming starts
+          const messageStream = anthropic.messages.stream({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 4096,
+            system: SYSTEM_PROMPT,
+            messages: chatMessages,
+          })
+
+          for await (const event of messageStream) {
+            if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+              fullContent += event.delta.text
+              send({ type: 'delta', text: event.delta.text })
             }
           }
 
-          // Parse and save
+          // Parse response
           const { displayContent, metadata } = parseAssistantResponse(fullContent)
 
+          // ── MT5 Worker: compile + backtest ──────────────────────────
+          if (isWorkerConfigured() && metadata.mql5_code) {
+            const stratSnap = metadata.strategy_snapshot as { name?: string; market?: string } | undefined
+            const eaName = (stratSnap?.name || 'SigxEA').replace(/[^a-zA-Z0-9_]/g, '_')
+            const symbol = stratSnap?.market || 'XAUUSD'
+
+            // Compile (with auto-fix retries)
+            send({ type: 'status', message: 'Compiling on MT5...' })
+            let currentCode = metadata.mql5_code as string
+            let compiled = false
+
+            for (let attempt = 0; attempt < 3; attempt++) {
+              const compileResult = await compileEA(eaName, currentCode)
+              if (compileResult.success) {
+                compiled = true
+                metadata.mql5_code = currentCode
+                send({ type: 'status', message: 'Compiled successfully' })
+                break
+              }
+              if (attempt < 2 && compileResult.errors?.length) {
+                send({ type: 'status', message: `Compile error, auto-fixing (attempt ${attempt + 2}/3)...` })
+                const fixed = await mt5AutoFixCode(currentCode, compileResult.errors)
+                if (fixed) {
+                  currentCode = fixed
+                  continue
+                }
+              }
+              send({ type: 'status', message: 'Compilation failed after 3 attempts' })
+              break
+            }
+
+            // Backtest (only if compiled)
+            if (compiled) {
+              send({ type: 'status', message: 'Running backtest on MT5 (this may take 30-120s)...' })
+              const btResult = await backtestEA(eaName, symbol, 'H1')
+              if (btResult.success && btResult.metrics) {
+                metadata.backtest_snapshot = {
+                  ...btResult.metrics,
+                  equity_curve: btResult.equity_curve || [],
+                }
+                send({ type: 'status', message: 'Backtest complete' })
+              } else {
+                send({ type: 'status', message: btResult.error || 'Backtest failed' })
+              }
+            }
+          } else if (!isWorkerConfigured() && metadata.mql5_code) {
+            send({ type: 'status', message: 'MT5 Worker not connected — configure MT5_WORKER_URL to run real backtests' })
+          }
+          // ── End MT5 Worker ──────────────────────────────────────────
+
+          // Save assistant message
           await supabaseAdmin.from('chat_messages').insert({
             chat_id: currentChatId,
             user_id: user.id,
@@ -388,7 +413,7 @@ export async function POST(request: NextRequest) {
                 market: strat.market || 'XAUUSD',
                 strategy_summary: metadata.strategy_snapshot,
                 mql5_code: (metadata.mql5_code as string) || null,
-                status: 'backtested',
+                status: backtestData ? 'backtested' : 'draft',
                 sharpe_ratio: backtestData?.sharpe || null,
                 max_drawdown: backtestData?.max_drawdown || null,
                 win_rate: backtestData?.win_rate || null,
@@ -412,7 +437,7 @@ export async function POST(request: NextRequest) {
             .update({ updated_at: new Date().toISOString() })
             .eq('id', currentChatId)
 
-          // Send final message with parsed content
+          // Send final message
           send({
             type: 'done',
             message: {
@@ -427,32 +452,18 @@ export async function POST(request: NextRequest) {
           })
         } catch (apiError) {
           console.error('Stream error:', apiError instanceof Error ? apiError.message : apiError)
-          // Fallback to mock on API error
-          if (fullContent === '') {
-            const mockContent = generateMockResponse(message)
-            const { displayContent, metadata } = parseAssistantResponse(mockContent)
-
-            await supabaseAdmin.from('chat_messages').insert({
+          send({
+            type: 'done',
+            message: {
+              id: crypto.randomUUID(),
               chat_id: currentChatId,
               user_id: user.id,
               role: 'assistant',
-              content: displayContent,
-              metadata,
-            })
-
-            send({
-              type: 'done',
-              message: {
-                id: crypto.randomUUID(),
-                chat_id: currentChatId,
-                user_id: user.id,
-                role: 'assistant',
-                content: displayContent,
-                metadata,
-                created_at: new Date().toISOString(),
-              },
-            })
-          }
+              content: 'Sorry, an error occurred while generating the strategy. Please try again.',
+              metadata: {},
+              created_at: new Date().toISOString(),
+            },
+          })
         }
 
         controller.close()

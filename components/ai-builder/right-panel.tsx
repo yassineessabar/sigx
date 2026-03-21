@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { Eye, Code2, ChevronsRight, BarChart3 } from 'lucide-react'
+import { Eye, Code2, ChevronsRight, BarChart3, Sparkles, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { StrategyCard } from './strategy-card'
 import { BacktestPreview } from './backtest-preview'
+import { StrategyScore } from './strategy-score'
 import { CodeViewer } from './code-viewer'
 import type { ChatMessageMetadata } from '@/lib/types'
 
@@ -14,6 +15,10 @@ interface RightPanelProps {
   mql5Code: string | null
   isOpen: boolean
   onToggle: () => void
+  onOptimize?: () => void
+  isOptimizing?: boolean
+  optimizeProgress?: { iteration: number; total: number }
+  pipelineStatus?: string | null
 }
 
 export function RightPanel({
@@ -22,6 +27,10 @@ export function RightPanel({
   mql5Code,
   isOpen,
   onToggle,
+  onOptimize,
+  isOptimizing,
+  optimizeProgress,
+  pipelineStatus,
 }: RightPanelProps) {
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview')
 
@@ -69,6 +78,16 @@ export function RightPanel({
           </div>
         </div>
 
+        {/* Pipeline status indicator */}
+        {pipelineStatus && (
+          <div className="flex items-center gap-2 px-4 py-2 border-b border-foreground/[0.06] bg-blue-500/[0.04]">
+            <Loader2 size={13} className="animate-spin text-blue-400" />
+            <span className="text-[12px] font-medium text-blue-400">
+              {pipelineStatus}
+            </span>
+          </div>
+        )}
+
         {/* Content */}
         <div className="flex-1 overflow-auto">
           {activeTab === 'preview' ? (
@@ -80,6 +99,50 @@ export function RightPanel({
                   )}
                   {backtestSnapshot && (
                     <BacktestPreview backtest={backtestSnapshot} />
+                  )}
+
+                  {/* Strategy score + recommendations */}
+                  {backtestSnapshot && (
+                    <StrategyScore backtest={backtestSnapshot} />
+                  )}
+
+                  {/* Optimize button */}
+                  {backtestSnapshot && onOptimize && (
+                    <div className="pt-2">
+                      {isOptimizing && optimizeProgress ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-[12px]">
+                            <span className="text-foreground/50 font-medium flex items-center gap-1.5">
+                              <Loader2
+                                size={13}
+                                className="animate-spin text-violet-400"
+                              />
+                              Optimizing...
+                            </span>
+                            <span className="text-foreground/40">
+                              {optimizeProgress.iteration}/{optimizeProgress.total}
+                            </span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-foreground/[0.06] overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-violet-500 transition-all duration-500"
+                              style={{
+                                width: `${(optimizeProgress.iteration / optimizeProgress.total) * 100}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={onOptimize}
+                          disabled={isOptimizing}
+                          className="w-full flex items-center justify-center gap-2 rounded-xl border border-violet-500/20 bg-violet-500/[0.06] px-4 py-3 text-[13px] font-semibold text-violet-400 hover:bg-violet-500/[0.10] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <Sparkles size={14} />
+                          Optimize (3 iterations)
+                        </button>
+                      )}
+                    </div>
                   )}
                 </>
               ) : (

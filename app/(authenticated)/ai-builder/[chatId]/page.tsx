@@ -25,6 +25,7 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessageType[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
+  const [pipelineStatus, setPipelineStatus] = useState<string | null>(null)
   const [loadingMessages, setLoadingMessages] = useState(true)
   const [chatTitle, setChatTitle] = useState('Strategy Chat')
   const [chatStrategyId, setChatStrategyId] = useState<string | null>(null)
@@ -143,8 +144,13 @@ export default function ChatPage() {
 
             if (data.type === 'delta') {
               setStreamingContent((prev) => prev + data.text)
+              // Clear "Thinking..." when actual content starts streaming
+              setPipelineStatus(null)
+            } else if (data.type === 'status') {
+              setPipelineStatus(data.message || null)
             } else if (data.type === 'done' && data.message) {
               setStreamingContent('')
+              setPipelineStatus(null)
               setMessages((prev) => [...prev, data.message])
             }
           } catch { /* skip malformed SSE lines */ }
@@ -158,6 +164,7 @@ export default function ChatPage() {
     } finally {
       setIsGenerating(false)
       setStreamingContent('')
+      setPipelineStatus(null)
       abortRef.current = null
     }
   }, [chatId, session?.access_token, user])
@@ -208,6 +215,7 @@ export default function ChatPage() {
         messages={messages}
         isGenerating={isGenerating}
         streamingContent={streamingContent}
+        chatPipelineStatus={pipelineStatus}
         onSend={handleSend}
         onStop={handleStop}
         credits={credits}

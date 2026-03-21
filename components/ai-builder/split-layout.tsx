@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useCallback } from 'react'
 import { ChevronsLeft } from 'lucide-react'
 import { ChatThread } from './chat-thread'
 import { PromptInput } from './prompt-input'
@@ -16,6 +16,7 @@ interface SplitLayoutProps {
   messages: ChatMessageType[]
   isGenerating: boolean
   streamingContent: string
+  chatPipelineStatus?: string | null
   onSend: (message: string) => void
   onStop: () => void
   credits: number | null
@@ -30,6 +31,7 @@ export function SplitLayout({
   messages,
   isGenerating,
   streamingContent,
+  chatPipelineStatus,
   onSend,
   onStop,
   credits,
@@ -55,10 +57,127 @@ export function SplitLayout({
   const hasResults = !!(latestStrategy || latestBacktest || latestCode)
   const [panelOpen, setPanelOpen] = useState(false)
 
+  // Optimize state
+  const [isOptimizing, setIsOptimizing] = useState(false)
+  const [optimizeProgress, setOptimizeProgress] = useState<{ iteration: number; total: number } | undefined>(undefined)
+  const [pipelineStatus, setPipelineStatus] = useState<string | null>(null)
+
+  // Optimized results that override the latest from messages
+  const [optimizedCode, setOptimizedCode] = useState<string | null>(null)
+  const [optimizedBacktest, setOptimizedBacktest] = useState<ChatMessageType['metadata']['backtest_snapshot'] | null>(null)
+
   // Auto-open panel when results arrive
   useEffect(() => {
     if (hasResults) setPanelOpen(true)
   }, [hasResults])
+
+  // Clear pipeline status after a delay
+  useEffect(() => {
+    if (pipelineStatus && !isOptimizing) {
+      const timer = setTimeout(() => setPipelineStatus(null), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [pipelineStatus, isOptimizing])
+
+  // Reset optimized results when new messages come in
+  useEffect(() => {
+    setOptimizedCode(null)
+    setOptimizedBacktest(null)
+  }, [messages.length])
+
+  const handleOptimize = useCallback(async () => {
+    if (!latestCode || !accessToken) return
+
+    const stratSnap = latestStrategy as { name?: string; market?: string } | undefined
+    const eaName = (stratSnap?.name || 'SigxEA').replace(/[^a-zA-Z0-9_]/g, '_')
+    const symbol = stratSnap?.market || 'XAUUSD'
+    const totalIterations = 3
+
+    setIsOptimizing(true)
+    setOptimizeProgress({ iteration: 0, total: totalIterations })
+    setPipelineStatus('Starting optimization...')
+
+    try {
+      const res = await fetch('/api/ai-builder/optimize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          ea_name: eaName,
+          mq5_code: latestCode,
+          symbol,
+          period: 'H1',
+          iterations: totalIterations,
+          previous_results: latestBacktest ? { metrics: latestBacktest } : undefined,
+        }),
+      })
+
+      if (!res.ok) {
+        throw new Error('Optimization request failed')
+      }
+
+      const reader = res.body?.getReader()
+      if (!reader) throw new Error('No response body')
+
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          try {
+            const data = JSON.parse(line.slice(6))
+
+            if (data.type === 'iteration') {
+              setOptimizeProgress({
+                iteration: data.iteration,
+                total: totalIterations,
+              })
+              setPipelineStatus(
+                data.improved
+                  ? `Iteration ${data.iteration}: Improved! Sharpe ${data.metrics?.sharpe?.toFixed(2) || '—'}`
+                  : `Iteration ${data.iteration}: No improvement`
+              )
+            } else if (data.type === 'done') {
+              if (data.best_code) {
+                setOptimizedCode(data.best_code)
+              }
+              if (data.best_metrics) {
+                setOptimizedBacktest({
+                  ...data.best_metrics,
+                  equity_curve: data.best_metrics.equity_curve || latestBacktest?.equity_curve || [],
+                })
+              }
+              setPipelineStatus('Optimization complete')
+            } else if (data.type === 'error') {
+              setPipelineStatus(data.message || 'Optimization failed')
+            }
+          } catch {
+            // skip malformed SSE lines
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Optimize error:', err)
+      setPipelineStatus('Optimization failed')
+    } finally {
+      setIsOptimizing(false)
+      setOptimizeProgress(undefined)
+    }
+  }, [latestCode, latestStrategy, latestBacktest, accessToken])
+
+  // Use optimized results if available, otherwise use latest from messages
+  const displayBacktest = optimizedBacktest || latestBacktest
+  const displayCode = optimizedCode || latestCode
 
   return (
     <div className="flex h-full flex-col">
@@ -68,6 +187,9 @@ export function SplitLayout({
         strategyId={resolvedStrategyId}
         chatId={chatId}
         accessToken={accessToken}
+        mql5Code={displayCode}
+        strategyName={latestStrategy?.name}
+        strategyMarket={latestStrategy?.market}
         onUpgradeClick={onUpgradeClick}
       />
       <div className="flex flex-1 overflow-hidden relative">
@@ -77,6 +199,7 @@ export function SplitLayout({
             messages={messages}
             isGenerating={isGenerating}
             streamingContent={streamingContent}
+            pipelineStatus={chatPipelineStatus || pipelineStatus}
           />
           <PromptInput onSend={onSend} isGenerating={isGenerating} onStop={onStop} />
         </div>
@@ -85,10 +208,14 @@ export function SplitLayout({
         {hasResults && (
           <RightPanel
             strategySnapshot={latestStrategy}
-            backtestSnapshot={latestBacktest}
-            mql5Code={latestCode}
+            backtestSnapshot={displayBacktest}
+            mql5Code={displayCode}
             isOpen={panelOpen}
             onToggle={() => setPanelOpen((prev) => !prev)}
+            onOptimize={handleOptimize}
+            isOptimizing={isOptimizing}
+            optimizeProgress={optimizeProgress}
+            pipelineStatus={pipelineStatus}
           />
         )}
 

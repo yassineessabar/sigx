@@ -2,30 +2,29 @@
 
 import { ChatMessage as ChatMessageType } from '@/lib/types'
 import { ChatMessage } from './chat-message'
+import { PipelineTracker } from './pipeline-tracker'
 import { useEffect, useRef } from 'react'
 
 interface ChatThreadProps {
   messages: ChatMessageType[]
   isGenerating: boolean
   streamingContent?: string
+  pipelineStatus?: string | null
 }
 
 function cleanStreamingDisplay(text: string): string {
-  // Remove complete marker blocks
   let clean = text.replace(/---\w+_START---[\s\S]*?---\w+_END---/g, '')
-  // Remove incomplete opening markers at the end
   clean = clean.replace(/---\w+_START---[\s\S]*$/, '')
-  // Remove trailing dashes that might be the start of a marker
   clean = clean.replace(/---\w*$/, '')
   return clean.replace(/\n{3,}/g, '\n\n').trim()
 }
 
-export function ChatThread({ messages, isGenerating, streamingContent }: ChatThreadProps) {
+export function ChatThread({ messages, isGenerating, streamingContent, pipelineStatus }: ChatThreadProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, streamingContent])
+  }, [messages, streamingContent, pipelineStatus])
 
   if (messages.length === 0 && !isGenerating) {
     return (
@@ -36,8 +35,15 @@ export function ChatThread({ messages, isGenerating, streamingContent }: ChatThr
           </div>
           <h2 className="text-[20px] font-bold text-foreground tracking-[-0.03em]">What strategy do you want to build?</h2>
           <p className="text-[14px] leading-[1.6] text-foreground/50 font-medium">
-            Describe your trading idea and I&apos;ll generate a complete MQL5 Expert Advisor with backtest results.
+            Describe your trading idea and I&apos;ll generate a complete MQL5 Expert Advisor, compile it, and run a real backtest on MetaTrader 5.
           </p>
+          <div className="flex flex-wrap justify-center gap-2 pt-2">
+            {['XAUUSD', 'EURUSD', 'GBPUSD', 'BTCUSD', 'NAS100'].map((sym) => (
+              <span key={sym} className="rounded-full bg-foreground/[0.04] px-3 py-1 text-[11px] text-foreground/35 font-medium">
+                {sym}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
     )
@@ -52,6 +58,7 @@ export function ChatThread({ messages, isGenerating, streamingContent }: ChatThr
           <ChatMessage key={msg.id} message={msg} />
         ))}
 
+        {/* Streaming content */}
         {isGenerating && displayedStreaming && (
           <div className="flex gap-3">
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-white">
@@ -66,7 +73,8 @@ export function ChatThread({ messages, isGenerating, streamingContent }: ChatThr
           </div>
         )}
 
-        {isGenerating && !displayedStreaming && (
+        {/* Loading dots when generating but no content yet */}
+        {isGenerating && !displayedStreaming && !pipelineStatus && (
           <div className="flex gap-3">
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-white">
               <span className="text-[8px] font-black text-black tracking-[-0.06em]">SX</span>
@@ -79,6 +87,11 @@ export function ChatThread({ messages, isGenerating, streamingContent }: ChatThr
               </div>
             </div>
           </div>
+        )}
+
+        {/* Pipeline stage tracker — show when status is non-empty */}
+        {pipelineStatus && pipelineStatus.length > 0 && (
+          <PipelineTracker status={pipelineStatus} statusMessage={pipelineStatus} />
         )}
 
         <div ref={bottomRef} />

@@ -94,6 +94,7 @@ export default function AIBuilderPage() {
   const [currentChatId, setCurrentChatId] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
+  const [pipelineStatus, setPipelineStatus] = useState<string | null>(null)
   const [recentStrategies, setRecentStrategies] = useState<RecentStrategy[]>([])
   const [credits, setCredits] = useState<number | null>(null)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
@@ -202,8 +203,12 @@ export default function AIBuilderPage() {
               router.replace(`/ai-builder/${data.chatId}`)
             } else if (data.type === 'delta') {
               setStreamingContent((prev) => prev + data.text)
+              setPipelineStatus(null)
+            } else if (data.type === 'status') {
+              setPipelineStatus(data.message || null)
             } else if (data.type === 'done' && data.message) {
               setStreamingContent('')
+              setPipelineStatus(null)
               setMessages((prev) => [...prev, data.message])
             }
           } catch { /* skip malformed SSE lines */ }
@@ -217,6 +222,7 @@ export default function AIBuilderPage() {
     } finally {
       setIsGenerating(false)
       setStreamingContent('')
+      setPipelineStatus(null)
       abortRef.current = null
     }
   }, [session?.access_token, currentChatId, user, router])
@@ -538,6 +544,7 @@ export default function AIBuilderPage() {
         messages={messages}
         isGenerating={isGenerating}
         streamingContent={streamingContent}
+        chatPipelineStatus={pipelineStatus}
         onSend={handleSend}
         onStop={handleStop}
         credits={credits}
