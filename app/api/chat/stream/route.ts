@@ -433,9 +433,6 @@ export async function POST(request: NextRequest) {
 
           let fullContent = ''
 
-          // Detect if this is a strategy build request vs conversational
-          const isStrategyRequest = isHybridManagerConfigured() && detectStrategyRequest(message)
-
           if (template) {
             // ── TEMPLATE PATH — instant, no API calls ──
             const explanation = `**${template.name}** — ${template.market} ${template.timeframe}\n\n${template.description}\n\n**Original prompt used:**\n> ${template.prompt}\n\n**Backtest results:** ${template.backtestResults.total_trades} trades, PF ${template.backtestResults.profit_factor}, Net Profit $${template.backtestResults.net_profit.toFixed(0)}`
@@ -446,108 +443,14 @@ export async function POST(request: NextRequest) {
 
             send({ type: 'delta', text: explanation })
 
-          } else if (isStrategyRequest) {
-            // ── HYBRID MANAGER PATH — Claude Code on VPS does everything ($0) ──
-            const statusMsg = `Starting the strategy engine...\n\nYour request is being sent to the MT5 server where Claude Code will generate, compile, and backtest the strategy. Watch the **Iterations** tab in the right panel for real-time progress.`
-            send({ type: 'delta', text: statusMsg })
-            // Small delay to ensure delta is flushed to client
-            await new Promise(r => setTimeout(r, 50))
-            fullContent = statusMsg
-
-            // Build full prompt with context from chat history
-            let fullPrompt = message
-
-            // Get existing code from chat history for optimization requests
-            const { data: history } = await supabaseAdmin
-              .from('chat_messages')
-              .select('role, content, metadata')
-              .eq('chat_id', currentChatId)
-              .order('created_at', { ascending: false })
-              .limit(10)
-
-            if (history) {
-              // Find the most recent MQL5 code in the conversation
-              for (const msg of history) {
-                const meta = msg.metadata as Record<string, unknown> | null
-                if (meta?.mql5_code) {
-                  fullPrompt = `${message}\n\nHere is the current MQL5 code to optimize:\n\n${meta.mql5_code}`
-                  break
-                }
-              }
-
-              // Also find strategy context (symbol, market)
-              for (const msg of history) {
-                const meta = msg.metadata as Record<string, unknown> | null
-                const snap = meta?.strategy_snapshot as Record<string, unknown> | undefined
-                if (snap?.market) {
-                  // Use the strategy's symbol if not specified in message
-                  if (!message.toLowerCase().match(/xauusd|eurusd|gbpusd|usdjpy|btcusd/)) {
-                    fullPrompt = fullPrompt.replace(message, `${message} (Symbol: ${snap.market})`)
-                  }
-                  break
-                }
-              }
-            }
-
-            const detectedSymbol = extractSymbol(fullPrompt)
-            const detectedPeriod = extractPeriod(fullPrompt)
-
-            // Start job with timeout
-            const jobPromise = startHybridManagerJob(
-              fullPrompt,
-              detectedSymbol,
-              detectedPeriod,
-              3,
-            )
-            const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 15000))
-            const strategyJob = await Promise.race([jobPromise, timeoutPromise])
-
-            if (strategyJob?.job_id) {
-              send({ type: 'job_started', jobId: strategyJob.job_id, eaName: strategyJob.ea_name })
-              send({ type: 'status', message: 'Pipeline running — generating code with Claude Code on MT5 server...' })
-              fullContent += `\n\nJob started (ID: ${strategyJob.job_id}). Watch the Iterations tab for progress.`
-              send({ type: 'delta', text: `\n\nJob started. Watch the **Iterations** tab in the right panel for real-time progress.` })
-            } else {
-              // Hybrid Manager failed or timed out — fall back to Claude API
-              send({ type: 'delta', text: '\n\nMT5 server unavailable — generating strategy with AI instead...' })
-              fullContent = ''
-              const anthropic = getAnthropic()
-              if (anthropic) {
-                const { data: history } = await supabaseAdmin
-                  .from('chat_messages')
-                  .select('role, content')
-                  .eq('chat_id', currentChatId)
-                  .order('created_at', { ascending: true })
-                  .limit(20)
-
-                const chatMessages: Anthropic.MessageParam[] = (history || []).map((m) => ({
-                  role: m.role as 'user' | 'assistant',
-                  content: m.content,
-                }))
-
-                const messageStream = anthropic.messages.stream({
-                  model: 'claude-sonnet-4-20250514',
-                  max_tokens: 8192,
-                  system: SYSTEM_PROMPT,
-                  messages: chatMessages,
-                })
-
-                for await (const event of messageStream) {
-                  if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-                    fullContent += event.delta.text
-                    send({ type: 'delta', text: event.delta.text })
-                  }
-                }
-              }
-            }
-
           } else {
-            // ── CONVERSATIONAL PATH — Claude API for questions/chat ──
+            // ── CLAUDE API PATH — generates code, then MT5 Worker compiles + backtests ──
             const anthropic = getAnthropic()
             if (!anthropic) {
-              send({ type: 'delta', text: 'AI service not configured.' })
-              fullContent = 'AI service not configured.'
+              send({ type: 'delta', text: 'ANTHROPIC_API_KEY is not configured.' })
+              fullContent = 'ANTHROPIC_API_KEY is not configured.'
             } else {
+              // Get chat history
               const { data: history } = await supabaseAdmin
                 .from('chat_messages')
                 .select('role, content')
@@ -560,6 +463,7 @@ export async function POST(request: NextRequest) {
                 content: m.content,
               }))
 
+              // Stream Claude response
               const messageStream = anthropic.messages.stream({
                 model: 'claude-sonnet-4-20250514',
                 max_tokens: 8192,
@@ -579,8 +483,53 @@ export async function POST(request: NextRequest) {
           // Parse response
           const { displayContent, metadata } = parseAssistantResponse(fullContent)
 
-          // Pipeline is now handled BEFORE response generation (Hybrid Manager path)
-          // No post-response pipeline needed
+          // ── MT5 Worker: compile + backtest after Claude generates code ──
+          if (isWorkerConfigured() && metadata.mql5_code) {
+            const stratSnap = metadata.strategy_snapshot as { name?: string; market?: string } | undefined
+            const eaName = (stratSnap?.name || 'SigxEA').replace(/[^a-zA-Z0-9_]/g, '_')
+            const symbol = stratSnap?.market || 'XAUUSD'
+
+            // Compile (with auto-fix retries)
+            send({ type: 'status', message: 'Compiling on MT5...' })
+            let currentCode = metadata.mql5_code as string
+            let compiled = false
+
+            for (let attempt = 0; attempt < 3; attempt++) {
+              const compileResult = await compileEA(eaName, currentCode)
+              if (compileResult.success) {
+                compiled = true
+                metadata.mql5_code = currentCode
+                send({ type: 'status', message: 'Compiled successfully' })
+                break
+              }
+              if (attempt < 2 && compileResult.errors?.length) {
+                send({ type: 'status', message: `Compile error, auto-fixing (attempt ${attempt + 2}/3)...` })
+                const fixed = await mt5AutoFixCode(currentCode, compileResult.errors)
+                if (fixed) {
+                  currentCode = fixed
+                  continue
+                }
+              }
+              send({ type: 'status', message: 'Compilation failed after 3 attempts' })
+              break
+            }
+
+            // Backtest (only if compiled)
+            if (compiled) {
+              send({ type: 'status', message: 'Running backtest on MT5 (30-120s)...' })
+              const btResult = await backtestEA(eaName, symbol, 'H1')
+              if (btResult.success && btResult.metrics) {
+                metadata.backtest_snapshot = {
+                  ...btResult.metrics,
+                  equity_curve: btResult.equity_curve || [],
+                }
+                send({ type: 'status', message: `Backtest complete — ${btResult.metrics.total_trades} trades` })
+              } else {
+                send({ type: 'status', message: btResult.error || 'Backtest failed' })
+              }
+            }
+          }
+          // ── End MT5 Worker pipeline ──
 
           // Save assistant message
           await supabaseAdmin.from('chat_messages').insert({
