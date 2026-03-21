@@ -85,15 +85,6 @@ function OptimizeSuggestions({ backtest, onSend }: {
 }
 
 function ThinkingBubble() {
-  const [elapsed, setElapsed] = useState(0)
-
-  useEffect(() => {
-    const interval = setInterval(() => setElapsed((e) => e + 1), 1000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const hint = elapsed < 5 ? null : 'Connecting to AI...'
-
   return (
     <div className="flex gap-3">
       <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-white">
@@ -106,9 +97,6 @@ function ThinkingBubble() {
             <div className="h-1.5 w-1.5 rounded-full bg-foreground/30 animate-bounce [animation-delay:150ms]" />
             <div className="h-1.5 w-1.5 rounded-full bg-foreground/30 animate-bounce [animation-delay:300ms]" />
           </div>
-          {hint && (
-            <span className="text-[12px] text-foreground/25 font-medium animate-in fade-in duration-500">{hint}</span>
-          )}
         </div>
       </div>
     </div>
