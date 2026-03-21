@@ -23,7 +23,8 @@ const categories = ['All', 'Gold', 'Forex', 'Crypto', 'Scalping', 'Mean Reversio
 function generateCurve(seed: number, totalReturn: number): number[] {
   const pts: number[] = [100]
   let val = 100
-  const target = 100 + totalReturn
+  // If no return data, show a gentle upward placeholder curve
+  const target = totalReturn === 0 ? 108 : 100 + totalReturn
   for (let i = 1; i < 20; i++) {
     const progress = i / 19
     const noise = Math.sin(seed * i * 0.7) * 2 + Math.cos(seed * i * 0.3) * 1.5
