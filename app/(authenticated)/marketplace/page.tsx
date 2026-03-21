@@ -177,7 +177,7 @@ export default function MarketplacePage() {
   const [pendingStrategy, setPendingStrategy] = useState<MockStrategy | null>(null)
 
   const handleGetStrategy = async (strategy: MockStrategy) => {
-    if (!session?.access_token) { toast.error('Please log in'); return }
+    if (purchasing) return // Prevent double-click
 
     // If paid, show confirmation first
     if (strategy.price !== 'Free' && strategy.priceCents > 0) {
@@ -191,15 +191,15 @@ export default function MarketplacePage() {
   }
 
   const copyStrategyToCollection = async (strategy: MockStrategy) => {
-    if (!session?.access_token) { toast.error('Please sign in'); return }
-    setPurchasing(true)
-
-    // Get fresh token — try refresh first
-    let token = session.access_token
+    // Get fresh token
+    let token = session?.access_token
     try {
       const { data } = await supabase.auth.refreshSession()
       if (data.session?.access_token) token = data.session.access_token
-    } catch { /* use existing token */ }
+    } catch { /* use existing */ }
+
+    if (!token) { toast.error('Please sign in to add strategies'); return }
+    setPurchasing(true)
 
     try {
       // For real DB strategies, use the purchase API
