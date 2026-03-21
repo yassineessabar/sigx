@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/lib/auth-context'
 import { Strategy } from '@/lib/types'
+import { findClientTemplate } from '@/lib/templates/client'
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -192,10 +193,52 @@ export default function StrategyDetailPage() {
             <button
               onClick={async () => {
                 const chatId = (strategy as any).chat_id
+
+                // Try to find matching template for full data
+                const tpl = findClientTemplate(strategy.name)
+
                 if (chatId) {
+                  // Check if chat has messages
+                  if (session?.access_token) {
+                    try {
+                      const msgRes = await fetch(`/api/chat/${chatId}/messages`, {
+                        headers: { Authorization: `Bearer ${session.access_token}` },
+                      })
+                      const msgData = await msgRes.json()
+                      if (!msgData.messages || msgData.messages.length === 0) {
+                        // Chat exists but empty — populate with template/strategy data
+                        const bt = tpl?.backtestResults || (strategy.sharpe_ratio ? {
+                          sharpe: Number(strategy.sharpe_ratio), max_drawdown: Number(strategy.max_drawdown),
+                          win_rate: Number(strategy.win_rate), total_return: Number(strategy.total_return),
+                          profit_factor: tpl?.backtestResults.profit_factor ?? 0,
+                          total_trades: tpl?.backtestResults.total_trades ?? 0,
+                          net_profit: tpl?.backtestResults.net_profit ?? 0,
+                          equity_curve: tpl?.backtestResults.equity_curve ?? [],
+                        } : undefined)
+
+                        const explanation = tpl
+                          ? `**${tpl.name}** — ${tpl.market} ${tpl.timeframe}\n\n${tpl.description}\n\n**Original prompt:**\n> ${tpl.prompt}`
+                          : `Here's your **${strategy.name}** strategy for ${strategy.market}.`
+
+                        await fetch(`/api/chat/${chatId}/messages`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+                          body: JSON.stringify({ messages: [
+                            { role: 'user', content: tpl?.prompt || `Strategy: ${strategy.name}` },
+                            { role: 'assistant', content: explanation, metadata: {
+                              type: 'strategy',
+                              strategy_snapshot: tpl?.strategySnapshot || strategy.strategy_summary,
+                              backtest_snapshot: bt,
+                              mql5_code: tpl?.mql5Code || strategy.mql5_code,
+                            }},
+                          ]}),
+                        }).catch(() => {})
+                      }
+                    } catch { /* proceed anyway */ }
+                  }
                   router.push(`/ai-builder/${chatId}`)
                 } else if (session?.access_token) {
-                  // No linked chat — create one with strategy data
+                  // No linked chat — create one
                   try {
                     const chatRes = await fetch('/api/chats', {
                       method: 'POST',
@@ -204,21 +247,29 @@ export default function StrategyDetailPage() {
                     })
                     const chatData = await chatRes.json()
                     if (chatData.chat?.id) {
-                      // Save strategy info as messages
+                      const bt = tpl?.backtestResults || (strategy.sharpe_ratio ? {
+                        sharpe: Number(strategy.sharpe_ratio), max_drawdown: Number(strategy.max_drawdown),
+                        win_rate: Number(strategy.win_rate), total_return: Number(strategy.total_return),
+                        profit_factor: tpl?.backtestResults.profit_factor ?? 0,
+                        total_trades: tpl?.backtestResults.total_trades ?? 0,
+                        net_profit: tpl?.backtestResults.net_profit ?? 0,
+                        equity_curve: tpl?.backtestResults.equity_curve ?? [],
+                      } : undefined)
+
+                      const explanation = tpl
+                        ? `**${tpl.name}** — ${tpl.market} ${tpl.timeframe}\n\n${tpl.description}\n\n**Original prompt:**\n> ${tpl.prompt}`
+                        : `Here's your **${strategy.name}** strategy for ${strategy.market}.`
+
                       await fetch(`/api/chat/${chatData.chat.id}/messages`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
                         body: JSON.stringify({ messages: [
-                          { role: 'user', content: `Strategy: ${strategy.name}` },
-                          { role: 'assistant', content: `Here's your **${strategy.name}** strategy for ${strategy.market}.`, metadata: {
+                          { role: 'user', content: tpl?.prompt || `Strategy: ${strategy.name}` },
+                          { role: 'assistant', content: explanation, metadata: {
                             type: 'strategy',
-                            strategy_snapshot: strategy.strategy_summary,
-                            backtest_snapshot: strategy.sharpe_ratio ? {
-                              sharpe: strategy.sharpe_ratio, max_drawdown: strategy.max_drawdown,
-                              win_rate: strategy.win_rate, total_return: strategy.total_return,
-                              profit_factor: 0, total_trades: 0, equity_curve: [],
-                            } : undefined,
-                            mql5_code: strategy.mql5_code,
+                            strategy_snapshot: tpl?.strategySnapshot || strategy.strategy_summary,
+                            backtest_snapshot: bt,
+                            mql5_code: tpl?.mql5Code || strategy.mql5_code,
                           }},
                         ]}),
                       }).catch(() => {})
