@@ -293,23 +293,8 @@ export default function AIBuilderPage() {
     if (!projectName.trim() || !pendingTemplatePrompt || !session?.access_token) return
     setShowNameModal(false)
 
-    // Check for duplicate names and add (2), (3), etc.
-    let name = projectName.trim()
-    try {
-      const { data: freshSession } = await supabase.auth.getSession()
-      const tk = freshSession?.session?.access_token || session.access_token
-      const res = await fetch('/api/strategies', { headers: { Authorization: `Bearer ${tk}` } })
-      if (res.ok) {
-        const data = await res.json()
-        const names: string[] = (data.strategies || []).map((s: { name: string }) => s.name)
-        const baseName = name
-        let counter = 1
-        while (names.includes(name)) {
-          counter++
-          name = `${baseName} (${counter})`
-        }
-      }
-    } catch { /* proceed with original name */ }
+    // Server-side duplicate check in POST /api/strategies handles (2), (3), etc.
+    const name = projectName.trim()
     const prompt = pendingTemplatePrompt
     setPendingTemplatePrompt(null)
     setProjectName('')
@@ -370,13 +355,14 @@ export default function AIBuilderPage() {
           if (!stratRes.ok) { console.error('Failed to save strategy'); return }
           const stratData = await stratRes.json()
           const strategyId = stratData.strategy?.id
+          const savedName = stratData.strategy?.name || name
           if (!strategyId) return
 
-          // 2. Create chat
+          // 2. Create chat with the deduplicated name
           const chatRes = await fetch('/api/chats', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ title: name, strategy_id: strategyId }),
+            body: JSON.stringify({ title: savedName, strategy_id: strategyId }),
           })
           if (!chatRes.ok) { console.error('Failed to create chat'); return }
           const chatData = await chatRes.json()
@@ -418,11 +404,12 @@ export default function AIBuilderPage() {
       if (!stratRes.ok) throw new Error('Failed to create strategy')
       const stratData = await stratRes.json()
       const strategyId = stratData.strategy?.id
+      const savedName = stratData.strategy?.name || name
 
       const chatRes = await fetch('/api/chats', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ title: name, strategy_id: strategyId }),
+        body: JSON.stringify({ title: savedName, strategy_id: strategyId }),
       })
       if (!chatRes.ok) throw new Error('Failed to create chat')
       const chatData = await chatRes.json()
