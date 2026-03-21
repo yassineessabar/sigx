@@ -191,14 +191,20 @@ export default function MarketplacePage() {
   }
 
   const copyStrategyToCollection = async (strategy: MockStrategy) => {
-    // Get fresh token
+    // Get fresh token with timeout
     let token = session?.access_token
     try {
-      const { data } = await supabase.auth.refreshSession()
-      if (data.session?.access_token) token = data.session.access_token
-    } catch { /* use existing */ }
+      const refreshPromise = supabase.auth.getSession()
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject('timeout'), 3000))
+      const result = await Promise.race([refreshPromise, timeoutPromise]) as any
+      if (result?.data?.session?.access_token) token = result.data.session.access_token
+    } catch {
+      console.log('Token refresh failed/timed out, using existing')
+    }
 
     if (!token) { toast.error('Please sign in to add strategies'); return }
+
+    console.log('Adding strategy with token:', token.slice(0, 20) + '...')
     setPurchasing(true)
 
     try {
@@ -248,26 +254,7 @@ export default function MarketplacePage() {
           }),
         })
 
-        // If unauthorized, try refreshing token and retry once
-        if (res.status === 401) {
-          const { data: refreshData } = await supabase.auth.refreshSession()
-          if (refreshData.session?.access_token) {
-            token = refreshData.session.access_token
-            res = await fetch('/api/strategies', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-              body: JSON.stringify({
-                name: strategy.name, market: strategy.market, description: strategy.description,
-                tags: strategy.tags, status: 'backtested', mql5_code: strategy.mqlCode || null,
-                platform: strategy.platform, sharpe_ratio: strategy.sharpe,
-                max_drawdown: Math.abs(strategy.drawdown), win_rate: strategy.winRate,
-                total_return: strategy.totalReturn,
-                strategy_summary: { entry_rules: strategy.entryRules, exit_rules: strategy.exitRules, risk_logic: strategy.riskLogic },
-              }),
-            })
-          }
-        }
-
+        console.log('Strategy API response:', res.status)
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}))
           throw new Error(errData.error || 'Failed to add strategy')
