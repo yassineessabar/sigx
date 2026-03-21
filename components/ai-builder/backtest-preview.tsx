@@ -24,16 +24,21 @@ export function BacktestPreview({ backtest }: BacktestPreviewProps) {
 
   return (
     <div className="rounded-2xl border border-foreground/[0.08] bg-secondary overflow-hidden">
-      <div className="border-b border-foreground/[0.06] px-4 py-3 flex items-center justify-between">
-        <span className="font-medium text-[14px] text-[#fafafa]">
-          {isEstimated ? 'Estimated Results' : 'Backtest Results'}
-        </span>
-        <span className={`rounded-full px-2.5 py-0.5 text-[12px] font-medium ${
-          isEstimated ? 'bg-blue-500/10 text-blue-400'
-          : hasTrades ? 'bg-[rgba(34,197,94,0.1)] text-[#22c55e]' : 'bg-amber-500/10 text-amber-400'
-        }`}>
+      <div className="border-b border-foreground/[0.06] px-4 py-3">
+        <div className="flex items-center justify-between">
+          <span className="font-medium text-[14px] text-[#fafafa]">
+            {isEstimated ? 'Estimated Results' : 'Backtest Results'}
+          </span>
+          <span className={`rounded-full px-2.5 py-0.5 text-[12px] font-medium ${
+            isEstimated ? 'bg-blue-500/10 text-blue-400'
+            : hasTrades ? 'bg-[rgba(34,197,94,0.1)] text-[#22c55e]' : 'bg-amber-500/10 text-amber-400'
+          }`}>
           {isEstimated ? 'AI Estimate' : hasTrades ? `${backtest.total_trades} trades` : 'No trades'}
         </span>
+        </div>
+        <p className="text-[11px] text-foreground/25 mt-1.5">
+          {isEstimated ? 'Estimated • ' : ''}Backtest period: Jan 2023 — Jan 2025 • {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+        </p>
       </div>
 
       {/* Key metrics — large display */}
