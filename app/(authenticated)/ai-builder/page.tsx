@@ -51,33 +51,21 @@ const EXAMPLE_PROMPTS = [
 const TEMPLATES = [
   {
     name: 'London Breakout',
-    description: 'Classic London session breakout strategy for major forex pairs...',
+    description: 'Asian range breakout during London session. +$585 profit, PF 1.04.',
     icon: TrendingUp,
     color: 'bg-emerald-500',
   },
   {
-    name: 'Scalper Pro',
-    description: 'High-frequency scalping strategy with tight risk management...',
-    icon: Zap,
-    color: 'bg-blue-500',
-  },
-  {
     name: 'Trend Rider',
-    description: 'Multi-timeframe trend following strategy with dynamic stops...',
+    description: 'EMA crossover with trend filter and trailing stop. +$5,208 profit, PF 1.10.',
     icon: LineChart,
     color: 'bg-violet-500',
   },
   {
     name: 'Mean Reversion',
-    description: 'Statistical mean reversion strategy for ranging markets...',
+    description: 'Bollinger Band bounce with RSI confirmation. +$2,296 profit, PF 1.02.',
     icon: BarChart3,
     color: 'bg-amber-500',
-  },
-  {
-    name: 'Momentum Alpha',
-    description: 'Momentum-based strategy targeting high-volatility sessions...',
-    icon: Activity,
-    color: 'bg-rose-500',
   },
 ]
 

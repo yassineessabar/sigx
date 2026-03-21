@@ -40,26 +40,6 @@ const TEMPLATES: Record<string, Omit<TemplateEA, 'mql5Code'>> = {
       risk_logic: '1% risk per trade. Max 2 concurrent positions. Position size based on range-derived SL.',
     },
   },
-  'scalper-pro': {
-    id: 'scalper-pro',
-    name: 'Scalper Pro',
-    description: 'Fast EMA(5)/EMA(13) crossover scalping on M15 with RSI + momentum filter. ATR-based stops.',
-    market: 'XAUUSD',
-    timeframe: 'M15',
-    strategySnapshot: {
-      name: 'Scalper Pro',
-      market: 'XAUUSD',
-      entry_rules: [
-        'EMA(8) crosses above EMA(21) + RSI(7) not overbought → Buy',
-        'EMA(8) crosses below EMA(21) + RSI(7) not oversold → Sell',
-      ],
-      exit_rules: [
-        'SL = 150 points fixed',
-        'TP = 100 points fixed (scalping ratio)',
-      ],
-      risk_logic: '0.5% risk per trade. Max 3 concurrent positions for scalping frequency.',
-    },
-  },
   'trend-rider': {
     id: 'trend-rider',
     name: 'Trend Rider',
@@ -100,35 +80,13 @@ const TEMPLATES: Record<string, Omit<TemplateEA, 'mql5Code'>> = {
       risk_logic: '1% risk per trade. Max 2 concurrent positions.',
     },
   },
-  'momentum-alpha': {
-    id: 'momentum-alpha',
-    name: 'Momentum Alpha',
-    description: 'MACD crossover with EMA(50) trend filter. Captures momentum moves with ATR-based risk management.',
-    market: 'XAUUSD',
-    timeframe: 'H1',
-    strategySnapshot: {
-      name: 'Momentum Alpha',
-      market: 'XAUUSD',
-      entry_rules: [
-        'MACD(12,26,9) crosses above signal + Price above EMA(50) → Buy',
-        'MACD(12,26,9) crosses below signal + Price below EMA(50) → Sell',
-      ],
-      exit_rules: [
-        'SL = 1.5 × ATR(14)',
-        'TP = 2.5 × ATR(14)',
-      ],
-      risk_logic: '1% risk per trade. Max 2 concurrent positions.',
-    },
-  },
 }
 
 // Map template display names to template IDs
 const NAME_MAP: Record<string, string> = {
   'London Breakout': 'london-breakout',
-  'Scalper Pro': 'scalper-pro',
   'Trend Rider': 'trend-rider',
   'Mean Reversion': 'mean-reversion',
-  'Momentum Alpha': 'momentum-alpha',
 }
 
 export function getTemplateByName(name: string): TemplateEA | null {
