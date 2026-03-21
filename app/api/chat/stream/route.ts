@@ -384,17 +384,18 @@ export async function POST(request: NextRequest) {
           const template = getTemplateByName(message)
 
           if (template) {
-            // Use pre-built template EA
-            const explanation = `Here's your **${template.name}** strategy for ${template.market} on ${template.timeframe}.\n\n${template.description}`
+            // Use pre-built template EA with real backtest results
+            const explanation = `**${template.name}** — ${template.market} ${template.timeframe}\n\n${template.description}\n\n**Original prompt used:**\n> ${template.prompt}\n\n**Backtest results:** ${template.backtestResults.total_trades} trades, PF ${template.backtestResults.profit_factor}, Net Profit $${template.backtestResults.net_profit.toFixed(0)}`
             const stratJson = JSON.stringify(template.strategySnapshot, null, 2)
+            const backtestJson = JSON.stringify(template.backtestResults, null, 2)
 
-            fullContent = `${explanation}\n\n---STRATEGY_JSON_START---\n${stratJson}\n---STRATEGY_JSON_END---\n\n---MQL5_CODE_START---\n${template.mql5Code}\n---MQL5_CODE_END---`
+            fullContent = `${explanation}\n\n---STRATEGY_JSON_START---\n${stratJson}\n---STRATEGY_JSON_END---\n\n---MQL5_CODE_START---\n${template.mql5Code}\n---MQL5_CODE_END---\n\n---BACKTEST_JSON_START---\n${backtestJson}\n---BACKTEST_JSON_END---`
 
             // Stream the explanation part
             const words = explanation.split(' ')
             for (const word of words) {
               send({ type: 'delta', text: word + ' ' })
-              await new Promise(r => setTimeout(r, 15))
+              await new Promise(r => setTimeout(r, 12))
             }
           } else {
             // Stream Claude response
