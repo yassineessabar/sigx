@@ -85,7 +85,7 @@ export function useStrategy(accessToken?: string | null): UseStrategyReturn {
     setStatus('running')
     setCurrentStep('Pipeline starting...')
 
-    // Poll every 3 seconds (Hybrid Manager uses polling, not SSE)
+    // Poll every 2 seconds (Hybrid Manager uses polling, not SSE)
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`/api/ai-builder/job/${id}`)
@@ -133,7 +133,7 @@ export function useStrategy(accessToken?: string | null): UseStrategyReturn {
       } catch {
         // Network error — keep polling
       }
-    }, 3000)
+    }, 2000)
 
     // Store cleanup function
     sourceRef.current = { close: () => clearInterval(interval) } as EventSource
