@@ -379,9 +379,18 @@ export default function StrategiesPage() {
             <div key={s.id} className="group cursor-pointer" onClick={() => router.push(`/strategies/${s.id}`)}>
               {/* Preview card */}
               <div className="aspect-[16/10] rounded-xl border border-foreground/[0.06] bg-secondary relative overflow-hidden hover:border-foreground/[0.12] transition-colors">
-                {/* Equity curve */}
+                {/* Equity curve or placeholder */}
                 {(() => {
                   const tpl = findClientTemplate(s.name)
+                  const hasMetrics = s.sharpe_ratio != null || s.total_return != null
+                  if (!hasMetrics && !tpl) {
+                    // No data — show SX placeholder
+                    return (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-[24px] font-bold tracking-[-0.06em] text-foreground/[0.06] select-none">SX</span>
+                      </div>
+                    )
+                  }
                   const curveData = tpl?.backtestResults.equity_curve?.map(p => p.equity)
                     || generateCurve(s.name.charCodeAt(0), Number(s.total_return || 0))
                   return (
