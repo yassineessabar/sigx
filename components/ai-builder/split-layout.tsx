@@ -6,6 +6,7 @@ import { ChatThread } from './chat-thread'
 import { PromptInput } from './prompt-input'
 import { ChatTopBar } from './chat-top-bar'
 import { RightPanel } from './right-panel'
+import { useStrategy } from '@/lib/use-strategy'
 import type { ChatMessage as ChatMessageType } from '@/lib/types'
 
 interface SplitLayoutProps {
@@ -71,6 +72,63 @@ export function SplitLayout({
   const [optimizedCode, setOptimizedCode] = useState<string | null>(null)
   const [optimizedBacktest, setOptimizedBacktest] = useState<ChatMessageType['metadata']['backtest_snapshot'] | null>(null)
 
+  // ── Hybrid Manager integration ──
+  const strategy = useStrategy(accessToken)
+
+  // Listen for job_started events from the chat stream
+  // The parent component passes chatPipelineStatus which may contain job info
+  // We also check the streaming content for job_started events
+  const lastJobIdRef = useRef<string | null>(null)
+
+  // Handle SSE events from chat stream — look for job_started in the SSE data
+  useEffect(() => {
+    // This effect listens for the custom event dispatched by the chat handler
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (detail?.type === 'job_started' && detail.jobId && detail.jobId !== lastJobIdRef.current) {
+        lastJobIdRef.current = detail.jobId
+        strategy.connectSSE(detail.jobId)
+        setPipelineStatus('Pipeline running...')
+      }
+    }
+    window.addEventListener('sigx:job_started', handler)
+    return () => window.removeEventListener('sigx:job_started', handler)
+  }, [strategy])
+
+  // Update pipeline status from Hybrid Manager
+  useEffect(() => {
+    if (strategy.status === 'running' && strategy.currentStep) {
+      setPipelineStatus(strategy.currentStep)
+    } else if (strategy.status === 'completed') {
+      setPipelineStatus('Pipeline completed')
+    } else if (strategy.status === 'error') {
+      setPipelineStatus(strategy.error || 'Pipeline error')
+    }
+  }, [strategy.status, strategy.currentStep, strategy.error])
+
+  // When Hybrid Manager completes, use its results
+  useEffect(() => {
+    if (strategy.status === 'completed') {
+      if (strategy.bestCode) {
+        setOptimizedCode(strategy.bestCode)
+      }
+      if (strategy.bestMetrics) {
+        setOptimizedBacktest({
+          sharpe: (strategy.bestMetrics.sharpe as number) || 0,
+          max_drawdown: (strategy.bestMetrics.max_drawdown as number) || 0,
+          win_rate: (strategy.bestMetrics.win_rate as number) || 0,
+          total_return: (strategy.bestMetrics.total_return as number) || 0,
+          profit_factor: (strategy.bestMetrics.profit_factor as number) || 0,
+          total_trades: (strategy.bestMetrics.total_trades as number) || 0,
+          net_profit: (strategy.bestMetrics.net_profit as number) || 0,
+          equity_curve: (strategy.bestMetrics.equity_curve as { date: string; equity: number }[]) || [],
+        })
+      }
+      // Auto-open panel
+      setPanelOpen(true)
+    }
+  }, [strategy.status, strategy.bestCode, strategy.bestMetrics])
+
   // Auto-open panel when results arrive
   useEffect(() => {
     if (hasResults) setPanelOpen(true)
@@ -78,11 +136,11 @@ export function SplitLayout({
 
   // Clear pipeline status after a delay
   useEffect(() => {
-    if (pipelineStatus && !isOptimizing) {
-      const timer = setTimeout(() => setPipelineStatus(null), 3000)
+    if (pipelineStatus && !isOptimizing && strategy.status !== 'running') {
+      const timer = setTimeout(() => setPipelineStatus(null), 5000)
       return () => clearTimeout(timer)
     }
-  }, [pipelineStatus, isOptimizing])
+  }, [pipelineStatus, isOptimizing, strategy.status])
 
   // Reset optimized results when new messages come in
   useEffect(() => {
@@ -200,6 +258,12 @@ export function SplitLayout({
   const displayBacktest = optimizedBacktest || latestBacktest
   const displayCode = optimizedCode || latestCode
 
+  // Determine if Hybrid Manager is actively running
+  const isHybridRunning = strategy.status === 'running'
+  const hybridIterations = strategy.iterations
+  const hybridCurrentStep = strategy.currentStep
+  const hybridTotalIterations = strategy.events.find(e => e.event === 'started')?.data?.iterations as number | undefined
+
   return (
     <div className="relative w-full h-full">
     <div className="absolute inset-0 flex flex-col">
@@ -232,7 +296,7 @@ export function SplitLayout({
         </div>
 
         {/* Right: Results panel */}
-        {hasResults && (
+        {(hasResults || isHybridRunning) && (
           <RightPanel
             strategySnapshot={latestStrategy}
             backtestSnapshot={displayBacktest}
@@ -244,11 +308,15 @@ export function SplitLayout({
             isOptimizing={isOptimizing}
             optimizeProgress={optimizeProgress}
             pipelineStatus={pipelineStatus}
+            hybridIterations={hybridIterations}
+            hybridRunning={isHybridRunning}
+            hybridCurrentStep={hybridCurrentStep}
+            hybridTotalIterations={hybridTotalIterations}
           />
         )}
 
         {/* Re-open panel button when collapsed */}
-        {hasResults && !panelOpen && (
+        {(hasResults || isHybridRunning) && !panelOpen && (
           <button
             onClick={() => setPanelOpen(true)}
             className="absolute right-3 top-1/2 -translate-y-1/2 z-10 rounded-lg border border-foreground/[0.08] bg-card p-2 text-foreground/40 hover:bg-foreground/[0.04] hover:text-foreground/70 transition-colors shadow-sm"

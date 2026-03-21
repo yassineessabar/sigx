@@ -244,6 +244,12 @@ export default function AIBuilderPage() {
               setPipelineStatus(null)
             } else if (data.type === 'status') {
               setPipelineStatus(data.message || null)
+            } else if (data.type === 'job_started' && data.jobId) {
+              // Dispatch custom event for the SplitLayout's useStrategy hook
+              window.dispatchEvent(new CustomEvent('sigx:job_started', {
+                detail: { type: 'job_started', jobId: data.jobId, eaName: data.eaName },
+              }))
+              setPipelineStatus('Pipeline running — watch progress in the right panel')
             } else if (data.type === 'credit_error') {
               setShowUpgradeModal(true)
             } else if (data.type === 'done' && data.message) {

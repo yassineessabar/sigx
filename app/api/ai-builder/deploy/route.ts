@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromToken } from '@/lib/api-auth'
-import { deployEA, isWorkerConfigured } from '@/lib/mt5-worker'
 
 /**
  * POST /api/ai-builder/deploy
- * Deploys an EA to the MT5 Worker on the Windows VPS.
+ * Deploys an EA to the MT5 via the Hybrid Manager.
  *
  * Body: { ea_name: string, mq5_code: string, symbol?: string, period?: string }
  * Returns: { success: boolean, error?: string }
@@ -28,12 +27,38 @@ export async function POST(request: NextRequest) {
     const sym = symbol || 'XAUUSD'
     const per = period || 'H1'
 
-    if (!isWorkerConfigured()) {
-      // Mock: pretend deploy succeeded
+    const managerUrl = process.env.MT5_MANAGER_URL
+    const workerKey = process.env.MT5_WORKER_KEY
+
+    if (!managerUrl) {
+      // Mock: pretend deploy succeeded when manager not configured
       return NextResponse.json({ success: true })
     }
 
-    const result = await deployEA(ea_name, mq5_code, sym, per)
+    const res = await fetch(`${managerUrl}/deploy`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(workerKey ? { 'x-api-key': workerKey } : {}),
+      },
+      body: JSON.stringify({
+        ea_name,
+        mq5_code,
+        symbol: sym,
+        period: per,
+      }),
+    })
+
+    if (!res.ok) {
+      const errBody = await res.text()
+      console.error('Hybrid Manager /deploy error:', res.status, errBody)
+      return NextResponse.json(
+        { success: false, error: `Deploy failed: ${errBody}` },
+        { status: res.status }
+      )
+    }
+
+    const result = await res.json()
     return NextResponse.json(result)
   } catch (error) {
     console.error('Deploy route error:', error)

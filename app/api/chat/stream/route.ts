@@ -5,6 +5,49 @@ import { compileEA, backtestEA, isWorkerConfigured } from '@/lib/mt5-worker'
 import { getTemplateByName } from '@/lib/templates'
 import Anthropic from '@anthropic-ai/sdk'
 
+function isHybridManagerConfigured(): boolean {
+  return !!process.env.MT5_MANAGER_URL
+}
+
+async function startHybridManagerJob(
+  prompt: string,
+  symbol: string,
+  period: string,
+  iterations: number = 3,
+  eaName?: string,
+): Promise<{ job_id: string; ea_name: string } | null> {
+  const managerUrl = process.env.MT5_MANAGER_URL
+  const workerKey = process.env.MT5_WORKER_KEY
+  if (!managerUrl) return null
+
+  try {
+    const res = await fetch(`${managerUrl}/run`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(workerKey ? { 'x-api-key': workerKey } : {}),
+      },
+      body: JSON.stringify({
+        prompt,
+        iterations,
+        symbol,
+        period,
+        ...(eaName ? { ea_name: eaName } : {}),
+      }),
+    })
+
+    if (!res.ok) {
+      console.error('Hybrid Manager /run failed:', res.status, await res.text())
+      return null
+    }
+
+    return await res.json()
+  } catch (err) {
+    console.error('Hybrid Manager /run error:', err)
+    return null
+  }
+}
+
 function getAnthropic(): Anthropic | null {
   const key = process.env.ANTHROPIC_API_KEY
   if (!key || key === 'your-anthropic-key-here' || !key.startsWith('sk-ant-')) return null
@@ -392,13 +435,37 @@ export async function POST(request: NextRequest) {
           // Parse response
           const { displayContent, metadata } = parseAssistantResponse(fullContent)
 
-          // ── MT5 Worker: compile + backtest ──────────────────────────
-          if (isWorkerConfigured() && metadata.mql5_code) {
+          // ── Hybrid Manager: start full pipeline job ─────────────────
+          if (metadata.mql5_code && isHybridManagerConfigured()) {
             const stratSnap = metadata.strategy_snapshot as { name?: string; market?: string } | undefined
             const eaName = (stratSnap?.name || 'SigxEA').replace(/[^a-zA-Z0-9_]/g, '_')
             const symbol = stratSnap?.market || 'XAUUSD'
 
-            // Compile (with auto-fix retries)
+            send({ type: 'status', message: 'Starting Hybrid Manager pipeline...' })
+
+            const jobResult = await startHybridManagerJob(
+              message,
+              symbol,
+              'H1',
+              3,
+              eaName,
+            )
+
+            if (jobResult?.job_id) {
+              // Send job_started event so the client can connect to SSE
+              send({ type: 'job_started', jobId: jobResult.job_id, eaName: jobResult.ea_name || eaName })
+              send({ type: 'status', message: 'Pipeline running — watch progress in the right panel' })
+              metadata.hybrid_job_id = jobResult.job_id
+            } else {
+              send({ type: 'status', message: 'Could not start Hybrid Manager job' })
+            }
+          }
+          // ── Fallback: Old MT5 Worker (compile + backtest) ──────────
+          else if (isWorkerConfigured() && metadata.mql5_code) {
+            const stratSnap = metadata.strategy_snapshot as { name?: string; market?: string } | undefined
+            const eaName = (stratSnap?.name || 'SigxEA').replace(/[^a-zA-Z0-9_]/g, '_')
+            const symbol = stratSnap?.market || 'XAUUSD'
+
             send({ type: 'status', message: 'Compiling on MT5...' })
             let currentCode = metadata.mql5_code as string
             let compiled = false
@@ -423,7 +490,6 @@ export async function POST(request: NextRequest) {
               break
             }
 
-            // Backtest (only if compiled) — with auto-retry on 0 trades
             if (compiled) {
               let backtestAttempts = 0
               const maxBacktestRetries = 2
@@ -437,30 +503,24 @@ export async function POST(request: NextRequest) {
                 const btResult = await backtestEA(eaName, symbol, 'H1')
 
                 if (btResult.success && btResult.metrics) {
-                  // Check if we got trades
                   if (btResult.metrics.total_trades === 0 && backtestAttempts < maxBacktestRetries) {
                     send({ type: 'status', message: '0 trades detected — adjusting entry conditions...' })
-
-                    // Ask Claude to fix entry logic to be less restrictive
                     const fixClient = getAnthropic()
                     if (fixClient) {
                       try {
                         const fixResponse = await fixClient.messages.create({
                           model: 'claude-sonnet-4-20250514',
                           max_tokens: 8192,
-                          system: 'You are an MQL5 fixer. The EA below compiled but produced 0 trades in backtesting. The entry conditions are too strict or broken. Fix ONLY the entry logic to be LESS restrictive so trades actually fire. Use shorter EMA periods (10/30 instead of 50/200), looser RSI thresholds (35/65 instead of 30/70), and ensure CopyBuffer/ArraySetAsSeries are correct. Keep everything else the same. Output ONLY the complete fixed MQL5 code.',
+                          system: 'You are an MQL5 fixer. The EA below compiled but produced 0 trades in backtesting. Fix ONLY the entry logic to be LESS restrictive. Output ONLY the complete fixed MQL5 code.',
                           messages: [{ role: 'user', content: `This EA produced 0 trades on ${symbol} H1. Fix the entry conditions:\n\n${currentCode}` }],
                         })
                         const fixedText = fixResponse.content[0].type === 'text' ? fixResponse.content[0].text.trim() : ''
                         if (fixedText && fixedText.length > 100) {
                           currentCode = fixedText
                           metadata.mql5_code = currentCode
-
-                          // Recompile the fixed code
                           send({ type: 'status', message: 'Recompiling fixed code...' })
                           const recompile = await compileEA(eaName, currentCode)
                           if (!recompile.success) {
-                            // If recompile fails, keep original results
                             metadata.backtest_snapshot = { ...btResult.metrics, equity_curve: btResult.equity_curve || [] }
                             send({ type: 'status', message: 'Backtest complete (0 trades — could not fix)' })
                             break
@@ -472,7 +532,6 @@ export async function POST(request: NextRequest) {
                     }
                   }
 
-                  // Got trades or exhausted retries
                   metadata.backtest_snapshot = {
                     ...btResult.metrics,
                     equity_curve: btResult.equity_curve || [],
@@ -489,8 +548,7 @@ export async function POST(request: NextRequest) {
               }
             }
           } else if (metadata.mql5_code && !metadata.backtest_snapshot) {
-            // No MT5 Worker or backtest failed — generate estimated results
-            // so the user always sees something in the preview panel
+            // No Hybrid Manager or MT5 Worker — generate estimated results
             send({ type: 'status', message: 'Generating estimated backtest results...' })
 
             const estimateClient = getAnthropic()
@@ -507,7 +565,6 @@ export async function POST(request: NextRequest) {
                   }],
                 })
                 const estText = estRes.content[0].type === 'text' ? estRes.content[0].text.trim() : ''
-                // Extract JSON from response
                 const jsonMatch = estText.match(/\{[\s\S]*\}/)
                 if (jsonMatch) {
                   const estimated = JSON.parse(jsonMatch[0])
@@ -515,10 +572,9 @@ export async function POST(request: NextRequest) {
                     ...estimated,
                     _estimated: true,
                   }
-                  send({ type: 'status', message: 'Estimated results ready (connect MT5 Worker for real backtests)' })
+                  send({ type: 'status', message: 'Estimated results ready (connect MT5 for real backtests)' })
                 }
               } catch {
-                // If estimation fails, create basic placeholder
                 metadata.backtest_snapshot = {
                   sharpe: 0, max_drawdown: 0, win_rate: 0, total_return: 0,
                   profit_factor: 0, total_trades: 0, net_profit: 0,
@@ -528,7 +584,7 @@ export async function POST(request: NextRequest) {
               }
             }
           }
-          // ── End MT5 Worker ──────────────────────────────────────────
+          // ── End pipeline ──────────────────────────────────────────
 
           // Save assistant message
           await supabaseAdmin.from('chat_messages').insert({
