@@ -393,6 +393,9 @@ export async function POST(request: NextRequest) {
         }
 
         try {
+          // Send immediate status so client stops showing dots
+          send({ type: 'status', message: 'Processing...' })
+
           // Create chat if needed
           if (!currentChatId) {
             const title = message.slice(0, 50) + (message.length > 50 ? '...' : '')
@@ -489,20 +492,24 @@ export async function POST(request: NextRequest) {
             const detectedSymbol = extractSymbol(fullPrompt)
             const detectedPeriod = extractPeriod(fullPrompt)
 
-            const strategyJob = await startHybridManagerJob(
+            // Start job with timeout
+            const jobPromise = startHybridManagerJob(
               fullPrompt,
               detectedSymbol,
               detectedPeriod,
               3,
             )
+            const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 15000))
+            const strategyJob = await Promise.race([jobPromise, timeoutPromise])
 
             if (strategyJob?.job_id) {
               send({ type: 'job_started', jobId: strategyJob.job_id, eaName: strategyJob.ea_name })
               send({ type: 'status', message: 'Pipeline running — generating code with Claude Code on MT5 server...' })
-              fullContent = `Strategy build started.\n\nJob ID: ${strategyJob.job_id}\nWatch the Iterations tab in the right panel for real-time progress.`
+              fullContent += `\n\nJob started (ID: ${strategyJob.job_id}). Watch the Iterations tab for progress.`
+              send({ type: 'delta', text: `\n\nJob started. Watch the **Iterations** tab in the right panel for real-time progress.` })
             } else {
-              // Hybrid Manager failed — fall back to Claude API
-              send({ type: 'delta', text: '\n\nHybrid Manager unavailable, falling back to AI generation...' })
+              // Hybrid Manager failed or timed out — fall back to Claude API
+              send({ type: 'delta', text: '\n\nMT5 server unavailable — generating strategy with AI instead...' })
               fullContent = ''
               const anthropic = getAnthropic()
               if (anthropic) {
