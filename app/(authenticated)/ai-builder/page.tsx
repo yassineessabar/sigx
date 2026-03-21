@@ -178,7 +178,7 @@ export default function AIBuilderPage() {
     const controller = new AbortController()
     abortRef.current = controller
 
-    // Safety timeout — abort after 30 seconds if nothing happens
+    // Safety timeout — abort after 3 minutes (compile+backtest can take 2 min)
     const safetyTimeout = setTimeout(() => {
       if (abortRef.current === controller) {
         controller.abort()
@@ -187,7 +187,7 @@ export default function AIBuilderPage() {
         setPipelineStatus(null)
         toast.error('Request timed out. Please try again.')
       }
-    }, 30000)
+    }, 180000)
 
     try {
       // Get fresh token at request time
