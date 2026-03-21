@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { sendOtpEmail } from '@/lib/email'
 
 const REFERRAL_CREDITS_REFERRER = 500
 const REFERRAL_CREDITS_REFERRED = 500
+
+// Generate a 6-digit OTP
+function generateOtp(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString()
+}
+
+// In-memory OTP store (use Redis in production)
+const otpStore = new Map<string, { code: string; expiresAt: number; userId: string }>()
+
+export { otpStore }
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,10 +43,9 @@ export async function POST(request: NextRequest) {
 
     const newUserId = data?.user?.id
 
-    // Handle referral — find referrer by code (code = first 10 chars of referrer's user ID)
+    // Handle referral
     if (referralCode && newUserId) {
       try {
-        // Look up referrer: the referral code is the first 10 uppercase chars of their user ID
         const { data: profiles } = await supabaseAdmin
           .from('profiles')
           .select('id')
@@ -44,7 +54,6 @@ export async function POST(request: NextRequest) {
         const referrer = profiles?.[0]
 
         if (referrer && referrer.id !== newUserId) {
-          // Create pending referral record
           await supabaseAdmin.from('referrals').insert({
             referrer_id: referrer.id,
             referred_email: email,
@@ -54,15 +63,12 @@ export async function POST(request: NextRequest) {
             referred_credits_awarded: 0,
           })
 
-          // Award referrer credits
           const { data: refProfile } = await supabaseAdmin.from('profiles').select('credits_balance').eq('id', referrer.id).single()
           await supabaseAdmin.from('profiles').update({ credits_balance: (refProfile?.credits_balance ?? 0) + REFERRAL_CREDITS_REFERRER }).eq('id', referrer.id)
 
-          // Award referred user credits
           const { data: newProfile } = await supabaseAdmin.from('profiles').select('credits_balance').eq('id', newUserId).single()
           await supabaseAdmin.from('profiles').update({ credits_balance: (newProfile?.credits_balance ?? 0) + REFERRAL_CREDITS_REFERRED }).eq('id', newUserId)
 
-          // Update referral as completed
           await supabaseAdmin
             .from('referrals')
             .update({
@@ -75,32 +81,41 @@ export async function POST(request: NextRequest) {
         }
       } catch (refErr) {
         console.error('Referral processing error:', refErr)
-        // Don't block signup for referral errors
       }
     }
 
-    // Send OTP verification code
-    const { error: otpError } = await supabaseAdmin.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: false },
-    })
-
-    if (otpError) {
-      console.warn('OTP send failed, falling back:', otpError.message)
-      if (data?.user) {
-        await supabaseAdmin.auth.admin.updateUserById(data.user.id, { email_confirm: true })
-      }
-      return NextResponse.json({
-        success: true,
-        requiresVerification: false,
-        message: 'Account created successfully.',
+    // Generate and send OTP via our own SMTP
+    if (newUserId) {
+      const code = generateOtp()
+      otpStore.set(email.toLowerCase(), {
+        code,
+        expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
+        userId: newUserId,
       })
+
+      try {
+        await sendOtpEmail(email, code)
+        return NextResponse.json({
+          success: true,
+          requiresVerification: true,
+          message: 'Verification code sent to your email.',
+        })
+      } catch (emailErr) {
+        console.error('Email send failed:', emailErr)
+        // Auto-confirm if email fails so user isn't stuck
+        await supabaseAdmin.auth.admin.updateUserById(newUserId, { email_confirm: true })
+        return NextResponse.json({
+          success: true,
+          requiresVerification: false,
+          message: 'Account created successfully.',
+        })
+      }
     }
 
     return NextResponse.json({
       success: true,
-      requiresVerification: true,
-      message: 'Verification code sent to your email.',
+      requiresVerification: false,
+      message: 'Account created.',
     })
   } catch (error) {
     console.error('Signup error:', error)

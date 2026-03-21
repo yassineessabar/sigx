@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase-admin'
+import { sendOtpEmail } from '@/lib/email'
+import { otpStore } from '../signup/route'
+
+function generateOtp(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString()
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,18 +14,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 })
     }
 
-    const { error } = await supabaseAdmin.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: false,
-      },
-    })
+    const key = email.toLowerCase()
+    const existing = otpStore.get(key)
 
-    if (error) {
-      return NextResponse.json({ error: 'Could not send code. Please try again.' }, { status: 500 })
+    if (!existing) {
+      return NextResponse.json({ error: 'No pending verification for this email.' }, { status: 400 })
     }
 
-    return NextResponse.json({ success: true, message: 'New code sent.' })
+    // Generate new code
+    const code = generateOtp()
+    otpStore.set(key, {
+      code,
+      expiresAt: Date.now() + 10 * 60 * 1000,
+      userId: existing.userId,
+    })
+
+    try {
+      await sendOtpEmail(email, code)
+      return NextResponse.json({ success: true, message: 'New code sent.' })
+    } catch (emailErr) {
+      console.error('Resend email failed:', emailErr)
+      return NextResponse.json({ error: 'Could not send code. Please try again.' }, { status: 500 })
+    }
   } catch (error) {
     console.error('Resend code error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

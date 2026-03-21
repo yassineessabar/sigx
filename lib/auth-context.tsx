@@ -24,7 +24,7 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext)
 
-const PUBLIC_PATHS = ['/', '/login', '/signup', '/forgot-password', '/reset-password']
+const PUBLIC_PATHS = ['/', '/login', '/signup', '/forgot-password', '/reset-password', '/auth/confirm']
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -50,10 +50,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null)
     // Clear Supabase session from localStorage before redirect
     Object.keys(localStorage).forEach((key) => {
-      if (key.startsWith('sb-')) {
+      if (key.startsWith('sb-') || key === 'sigx-auth') {
         localStorage.removeItem(key)
       }
     })
+    // Reset sidebar to open for next login
+    localStorage.setItem('sigx-sidebar-open', 'true')
     // Fire supabase signout in background
     supabase.auth.signOut().catch(() => {})
     // Hard redirect
