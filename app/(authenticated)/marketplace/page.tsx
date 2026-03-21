@@ -228,7 +228,7 @@ export default function MarketplacePage() {
             mql5_code: strategy.mqlCode || null,
             platform: strategy.platform,
             sharpe_ratio: strategy.sharpe,
-            max_drawdown: strategy.drawdown,
+            max_drawdown: Math.abs(strategy.drawdown),
             win_rate: strategy.winRate,
             total_return: strategy.totalReturn,
             strategy_summary: {
@@ -238,7 +238,10 @@ export default function MarketplacePage() {
             },
           }),
         })
-        if (!res.ok) throw new Error('Failed to add strategy')
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}))
+          throw new Error(errData.error || 'Failed to add strategy')
+        }
         toast.success('Strategy added to your collection!')
       }
       setShowPaymentConfirm(false)
@@ -424,6 +427,11 @@ export default function MarketplacePage() {
                     <div>
                       <span className="text-[8px] text-white/40 font-semibold uppercase tracking-wider">Win</span>
                       <p className="text-[12px] font-bold text-white/90 tabular-nums">{s.winRate.toFixed(0)}%</p>
+                    </div>
+                    <div className="w-px h-5 bg-white/10" />
+                    <div>
+                      <span className="text-[8px] text-white/40 font-semibold uppercase tracking-wider">Period</span>
+                      <p className="text-[10px] font-medium text-white/60">Jan 23 — Jan 25</p>
                     </div>
                   </div>
                 </div>
@@ -767,6 +775,12 @@ export default function MarketplacePage() {
                   <p className="text-[13px] text-foreground/45 leading-[1.65]">
                     {selectedStrategy.description}
                   </p>
+                </div>
+
+                {/* Backtest info */}
+                <div className="flex items-center justify-between py-2.5 px-4 rounded-xl bg-foreground/[0.03] border border-foreground/[0.04]">
+                  <span className="text-[12px] text-foreground/40">Backtest period</span>
+                  <span className="text-[12px] font-medium text-foreground/60">Jan 2023 — Jan 2025 (2 years)</span>
                 </div>
 
                 {/* Price */}
