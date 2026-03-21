@@ -185,6 +185,10 @@ export function ChatThread({ messages, isGenerating, streamingContent, pipelineS
                 <div className="whitespace-pre-wrap">{displayedStreaming}</div>
                 <span className="inline-block h-4 w-0.5 animate-pulse bg-foreground/60 ml-0.5" />
               </div>
+              <div className="flex items-center gap-1.5 mt-1.5 px-1">
+                <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-[11px] text-foreground/30 font-medium">Generating...</span>
+              </div>
             </div>
           </div>
         )}

@@ -68,6 +68,7 @@ export function SplitLayout({
   const [isOptimizing, setIsOptimizing] = useState(false)
   const [optimizeProgress, setOptimizeProgress] = useState<{ iteration: number; total: number } | undefined>(undefined)
   const [pipelineStatus, setPipelineStatus] = useState<string | null>(null)
+  const [backtestRunning, setBacktestRunning] = useState(false)
 
   // Optimized results that override the latest from messages
   const [optimizedCode, setOptimizedCode] = useState<string | null>(null)
@@ -140,11 +141,11 @@ export function SplitLayout({
 
   // Clear pipeline status after a delay
   useEffect(() => {
-    if (pipelineStatus && !isOptimizing && strategy.status !== 'running') {
+    if (pipelineStatus && !isOptimizing && !backtestRunning && strategy.status !== 'running') {
       const timer = setTimeout(() => setPipelineStatus(null), 5000)
       return () => clearTimeout(timer)
     }
-  }, [pipelineStatus, isOptimizing, strategy.status])
+  }, [pipelineStatus, isOptimizing, backtestRunning, strategy.status])
 
   // Reset optimized results when new messages come in
   useEffect(() => {
@@ -297,12 +298,13 @@ export function SplitLayout({
             onEditMessage={onEditMessage}
             onRegenerateMessage={onRegenerateMessage}
             onSend={onSend}
-            onRunBacktest={displayCode ? async () => {
+            onRunBacktest={displayCode && !backtestRunning ? async () => {
               const strat = latestStrategy as { name?: string; market?: string } | undefined
               const eaName = (strat?.name || 'SigxEA').replace(/[^a-zA-Z0-9_]/g, '_')
               const symbol = strat?.market || 'XAUUSD'
 
-              setPipelineStatus('Compiling and backtesting on MT5...')
+              setBacktestRunning(true)
+              setPipelineStatus('Compiling on MT5...')
 
               try {
                 const res = await fetch('/api/ai-builder/backtest', {
@@ -346,6 +348,7 @@ export function SplitLayout({
                 setPipelineStatus('Backtest request failed')
               }
 
+              setBacktestRunning(false)
               setTimeout(() => setPipelineStatus(null), 5000)
             } : undefined}
             onRetry={() => {
