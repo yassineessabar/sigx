@@ -96,16 +96,14 @@ export function RightPanel({
             <div className="p-4 space-y-4">
               {strategySnapshot || backtestSnapshot ? (
                 <>
-                  {strategySnapshot && (
-                    <StrategyCard strategy={strategySnapshot} />
-                  )}
                   {backtestSnapshot && (
                     <BacktestPreview backtest={backtestSnapshot} />
                   )}
-
-                  {/* Strategy score + recommendations */}
                   {backtestSnapshot && (
                     <StrategyScore backtest={backtestSnapshot} />
+                  )}
+                  {strategySnapshot && (
+                    <StrategyCard strategy={strategySnapshot} />
                   )}
 
                   {/* Optimize progress — only shown when running */}
