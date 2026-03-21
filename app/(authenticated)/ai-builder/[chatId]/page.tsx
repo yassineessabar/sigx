@@ -7,6 +7,7 @@ import { UpgradeModal } from '@/components/layout/upgrade-modal'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
+import { supabase } from '@/lib/supabase'
 import { useSidebar } from '@/lib/sidebar-context'
 
 export default function ChatPage() {
@@ -100,11 +101,19 @@ export default function ChatPage() {
     abortRef.current = controller
 
     try {
+      const { data: { session: freshSession } } = await supabase.auth.getSession()
+      const token = freshSession?.access_token || session?.access_token
+      if (!token) {
+        toast.error('Session expired. Please sign in again.')
+        setMessages((prev) => prev.filter((m) => m.id !== userMsg.id))
+        return
+      }
+
       const res = await fetch('/api/chat/stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ chatId, message }),
         signal: controller.signal,
@@ -112,6 +121,11 @@ export default function ChatPage() {
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({ error: 'Request failed' }))
+        if (res.status === 401) {
+          toast.error('Session expired. Please sign in again.')
+          setMessages((prev) => prev.filter((m) => m.id !== userMsg.id))
+          return
+        }
         if (res.status === 402 || res.status === 503 || errData.error === 'NO_CREDITS' || errData.error?.includes('credit')) {
           setMessages((prev) => prev.filter((m) => m.id !== userMsg.id))
           setIsGenerating(false)
@@ -159,23 +173,57 @@ export default function ChatPage() {
         }
       }
     } catch (error) {
-      if ((error as Error).name === 'AbortError') return
-      console.error('Send error:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to send message')
-      setMessages((prev) => prev.filter((m) => m.id !== userMsg.id))
+      if ((error as Error).name === 'AbortError') {
+        // Keep whatever was streamed so far as a message
+        const partial = streamingContent ? streamingContent.replace(/---\w+_START---[\s\S]*/g, '').trim() : ''
+        if (partial) {
+          setMessages((prev) => [...prev, {
+            id: crypto.randomUUID(),
+            chat_id: chatId,
+            user_id: user!.id,
+            role: 'assistant' as const,
+            content: partial + '\n\n*(generation stopped)*',
+            metadata: {},
+            created_at: new Date().toISOString(),
+          }])
+        }
+      } else {
+        console.error('Send error:', error)
+        toast.error(error instanceof Error ? error.message : 'Failed to send message')
+        setMessages((prev) => prev.filter((m) => m.id !== userMsg.id))
+      }
     } finally {
       setIsGenerating(false)
       setStreamingContent('')
       setPipelineStatus(null)
       abortRef.current = null
     }
-  }, [chatId, session?.access_token, user])
+  }, [chatId, session?.access_token, user, streamingContent])
 
   const handleStop = useCallback(() => {
     abortRef.current?.abort()
     setIsGenerating(false)
     setStreamingContent('')
   }, [])
+
+  const handleEditMessage = useCallback((messageId: string, newContent: string) => {
+    setMessages((prev) => {
+      const idx = prev.findIndex((m) => m.id === messageId)
+      if (idx === -1) return prev
+      return prev.slice(0, idx)
+    })
+    setTimeout(() => handleSend(newContent), 100)
+  }, [handleSend])
+
+  const handleRegenerateMessage = useCallback((messageId: string) => {
+    setMessages((prev) => {
+      const msg = prev.find((m) => m.id === messageId)
+      if (!msg) return prev
+      const idx = prev.findIndex((m) => m.id === messageId)
+      setTimeout(() => handleSend(msg.content), 100)
+      return prev.slice(0, idx)
+    })
+  }, [handleSend])
 
   // Auto-send initial prompt from query param (when coming from "Create Project")
   useEffect(() => {
@@ -189,7 +237,7 @@ export default function ChatPage() {
 
   if (loadingMessages) {
     return (
-      <div className="flex-1 p-4">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4">
         <div className="mx-auto max-w-3xl space-y-6">
           {[1, 2, 3].map((i) => (
             <div key={i} className={`flex gap-3 ${i % 2 === 0 ? 'justify-end' : ''}`}>
@@ -207,7 +255,7 @@ export default function ChatPage() {
   }
 
   return (
-    <>
+    <div className="flex flex-col flex-1 min-h-0 h-full">
       <UpgradeModal open={showUpgradeModal} onOpenChange={setShowUpgradeModal} creditsRemaining={credits ?? 0} />
       <SplitLayout
         title={chatTitle}
@@ -220,9 +268,11 @@ export default function ChatPage() {
         chatPipelineStatus={pipelineStatus}
         onSend={handleSend}
         onStop={handleStop}
+        onEditMessage={handleEditMessage}
+        onRegenerateMessage={handleRegenerateMessage}
         credits={credits}
         onUpgradeClick={() => setShowUpgradeModal(true)}
       />
-    </>
+    </div>
   )
 }

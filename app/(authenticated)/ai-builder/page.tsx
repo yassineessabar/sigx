@@ -8,6 +8,7 @@ import { UpgradeModal } from '@/components/layout/upgrade-modal'
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import { useSidebar } from '@/lib/sidebar-context'
 import { Sparkles, Clock, ArrowUp, Zap, TrendingUp, BarChart3, Shield, ChevronRight, LineChart, Activity } from 'lucide-react'
@@ -103,6 +104,7 @@ export default function AIBuilderPage() {
   const [projectName, setProjectName] = useState('')
   const [pendingTemplatePrompt, setPendingTemplatePrompt] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const newChatIdRef = useRef<string | null>(null)
   const router = useRouter()
   const { setOpen: setSidebarOpen } = useSidebar()
 
@@ -156,11 +158,20 @@ export default function AIBuilderPage() {
     abortRef.current = controller
 
     try {
+      // Get fresh token at request time
+      const { data: { session: freshSession } } = await supabase.auth.getSession()
+      const token = freshSession?.access_token || session?.access_token
+      if (!token) {
+        toast.error('Session expired. Please sign in again.')
+        setMessages((prev) => prev.filter((m) => m.id !== userMsg.id))
+        return
+      }
+
       const res = await fetch('/api/chat/stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ chatId: currentChatId, message }),
         signal: controller.signal,
@@ -168,6 +179,11 @@ export default function AIBuilderPage() {
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({ error: 'Request failed' }))
+        if (res.status === 401) {
+          toast.error('Session expired. Please sign in again.')
+          setMessages((prev) => prev.filter((m) => m.id !== userMsg.id))
+          return
+        }
         if (res.status === 402 || res.status === 503 || errData.error === 'NO_CREDITS' || errData.error?.includes('credit')) {
           setMessages((prev) => prev.filter((m) => m.id !== userMsg.id))
           setIsGenerating(false)
@@ -201,7 +217,7 @@ export default function AIBuilderPage() {
 
             if (data.type === 'chat_created' && data.chatId) {
               setCurrentChatId(data.chatId)
-              router.replace(`/ai-builder/${data.chatId}`)
+              newChatIdRef.current = data.chatId
             } else if (data.type === 'delta') {
               setStreamingContent((prev) => prev + data.text)
               setPipelineStatus(null)
@@ -218,15 +234,34 @@ export default function AIBuilderPage() {
         }
       }
     } catch (error) {
-      if ((error as Error).name === 'AbortError') return
-      console.error('Send error:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to send message')
-      setMessages((prev) => prev.filter((m) => m.id !== userMsg.id))
+      if ((error as Error).name === 'AbortError') {
+        const partial = streamingContent ? streamingContent.replace(/---\w+_START---[\s\S]*/g, '').trim() : ''
+        if (partial) {
+          setMessages((prev) => [...prev, {
+            id: crypto.randomUUID(),
+            chat_id: currentChatId || '',
+            user_id: user!.id,
+            role: 'assistant' as const,
+            content: partial + '\n\n*(generation stopped)*',
+            metadata: {},
+            created_at: new Date().toISOString(),
+          }])
+        }
+      } else {
+        console.error('Send error:', error)
+        toast.error(error instanceof Error ? error.message : 'Failed to send message')
+        setMessages((prev) => prev.filter((m) => m.id !== userMsg.id))
+      }
     } finally {
       setIsGenerating(false)
       setStreamingContent('')
       setPipelineStatus(null)
       abortRef.current = null
+      // Update URL silently so browser back works, but DON'T navigate (avoids remount)
+      if (newChatIdRef.current) {
+        window.history.replaceState(null, '', `/ai-builder/${newChatIdRef.current}`)
+        newChatIdRef.current = null
+      }
     }
   }, [session?.access_token, currentChatId, user, router])
 
@@ -286,6 +321,28 @@ export default function AIBuilderPage() {
     setStreamingContent('')
   }, [])
 
+  const handleEditMessage = useCallback((messageId: string, newContent: string) => {
+    // Remove the edited message and all messages after it, then resend
+    setMessages((prev) => {
+      const idx = prev.findIndex((m) => m.id === messageId)
+      if (idx === -1) return prev
+      return prev.slice(0, idx)
+    })
+    // Send the edited content
+    setTimeout(() => handleSend(newContent), 100)
+  }, [handleSend])
+
+  const handleRegenerateMessage = useCallback((messageId: string) => {
+    // Find the user message, remove it and all after, resend same content
+    setMessages((prev) => {
+      const msg = prev.find((m) => m.id === messageId)
+      if (!msg) return prev
+      const idx = prev.findIndex((m) => m.id === messageId)
+      setTimeout(() => handleSend(msg.content), 100)
+      return prev.slice(0, idx)
+    })
+  }, [handleSend])
+
   function timeAgo(dateStr: string): string {
     const now = new Date()
     const date = new Date(dateStr)
@@ -301,7 +358,7 @@ export default function AIBuilderPage() {
   }
 
   // Empty state — merged home + AI builder landing
-  if (messages.length === 0 && !isGenerating) {
+  if (messages.length === 0 && !isGenerating && !streamingContent && !pipelineStatus) {
     return (
       <>
       <UpgradeModal open={showUpgradeModal} onOpenChange={setShowUpgradeModal} creditsRemaining={credits ?? 0} />
@@ -538,7 +595,7 @@ export default function AIBuilderPage() {
   }
 
   return (
-    <>
+    <div className="flex flex-col flex-1 min-h-0 h-full">
       <UpgradeModal open={showUpgradeModal} onOpenChange={setShowUpgradeModal} creditsRemaining={credits ?? 0} />
       <SplitLayout
         title={projectName || 'New Strategy'}
@@ -550,9 +607,11 @@ export default function AIBuilderPage() {
         chatPipelineStatus={pipelineStatus}
         onSend={handleSend}
         onStop={handleStop}
+        onEditMessage={handleEditMessage}
+        onRegenerateMessage={handleRegenerateMessage}
         credits={credits}
         onUpgradeClick={() => setShowUpgradeModal(true)}
       />
-    </>
+    </div>
   )
 }

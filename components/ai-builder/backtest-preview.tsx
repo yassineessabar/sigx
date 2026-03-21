@@ -14,20 +14,25 @@ interface BacktestPreviewProps {
     net_profit?: number
     recovery_factor?: number
     equity_curve?: { date: string; equity: number }[]
+    _estimated?: boolean
   }
 }
 
 export function BacktestPreview({ backtest }: BacktestPreviewProps) {
   const hasTrades = backtest.total_trades > 0
+  const isEstimated = (backtest as Record<string, unknown>)._estimated === true
 
   return (
     <div className="rounded-2xl border border-foreground/[0.08] bg-secondary overflow-hidden">
       <div className="border-b border-foreground/[0.06] px-4 py-3 flex items-center justify-between">
-        <span className="font-medium text-[14px] text-[#fafafa]">Backtest Results</span>
+        <span className="font-medium text-[14px] text-[#fafafa]">
+          {isEstimated ? 'Estimated Results' : 'Backtest Results'}
+        </span>
         <span className={`rounded-full px-2.5 py-0.5 text-[12px] font-medium ${
-          hasTrades ? 'bg-[rgba(34,197,94,0.1)] text-[#22c55e]' : 'bg-amber-500/10 text-amber-400'
+          isEstimated ? 'bg-blue-500/10 text-blue-400'
+          : hasTrades ? 'bg-[rgba(34,197,94,0.1)] text-[#22c55e]' : 'bg-amber-500/10 text-amber-400'
         }`}>
-          {hasTrades ? `${backtest.total_trades} trades` : 'No trades'}
+          {isEstimated ? 'AI Estimate' : hasTrades ? `${backtest.total_trades} trades` : 'No trades'}
         </span>
       </div>
 

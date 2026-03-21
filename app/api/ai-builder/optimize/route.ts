@@ -221,7 +221,7 @@ async function improveMql5Code(
 
     const response = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 4096,
+      max_tokens: 8192,
       system:
         'You are an MQL5 strategy optimizer. Given an EA code and its backtest results, improve the strategy to get better Sharpe ratio and lower drawdown. The EA MUST have real trading logic — trade.Buy() and trade.Sell() calls in OnTick() based on indicator signals. If the previous version had 0 trades, ADD actual entry logic using indicators (EMA crossover, RSI, etc.). Use MQL5 syntax with CTrade, CopyBuffer, IsNewBar(). Return ONLY the complete improved MQL5 code. No explanations, no markdown fences.',
       messages: [
@@ -251,7 +251,7 @@ async function autoFixCode(
   try {
     const response = await fixClient.messages.create({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 4096,
+      max_tokens: 8192,
       system:
         'You are an MQL5 compiler error fixer. Given MQL5 code and compilation errors, return ONLY the fixed MQL5 code with no explanation, no markdown fences, no commentary. Just the raw MQL5 code.',
       messages: [

@@ -19,6 +19,8 @@ interface SplitLayoutProps {
   chatPipelineStatus?: string | null
   onSend: (message: string) => void
   onStop: () => void
+  onEditMessage?: (messageId: string, newContent: string) => void
+  onRegenerateMessage?: (messageId: string) => void
   credits: number | null
   onUpgradeClick: () => void
 }
@@ -34,6 +36,8 @@ export function SplitLayout({
   chatPipelineStatus,
   onSend,
   onStop,
+  onEditMessage,
+  onRegenerateMessage,
   credits,
   onUpgradeClick,
 }: SplitLayoutProps) {
@@ -197,7 +201,8 @@ export function SplitLayout({
   const displayCode = optimizedCode || latestCode
 
   return (
-    <div className="flex h-full flex-col min-h-0">
+    <div className="relative w-full h-full">
+    <div className="absolute inset-0 flex flex-col">
       <ChatTopBar
         title={title}
         credits={credits}
@@ -207,6 +212,7 @@ export function SplitLayout({
         mql5Code={displayCode}
         strategyName={latestStrategy?.name}
         strategyMarket={latestStrategy?.market}
+        hasResults={hasResults}
         onUpgradeClick={onUpgradeClick}
       />
       <div className="flex flex-1 overflow-hidden relative">
@@ -217,6 +223,8 @@ export function SplitLayout({
             isGenerating={isGenerating}
             streamingContent={streamingContent}
             pipelineStatus={chatPipelineStatus || pipelineStatus}
+            onEditMessage={onEditMessage}
+            onRegenerateMessage={onRegenerateMessage}
           />
           <PromptInput onSend={onSend} isGenerating={isGenerating} onStop={onStop} />
         </div>
@@ -247,6 +255,7 @@ export function SplitLayout({
           </button>
         )}
       </div>
+    </div>
     </div>
   )
 }

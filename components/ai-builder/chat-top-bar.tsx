@@ -36,6 +36,7 @@ interface ChatTopBarProps {
   mql5Code?: string | null
   strategyName?: string | null
   strategyMarket?: string | null
+  hasResults?: boolean
   onUpgradeClick?: () => void
 }
 
@@ -48,6 +49,7 @@ export function ChatTopBar({
   mql5Code,
   strategyName,
   strategyMarket,
+  hasResults,
   onUpgradeClick,
 }: ChatTopBarProps) {
   const router = useRouter()
@@ -192,7 +194,13 @@ export function ChatTopBar({
           </button>
           <button
             onClick={() => setShowPublishModal(true)}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-semibold bg-white text-black hover:bg-white/90 transition-colors"
+            disabled={!hasResults}
+            className={cn(
+              'flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors',
+              hasResults
+                ? 'bg-white text-black hover:bg-white/90'
+                : 'bg-foreground/[0.06] text-foreground/25 cursor-not-allowed'
+            )}
           >
             <Rocket size={14} />
             Publish

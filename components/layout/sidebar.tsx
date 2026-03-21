@@ -12,6 +12,7 @@ import {
   BarChart3,
   Store,
   Trophy,
+  Plus,
   Settings,
   ChevronDown,
   Trash2,
@@ -21,7 +22,6 @@ import {
   Gem,
   PanelLeft,
   LogOut,
-  Home,
   HelpCircle,
   UserPlus,
   User,
@@ -34,7 +34,7 @@ import { useTheme } from 'next-themes'
 import { InviteModal } from './invite-modal'
 
 const navItems = [
-  { href: '/ai-builder', label: 'Home', icon: Home },
+  { href: '/ai-builder', label: 'AI Builder', icon: Sparkles },
   { href: '/strategies', label: 'Strategies', icon: BarChart3 },
   { href: '/marketplace', label: 'Marketplace', icon: Store },
   { href: '/leaderboard', label: 'Leaderboard', icon: Trophy },
@@ -51,10 +51,10 @@ export function Sidebar({ chats = [], onNewChat, onDeleteChat }: SidebarProps) {
   const pathname = usePathname()
   const { open, setOpen, toggle } = useSidebar()
 
-  // Re-open sidebar when navigating away from an AI builder chat
+  // Re-open sidebar when navigating away from AI builder entirely
   useEffect(() => {
-    const isAiBuilderChat = pathname.startsWith('/ai-builder/') && pathname !== '/ai-builder'
-    if (!isAiBuilderChat && !open) {
+    const isAiBuilder = pathname === '/ai-builder' || pathname.startsWith('/ai-builder/')
+    if (!isAiBuilder && !open) {
       setOpen(true)
     }
   }, [pathname, open, setOpen])
@@ -230,8 +230,19 @@ export function Sidebar({ chats = [], onNewChat, onDeleteChat }: SidebarProps) {
           )}
         </div>
 
+        {/* New Chat button */}
+        <div className="px-3 pt-3 pb-1">
+          <Link
+            href="/ai-builder"
+            className="flex w-full items-center gap-2.5 rounded-xl bg-white px-3 py-2.5 text-[13px] font-semibold text-black hover:bg-white/90 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            New Chat
+          </Link>
+        </div>
+
         {/* Main nav */}
-        <nav className="space-y-0.5 px-3 pt-3">
+        <nav className="space-y-0.5 px-3 pt-2">
           {navItems.map((item) => {
             const isActive = pathname === item.href || (item.href === '/ai-builder' && pathname.startsWith('/ai-builder'))
             return (
