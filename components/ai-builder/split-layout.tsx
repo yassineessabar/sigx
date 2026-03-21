@@ -289,9 +289,50 @@ export function SplitLayout({
             pipelineStatus={chatPipelineStatus || pipelineStatus}
             backtestData={displayBacktest}
             pipelineError={strategy.status === 'error' ? strategy.error : null}
+            hasCode={!!displayCode}
             onEditMessage={onEditMessage}
             onRegenerateMessage={onRegenerateMessage}
             onSend={onSend}
+            onRunBacktest={displayCode ? async () => {
+              const strat = latestStrategy as { name?: string; market?: string } | undefined
+              const eaName = (strat?.name || 'SigxEA').replace(/[^a-zA-Z0-9_]/g, '_')
+              const symbol = strat?.market || 'XAUUSD'
+
+              setPipelineStatus('Compiling and backtesting on MT5...')
+
+              try {
+                const res = await fetch('/api/ai-builder/backtest', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+                  },
+                  body: JSON.stringify({ ea_name: eaName, mq5_code: displayCode, symbol, period: 'H1' }),
+                })
+                const data = await res.json()
+
+                if (data.success && data.metrics) {
+                  setOptimizedBacktest({
+                    sharpe: data.metrics.sharpe ?? 0,
+                    max_drawdown: data.metrics.max_drawdown ?? 0,
+                    win_rate: data.metrics.win_rate ?? 0,
+                    total_return: data.metrics.total_return ?? 0,
+                    profit_factor: data.metrics.profit_factor ?? 0,
+                    total_trades: data.metrics.total_trades ?? 0,
+                    net_profit: data.metrics.net_profit ?? 0,
+                    equity_curve: data.equity_curve || [],
+                  })
+                  setPipelineStatus(`Backtest done — ${data.metrics.total_trades} trades`)
+                  setPanelOpen(true)
+                } else {
+                  setPipelineStatus(data.error || 'Backtest failed')
+                }
+              } catch (err) {
+                setPipelineStatus('Backtest request failed')
+              }
+
+              setTimeout(() => setPipelineStatus(null), 5000)
+            } : undefined}
             onRetry={() => {
               // Retry: resend the last user message
               const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')

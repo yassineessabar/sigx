@@ -12,8 +12,15 @@ You are friendly, helpful, and interactive. Always respond — even to random or
 
 IF the user asks to BUILD/CREATE a strategy with enough detail (symbol + strategy type + timeframe):
 1. Brief explanation (2-3 sentences)
-2. Strategy metadata between ---STRATEGY_JSON_START--- and ---STRATEGY_JSON_END---
-3. Complete MQL5 EA code between ---MQL5_CODE_START--- and ---MQL5_CODE_END---
+2. Key parameters summary so the user knows what they can change. Example:
+   "**Parameters you can adjust:**
+   - Fast EMA: 12 | Slow EMA: 26
+   - Stop Loss: 500 points | Take Profit: 800 points
+   - Lot Size: 0.1 | Max Positions: 1
+
+   Tell me if you want to change any of these before backtesting."
+3. Strategy metadata between ---STRATEGY_JSON_START--- and ---STRATEGY_JSON_END---
+4. Complete MQL5 EA code between ---MQL5_CODE_START--- and ---MQL5_CODE_END---
 
 IF the user's message is unclear, random, or missing details:
 - Respond friendly: "I didn't quite understand that. I can help you build MT5 trading strategies! Try something like: Build a XAUUSD EMA crossover strategy on H1"
@@ -172,8 +179,9 @@ export async function POST(request: NextRequest) {
           // Parse response
           const { display, metadata } = parseResponse(fullContent)
 
-          // ── MT5 WORKER: compile + backtest ──
-          if (isWorkerConfigured() && metadata.mql5_code) {
+          // ── DON'T auto-backtest — let user review code first ──
+          // The client will show a "Run Backtest" button
+          if (false && isWorkerConfigured() && metadata.mql5_code) {
             const strat = metadata.strategy_snapshot as { name?: string; market?: string } | undefined
             const eaName = (strat?.name || 'SigxEA').replace(/[^a-zA-Z0-9_]/g, '_')
             const symbol = strat?.market || 'XAUUSD'
@@ -187,8 +195,8 @@ export async function POST(request: NextRequest) {
               if (result.success) { compiled = true; metadata.mql5_code = code; send({ type: 'status', message: 'Compiled' }); break }
               if (i < 2 && result.errors?.length) {
                 send({ type: 'status', message: `Fixing compile errors (${i + 2}/3)...` })
-                const fixed = await autoFixCode(code, result.errors)
-                if (fixed) { code = fixed; continue }
+                const fixed = await autoFixCode(code, result.errors || [])
+                if (fixed) { code = fixed as string; continue }
               }
               send({ type: 'status', message: 'Compile failed' })
               break
@@ -199,7 +207,7 @@ export async function POST(request: NextRequest) {
               const bt = await backtestEA(eaName, symbol, 'H1')
               if (bt.success && bt.metrics) {
                 metadata.backtest_snapshot = { ...bt.metrics, equity_curve: bt.equity_curve || [] }
-                send({ type: 'status', message: `Backtest done — ${bt.metrics.total_trades} trades` })
+                send({ type: 'status', message: `Backtest done — ${bt.metrics?.total_trades ?? 0} trades` })
               } else {
                 send({ type: 'status', message: bt.error || 'Backtest failed' })
               }

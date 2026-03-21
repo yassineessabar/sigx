@@ -13,10 +13,12 @@ interface ChatThreadProps {
   pipelineStatus?: string | null
   backtestData?: { sharpe: number; max_drawdown: number; win_rate: number; total_return: number; profit_factor: number; total_trades: number } | null
   pipelineError?: string | null
+  hasCode?: boolean
   onEditMessage?: (messageId: string, newContent: string) => void
   onRegenerateMessage?: (messageId: string) => void
   onSend?: (message: string) => void
   onRetry?: () => void
+  onRunBacktest?: () => void
 }
 
 function OptimizeSuggestions({ backtest, onSend }: {
@@ -112,7 +114,7 @@ function cleanStreamingDisplay(text: string): string {
   return clean.replace(/\n{3,}/g, '\n\n').trim()
 }
 
-export function ChatThread({ messages, isGenerating, streamingContent, pipelineStatus, backtestData, pipelineError, onEditMessage, onRegenerateMessage, onSend, onRetry }: ChatThreadProps) {
+export function ChatThread({ messages, isGenerating, streamingContent, pipelineStatus, backtestData, pipelineError, hasCode, onEditMessage, onRegenerateMessage, onSend, onRetry, onRunBacktest }: ChatThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const [hasHadMessages, setHasHadMessages] = useState(false)
@@ -223,6 +225,35 @@ export function ChatThread({ messages, isGenerating, streamingContent, pipelineS
                     className="rounded-full border border-foreground/[0.10] bg-foreground/[0.04] px-4 py-1.5 text-[12px] font-medium text-foreground/60 hover:bg-foreground/[0.08] transition-colors"
                   >
                     Try different approach
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Run Backtest button — show when code exists but no backtest yet */}
+        {hasCode && !backtestData && !isGenerating && !pipelineStatus && !pipelineError && onRunBacktest && (
+          <div className="flex gap-3">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-white">
+              <span className="text-[8px] font-black text-black tracking-[-0.06em]">SX</span>
+            </div>
+            <div className="space-y-2">
+              <p className="text-[13px] text-foreground/50">Ready to test this strategy? You can also modify the parameters above first.</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={onRunBacktest}
+                  className="rounded-full bg-white px-4 py-2 text-[13px] font-semibold text-black hover:bg-white/90 transition-colors flex items-center gap-2"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  Run Backtest
+                </button>
+                {onSend && (
+                  <button
+                    onClick={() => onSend('Change the EMA periods to 8 and 21 for faster signals')}
+                    className="rounded-full border border-foreground/[0.10] bg-foreground/[0.03] px-4 py-2 text-[12px] font-medium text-foreground/50 hover:bg-foreground/[0.06] transition-colors"
+                  >
+                    Adjust parameters
                   </button>
                 )}
               </div>
