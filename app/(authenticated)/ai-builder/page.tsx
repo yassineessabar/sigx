@@ -9,6 +9,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { findClientTemplate } from '@/lib/templates/client'
 import { cn } from '@/lib/utils'
 import { useSidebar } from '@/lib/sidebar-context'
 import { Sparkles, Clock, ArrowUp, Zap, TrendingUp, BarChart3, Shield, ChevronRight, LineChart, Activity } from 'lucide-react'
@@ -266,42 +267,103 @@ export default function AIBuilderPage() {
     const prompt = pendingTemplatePrompt
     setPendingTemplatePrompt(null)
     setProjectName('')
+    setSidebarOpen(false)
 
+    // Check if this matches a template — if so, inject results INSTANTLY
+    const clientTemplate = findClientTemplate(prompt)
+
+    if (clientTemplate) {
+      // Add user message
+      const userMsg: ChatMessageType = {
+        id: crypto.randomUUID(),
+        chat_id: '',
+        user_id: user!.id,
+        role: 'user',
+        content: prompt,
+        metadata: {},
+        created_at: new Date().toISOString(),
+      }
+
+      // Build assistant response with all template data
+      const explanation = `**${clientTemplate.name}** — ${clientTemplate.market} ${clientTemplate.timeframe}\n\n${clientTemplate.description}\n\n**Original prompt:**\n> ${clientTemplate.prompt}`
+
+      const assistantMsg: ChatMessageType = {
+        id: crypto.randomUUID(),
+        chat_id: '',
+        user_id: user!.id,
+        role: 'assistant',
+        content: explanation,
+        metadata: {
+          type: 'strategy' as const,
+          strategy_snapshot: clientTemplate.strategySnapshot,
+          backtest_snapshot: clientTemplate.backtestResults,
+          mql5_code: '// Template code — click "Optimize" to compile on MT5 and generate real backtest results.',
+        },
+        created_at: new Date().toISOString(),
+      }
+
+      setMessages([userMsg, assistantMsg])
+
+      // Save to DB in background (non-blocking)
+      fetch('/api/strategies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ name, market: clientTemplate.market, status: 'backtested',
+          sharpe_ratio: clientTemplate.backtestResults.sharpe,
+          max_drawdown: clientTemplate.backtestResults.max_drawdown,
+          win_rate: clientTemplate.backtestResults.win_rate,
+          total_return: clientTemplate.backtestResults.total_return,
+          strategy_summary: clientTemplate.strategySnapshot,
+        }),
+      }).then(async (res) => {
+        if (!res.ok) return
+        const data = await res.json()
+        const strategyId = data.strategy?.id
+        if (strategyId) {
+          // Create chat linked to strategy
+          const chatRes = await fetch('/api/chats', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+            body: JSON.stringify({ title: name, strategy_id: strategyId }),
+          })
+          const chatData = await chatRes.json()
+          if (chatData.chat?.id) {
+            setCurrentChatId(chatData.chat.id)
+            window.history.replaceState(null, '', `/ai-builder/${chatData.chat.id}`)
+          }
+        }
+      }).catch(() => {})
+
+      return
+    }
+
+    // Non-template: create strategy + chat, then send prompt via API
     try {
-      // 1. Create strategy record
       const stratRes = await fetch('/api/strategies', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({ name, market: 'XAUUSD', status: 'draft' }),
       })
       if (!stratRes.ok) throw new Error('Failed to create strategy')
       const stratData = await stratRes.json()
       const strategyId = stratData.strategy?.id
 
-      // 2. Create chat linked to strategy
       const chatRes = await fetch('/api/chats', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({ title: name, strategy_id: strategyId }),
       })
       if (!chatRes.ok) throw new Error('Failed to create chat')
       const chatData = await chatRes.json()
 
       if (chatData.chat?.id) {
-        // Navigate to the chat and send the prompt there
-        router.push(`/ai-builder/${chatData.chat.id}?prompt=${encodeURIComponent(prompt)}`)
+        setCurrentChatId(chatData.chat.id)
+        handleSend(prompt)
       }
     } catch {
-      // Fallback: send directly without saving
-      handleSend(`[Project: ${name}] ${prompt}`)
+      handleSend(prompt)
     }
-  }, [projectName, pendingTemplatePrompt, session?.access_token, router, handleSend])
+  }, [projectName, pendingTemplatePrompt, session?.access_token, user, router, handleSend, setSidebarOpen])
 
   const handleStop = useCallback(() => {
     abortRef.current?.abort()
