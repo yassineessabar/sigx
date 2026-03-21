@@ -334,49 +334,60 @@ export default function AIBuilderPage() {
 
       setMessages([userMsg, assistantMsg])
 
-      // Save to DB in background (non-blocking)
-      fetch('/api/strategies', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ name, market: clientTemplate.market, status: 'backtested',
-          sharpe_ratio: clientTemplate.backtestResults.sharpe,
-          max_drawdown: clientTemplate.backtestResults.max_drawdown,
-          win_rate: clientTemplate.backtestResults.win_rate,
-          total_return: clientTemplate.backtestResults.total_return,
-          strategy_summary: clientTemplate.strategySnapshot,
-        }),
-      }).then(async (res) => {
-        if (!res.ok) return
-        const data = await res.json()
-        const strategyId = data.strategy?.id
-        if (strategyId) {
-          // Create chat linked to strategy
+      // Save to DB — do it async but don't swallow errors
+      const token = session.access_token
+      ;(async () => {
+        try {
+          // 1. Create strategy
+          const stratRes = await fetch('/api/strategies', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ name, market: clientTemplate.market, status: 'backtested',
+              sharpe_ratio: clientTemplate.backtestResults.sharpe,
+              max_drawdown: clientTemplate.backtestResults.max_drawdown,
+              win_rate: clientTemplate.backtestResults.win_rate,
+              total_return: clientTemplate.backtestResults.total_return,
+              strategy_summary: clientTemplate.strategySnapshot,
+              mql5_code: clientTemplate.mql5Code,
+            }),
+          })
+          if (!stratRes.ok) { console.error('Failed to save strategy'); return }
+          const stratData = await stratRes.json()
+          const strategyId = stratData.strategy?.id
+          if (!strategyId) return
+
+          // 2. Create chat
           const chatRes = await fetch('/api/chats', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({ title: name, strategy_id: strategyId }),
           })
+          if (!chatRes.ok) { console.error('Failed to create chat'); return }
           const chatData = await chatRes.json()
-          if (chatData.chat?.id) {
-            setCurrentChatId(chatData.chat.id)
-            // Save messages to DB so they load when reopening
-            const chatId = chatData.chat.id
-            await fetch('/api/chat/' + chatId + '/messages', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-              body: JSON.stringify({ messages: [
-                { role: 'user', content: prompt },
-                { role: 'assistant', content: explanation, metadata: {
-                  type: 'strategy',
-                  strategy_snapshot: clientTemplate.strategySnapshot,
-                  backtest_snapshot: clientTemplate.backtestResults,
-                  mql5_code: clientTemplate.mql5Code,
-                }},
-              ]}),
-            }).catch(() => {})
-          }
+          const newChatId = chatData.chat?.id
+          if (!newChatId) return
+
+          setCurrentChatId(newChatId)
+
+          // 3. Save messages using supabase admin directly via the messages API
+          const msgRes = await fetch(`/api/chat/${newChatId}/messages`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ messages: [
+              { role: 'user', content: prompt },
+              { role: 'assistant', content: explanation, metadata: {
+                type: 'strategy',
+                strategy_snapshot: clientTemplate.strategySnapshot,
+                backtest_snapshot: clientTemplate.backtestResults,
+                mql5_code: clientTemplate.mql5Code,
+              }},
+            ]}),
+          })
+          if (!msgRes.ok) console.error('Failed to save messages:', await msgRes.text())
+        } catch (err) {
+          console.error('Template save error:', err)
         }
-      }).catch(() => {})
+      })()
 
       return
     }
