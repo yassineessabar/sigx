@@ -1,0 +1,1077 @@
+INFO:     Started server process [5756]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:51456 - "GET /status HTTP/1.1" 200 OK
+INFO:     120.155.39.176:55201 - "GET /status HTTP/1.1" 200 OK
+INFO:     120.155.39.176:55208 - "GET /status HTTP/1.1" 200 OK
+Compiling TestEA...
+Compile OK: C:\Users\Administrator\AppData\Roaming\MetaQuotes\Terminal\49CDDEAA95A409ED22BD2287BB67CB9C\MQL5\Experts\TestEA.ex5
+INFO:     120.155.39.176:55230 - "POST /compile HTTP/1.1" 200 OK
+Compiling TestEA...
+Compile OK: C:\Users\Administrator\AppData\Roaming\MetaQuotes\Terminal\49CDDEAA95A409ED22BD2287BB67CB9C\MQL5\Experts\TestEA.ex5
+Running backtest: TestEA (XAUUSD H1)...
+Config: C:\Users\Administrator\Documents\metatrader\mt5_export\mt5_worker\config\TestEA_backtest.ini
+Backtest done: results\TestEA_report.htm
+INFO:     120.155.39.176:55235 - "POST /backtest HTTP/1.1" 200 OK
+INFO:     120.155.39.176:55833 - "GET /status HTTP/1.1" 200 OK
+Compiling Gold_EMA_Crossover_Scalper...
+Compile OK: C:\Users\Administrator\AppData\Roaming\MetaQuotes\Terminal\49CDDEAA95A409ED22BD2287BB67CB9C\MQL5\Experts\Gold_EMA_Crossover_Scalper.ex5
+INFO:     120.155.39.176:58277 - "POST /compile HTTP/1.1" 200 OK
+Exception ignored in: <generator object HTMLParserTreeBuilder.prepare_markup at 0x000001B3C3AB8940>
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\bs4\builder\_htmlparser.py", line 388, in prepare_markup
+    yield (markup, None, None, False)
+MemoryError: 
+Compiling Gold_EMA_Crossover_Scalper...
+Compile OK: C:\Users\Administrator\AppData\Roaming\MetaQuotes\Terminal\49CDDEAA95A409ED22BD2287BB67CB9C\MQL5\Experts\Gold_EMA_Crossover_Scalper.ex5
+Running backtest: Gold_EMA_Crossover_Scalper (XAUUSD H1)...
+Config: C:\Users\Administrator\Documents\metatrader\mt5_export\mt5_worker\config\Gold_EMA_Crossover_Scalper_backtest.ini
+Backtest done: results\Gold_EMA_Crossover_Scalper_report.htm
+INFO:     120.155.39.176:58290 - "POST /backtest HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\bs4\builder\_htmlparser.py", line 182, in handle_starttag
+    tagObj = self.soup.handle_starttag(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\bs4\__init__.py", line 1035, in handle_starttag
+    tag = tag_class(
+          ^^^^^^^^^^
+MemoryError
+
+During handling of the above exception, another exception occurred:
+
+MemoryError
+
+During handling of the above exception, another exception occurred:
+
+MemoryError
+
+During handling of the above exception, another exception occurred:
+
+MemoryError
+
+During handling of the above exception, another exception occurred:
+
+MemoryError
+
+During handling of the above exception, another exception occurred:
+
+MemoryError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\uvicorn\protocols\http\h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\fastapi\applications.py", line 1160, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Python312\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Python312\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Python312\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Python312\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\fastapi\routing.py", line 130, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Python312\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Python312\Lib\site-packages\fastapi\routing.py", line 116, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\fastapi\routing.py", line 670, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\fastapi\routing.py", line 326, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\starlette\concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\anyio\to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\anyio\_backends\_asyncio.py", line 2502, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\anyio\_backends\_asyncio.py", line 986, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\Documents\metatrader\mt5_export\mt5_worker\worker.py", line 100, in api_backtest
+    metrics = parse_mt5_report(path)
+              ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\Documents\metatrader\mt5_export\mt5_worker\analyse_results.py", line 16, in parse_mt5_report
+    soup = BeautifulSoup(text, "html.parser")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+MemoryError
+Compiling Bollinger_RSI_Mean_Reversion...
+INFO:     120.155.39.176:58375 - "POST /compile HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\uvicorn\protocols\http\h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\fastapi\applications.py", line 1160, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Python312\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Python312\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Python312\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Python312\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\fastapi\routing.py", line 130, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Python312\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Python312\Lib\site-packages\fastapi\routing.py", line 116, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\fastapi\routing.py", line 670, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\fastapi\routing.py", line 326, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\starlette\concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\anyio\to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\anyio\_backends\_asyncio.py", line 2502, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\anyio\_backends\_asyncio.py", line 986, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\Documents\metatrader\mt5_export\mt5_worker\worker.py", line 73, in api_compile
+    success = compile_ea(req.ea_name)
+              ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\Documents\metatrader\mt5_export\mt5_worker\run_backtest.py", line 39, in compile_ea
+    proc = subprocess.run(
+           ^^^^^^^^^^^^^^^
+  File "subprocess.py", line 552, in run
+  File "subprocess.py", line 1211, in communicate
+  File "subprocess.py", line 1632, in _communicate
+subprocess.TimeoutExpired: Command '['C:\\Program Files\\FTMO MetaTrader 5\\metaeditor64.exe', '/compile:C:\\Users\\Administrator\\AppData\\Roaming\\MetaQuotes\\Terminal\\49CDDEAA95A409ED22BD2287BB67CB9C\\MQL5\\Experts\\Bollinger_RSI_Mean_Reversion.mq5', '/log']' timed out after 60 seconds
+Compiling Bollinger_RSI_Mean_Reversion...
+Compiling TestEA2...
+INFO:     120.155.39.176:58427 - "POST /compile HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\uvicorn\protocols\http\h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\fastapi\applications.py", line 1160, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Python312\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Python312\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Python312\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Python312\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\fastapi\routing.py", line 130, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Python312\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Python312\Lib\site-packages\fastapi\routing.py", line 116, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\fastapi\routing.py", line 670, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\fastapi\routing.py", line 326, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\starlette\concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\anyio\to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\anyio\_backends\_asyncio.py", line 2502, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\anyio\_backends\_asyncio.py", line 986, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\Documents\metatrader\mt5_export\mt5_worker\worker.py", line 73, in api_compile
+    success = compile_ea(req.ea_name)
+              ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\Documents\metatrader\mt5_export\mt5_worker\run_backtest.py", line 39, in compile_ea
+    proc = subprocess.run(
+           ^^^^^^^^^^^^^^^
+  File "subprocess.py", line 552, in run
+  File "subprocess.py", line 1211, in communicate
+  File "subprocess.py", line 1632, in _communicate
+subprocess.TimeoutExpired: Command '['C:\\Program Files\\FTMO MetaTrader 5\\metaeditor64.exe', '/compile:C:\\Users\\Administrator\\AppData\\Roaming\\MetaQuotes\\Terminal\\49CDDEAA95A409ED22BD2287BB67CB9C\\MQL5\\Experts\\Bollinger_RSI_Mean_Reversion.mq5', '/log']' timed out after 60 seconds
+Compiling Bollinger_RSI_Mean_Reversion...
+INFO:     198.235.24.85:64862 - "GET / HTTP/1.1" 404 Not Found
+INFO:     120.155.39.176:58483 - "POST /compile HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\uvicorn\protocols\http\h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\fastapi\applications.py", line 1160, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Python312\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Python312\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Python312\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Python312\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\fastapi\routing.py", line 130, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Python312\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Python312\Lib\site-packages\fastapi\routing.py", line 116, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\fastapi\routing.py", line 670, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\fastapi\routing.py", line 326, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\starlette\concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\anyio\to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\anyio\_backends\_asyncio.py", line 2502, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\anyio\_backends\_asyncio.py", line 986, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\Documents\metatrader\mt5_export\mt5_worker\worker.py", line 73, in api_compile
+    success = compile_ea(req.ea_name)
+              ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\Documents\metatrader\mt5_export\mt5_worker\run_backtest.py", line 39, in compile_ea
+    proc = subprocess.run(
+           ^^^^^^^^^^^^^^^
+  File "subprocess.py", line 552, in run
+  File "subprocess.py", line 1211, in communicate
+  File "subprocess.py", line 1632, in _communicate
+subprocess.TimeoutExpired: Command '['C:\\Program Files\\FTMO MetaTrader 5\\metaeditor64.exe', '/compile:C:\\Users\\Administrator\\AppData\\Roaming\\MetaQuotes\\Terminal\\49CDDEAA95A409ED22BD2287BB67CB9C\\MQL5\\Experts\\TestEA2.mq5', '/log']' timed out after 60 seconds
+Compiling TestEA2...
+INFO:     120.155.39.176:58515 - "POST /compile HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\uvicorn\protocols\http\h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\fastapi\applications.py", line 1160, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Python312\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Python312\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Python312\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Python312\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\fastapi\routing.py", line 130, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Python312\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Python312\Lib\site-packages\fastapi\routing.py", line 116, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\fastapi\routing.py", line 670, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\fastapi\routing.py", line 326, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\starlette\concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\anyio\to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\anyio\_backends\_asyncio.py", line 2502, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\anyio\_backends\_asyncio.py", line 986, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\Documents\metatrader\mt5_export\mt5_worker\worker.py", line 73, in api_compile
+    success = compile_ea(req.ea_name)
+              ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\Documents\metatrader\mt5_export\mt5_worker\run_backtest.py", line 39, in compile_ea
+    proc = subprocess.run(
+           ^^^^^^^^^^^^^^^
+  File "subprocess.py", line 552, in run
+  File "subprocess.py", line 1211, in communicate
+  File "subprocess.py", line 1632, in _communicate
+subprocess.TimeoutExpired: Command '['C:\\Program Files\\FTMO MetaTrader 5\\metaeditor64.exe', '/compile:C:\\Users\\Administrator\\AppData\\Roaming\\MetaQuotes\\Terminal\\49CDDEAA95A409ED22BD2287BB67CB9C\\MQL5\\Experts\\Bollinger_RSI_Mean_Reversion.mq5', '/log']' timed out after 60 seconds
+INFO:     120.155.39.176:58533 - "POST /compile HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\uvicorn\protocols\http\h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\fastapi\applications.py", line 1160, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Python312\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Python312\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Python312\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Python312\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\fastapi\routing.py", line 130, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Python312\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Python312\Lib\site-packages\fastapi\routing.py", line 116, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\fastapi\routing.py", line 670, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\fastapi\routing.py", line 326, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\starlette\concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\anyio\to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\anyio\_backends\_asyncio.py", line 2502, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\anyio\_backends\_asyncio.py", line 986, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\Documents\metatrader\mt5_export\mt5_worker\worker.py", line 73, in api_compile
+    success = compile_ea(req.ea_name)
+              ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\Documents\metatrader\mt5_export\mt5_worker\run_backtest.py", line 39, in compile_ea
+    proc = subprocess.run(
+           ^^^^^^^^^^^^^^^
+  File "subprocess.py", line 552, in run
+  File "subprocess.py", line 1211, in communicate
+  File "subprocess.py", line 1632, in _communicate
+subprocess.TimeoutExpired: Command '['C:\\Program Files\\FTMO MetaTrader 5\\metaeditor64.exe', '/compile:C:\\Users\\Administrator\\AppData\\Roaming\\MetaQuotes\\Terminal\\49CDDEAA95A409ED22BD2287BB67CB9C\\MQL5\\Experts\\TestEA2.mq5', '/log']' timed out after 60 seconds
+Compiling Gold_EMA_Scalper...
+Compile OK: C:\Users\Administrator\AppData\Roaming\MetaQuotes\Terminal\49CDDEAA95A409ED22BD2287BB67CB9C\MQL5\Experts\Gold_EMA_Scalper.ex5
+INFO:     120.155.39.176:58754 - "POST /compile HTTP/1.1" 200 OK
+Compiling Gold_EMA_Scalper...
+Compile OK: C:\Users\Administrator\AppData\Roaming\MetaQuotes\Terminal\49CDDEAA95A409ED22BD2287BB67CB9C\MQL5\Experts\Gold_EMA_Scalper.ex5
+Running backtest: Gold_EMA_Scalper (XAUUSD H1)...
+Config: C:\Users\Administrator\Documents\metatrader\mt5_export\mt5_worker\config\Gold_EMA_Scalper_backtest.ini
+Backtest done: results\Gold_EMA_Scalper_report.htm
+INFO:     120.155.39.176:58764 - "POST /backtest HTTP/1.1" 200 OK
+Compiling Gold_EMA_Scalper...
+Compile OK: C:\Users\Administrator\AppData\Roaming\MetaQuotes\Terminal\49CDDEAA95A409ED22BD2287BB67CB9C\MQL5\Experts\Gold_EMA_Scalper.ex5
+INFO:     120.155.39.176:58790 - "POST /compile HTTP/1.1" 200 OK
+Compiling Gold_EMA_Scalper...
+Compile OK: C:\Users\Administrator\AppData\Roaming\MetaQuotes\Terminal\49CDDEAA95A409ED22BD2287BB67CB9C\MQL5\Experts\Gold_EMA_Scalper.ex5
+Running backtest: Gold_EMA_Scalper (XAUUSD H1)...
+Config: C:\Users\Administrator\Documents\metatrader\mt5_export\mt5_worker\config\Gold_EMA_Scalper_backtest.ini
+Backtest done: results\Gold_EMA_Scalper_report.htm
+INFO:     120.155.39.176:58791 - "POST /backtest HTTP/1.1" 200 OK
+Compiling Gold_EMA_Scalper...
+INFO:     120.155.39.176:58820 - "POST /compile HTTP/1.1" 500 Internal Server Error
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Python312\Lib\site-packages\uvicorn\protocols\http\h11_impl.py", line 410, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\fastapi\applications.py", line 1160, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Python312\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Python312\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Python312\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Python312\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\fastapi\routing.py", line 130, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Python312\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Python312\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Python312\Lib\site-packages\fastapi\routing.py", line 116, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\fastapi\routing.py", line 670, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\fastapi\routing.py", line 326, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\starlette\concurrency.py", line 32, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\anyio\to_thread.py", line 63, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\anyio\_backends\_asyncio.py", line 2502, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Python312\Lib\site-packages\anyio\_backends\_asyncio.py", line 986, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\Documents\metatrader\mt5_export\mt5_worker\worker.py", line 73, in api_compile
+    success = compile_ea(req.ea_name)
+              ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\Documents\metatrader\mt5_export\mt5_worker\run_backtest.py", line 39, in compile_ea
+    proc = subprocess.run(
+           ^^^^^^^^^^^^^^^
+  File "subprocess.py", line 552, in run
+  File "subprocess.py", line 1211, in communicate
+  File "subprocess.py", line 1632, in _communicate
+subprocess.TimeoutExpired: Command '['C:\\Program Files\\FTMO MetaTrader 5\\metaeditor64.exe', '/compile:C:\\Users\\Administrator\\AppData\\Roaming\\MetaQuotes\\Terminal\\49CDDEAA95A409ED22BD2287BB67CB9C\\MQL5\\Experts\\Gold_EMA_Scalper.mq5', '/log']' timed out after 60 seconds
+Compiling Gold_EMA_Scalper...
+Compile FAILED for Gold_EMA_Scalper
+
+ 
+ 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5   :   i n f o r m a t i o n :   c o m p i l i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ S t d L i b E r r . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ O r d e r I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ H i s t o r y O r d e r I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ P o s i t i o n I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ D e a l I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 ( 1 7 7 , 4 6 )   :   w a r n i n g   9 3 :   i m p l i c i t   c o n v e r s i o n   f r o m   ' s t r i n g '   t o   ' u l o n g ' 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 ( 1 9 1 , 4 6 )   :   w a r n i n g   9 3 :   i m p l i c i t   c o n v e r s i o n   f r o m   ' s t r i n g '   t o   ' u l o n g ' 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 ( 0 , 0 )   :   e r r o r   0 :   I n t e r n a l   c o m p i l e r   e r r o r 
+ 
+ 
+INFO:     120.155.39.176:58874 - "POST /compile HTTP/1.1" 200 OK
+Compiling Gold_EMA_Scalper...
+Compile FAILED for Gold_EMA_Scalper
+
+ 
+ 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5   :   i n f o r m a t i o n :   c o m p i l i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ S t d L i b E r r . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ O r d e r I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ H i s t o r y O r d e r I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ P o s i t i o n I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ D e a l I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 ( 1 7 7 , 4 6 )   :   w a r n i n g   9 3 :   i m p l i c i t   c o n v e r s i o n   f r o m   ' s t r i n g '   t o   ' u l o n g ' 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 ( 1 9 1 , 4 6 )   :   w a r n i n g   9 3 :   i m p l i c i t   c o n v e r s i o n   f r o m   ' s t r i n g '   t o   ' u l o n g ' 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 ( 0 , 0 )   :   e r r o r   0 :   I n t e r n a l   c o m p i l e r   e r r o r 
+ 
+ 
+INFO:     120.155.39.176:58894 - "POST /compile HTTP/1.1" 200 OK
+Compiling Gold_EMA_Scalper...
+Compile FAILED for Gold_EMA_Scalper
+
+ 
+ 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5   :   i n f o r m a t i o n :   c o m p i l i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ S t d L i b E r r . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ O r d e r I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ H i s t o r y O r d e r I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ P o s i t i o n I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ D e a l I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 ( 1 7 9 , 4 6 )   :   w a r n i n g   9 3 :   i m p l i c i t   c o n v e r s i o n   f r o m   ' s t r i n g '   t o   ' u l o n g ' 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 ( 1 9 3 , 4 6 )   :   w a r n i n g   9 3 :   i m p l i c i t   c o n v e r s i o n   f r o m   ' s t r i n g '   t o   ' u l o n g ' 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 ( 0 , 0 )   :   e r r o r   0 :   I n t e r n a l   c o m p i l e r   e r r o r 
+ 
+ 
+INFO:     120.155.39.176:58913 - "POST /compile HTTP/1.1" 200 OK
+Compiling Gold_EMA_Scalper...
+Compile FAILED for Gold_EMA_Scalper
+
+ 
+ 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5   :   i n f o r m a t i o n :   c o m p i l i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ S t d L i b E r r . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ O r d e r I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ H i s t o r y O r d e r I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ P o s i t i o n I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ D e a l I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 ( 1 7 6 , 4 6 )   :   w a r n i n g   9 3 :   i m p l i c i t   c o n v e r s i o n   f r o m   ' s t r i n g '   t o   ' u l o n g ' 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 ( 1 9 3 , 4 6 )   :   w a r n i n g   9 3 :   i m p l i c i t   c o n v e r s i o n   f r o m   ' s t r i n g '   t o   ' u l o n g ' 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 ( 0 , 0 )   :   e r r o r   0 :   I n t e r n a l   c o m p i l e r   e r r o r 
+ 
+ 
+INFO:     120.155.39.176:58926 - "POST /compile HTTP/1.1" 200 OK
+Compiling Gold_EMA_Scalper...
+Compile FAILED for Gold_EMA_Scalper
+
+ 
+ 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5   :   i n f o r m a t i o n :   c o m p i l i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ S t d L i b E r r . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ O r d e r I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ H i s t o r y O r d e r I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ P o s i t i o n I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ D e a l I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 ( 1 8 3 , 4 6 )   :   w a r n i n g   9 3 :   i m p l i c i t   c o n v e r s i o n   f r o m   ' s t r i n g '   t o   ' u l o n g ' 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 ( 2 0 0 , 4 6 )   :   w a r n i n g   9 3 :   i m p l i c i t   c o n v e r s i o n   f r o m   ' s t r i n g '   t o   ' u l o n g ' 
+ 
+ 
+INFO:     120.155.39.176:58940 - "POST /compile HTTP/1.1" 200 OK
+Compiling Gold_EMA_Scalper...
+Compile FAILED for Gold_EMA_Scalper
+
+ 
+ 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5   :   i n f o r m a t i o n :   c o m p i l i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ S t d L i b E r r . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ O r d e r I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ H i s t o r y O r d e r I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ P o s i t i o n I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ D e a l I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 ( 1 8 3 , 4 6 )   :   w a r n i n g   9 3 :   i m p l i c i t   c o n v e r s i o n   f r o m   ' s t r i n g '   t o   ' u l o n g ' 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 ( 2 0 0 , 4 6 )   :   w a r n i n g   9 3 :   i m p l i c i t   c o n v e r s i o n   f r o m   ' s t r i n g '   t o   ' u l o n g ' 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 ( 0 , 0 )   :   e r r o r   0 :   I n t e r n a l   c o m p i l e r   e r r o r 
+ 
+ 
+INFO:     120.155.39.176:58948 - "POST /compile HTTP/1.1" 200 OK
+Compiling Gold_EMA_Scalper...
+Compile OK: C:\Users\Administrator\AppData\Roaming\MetaQuotes\Terminal\49CDDEAA95A409ED22BD2287BB67CB9C\MQL5\Experts\Gold_EMA_Scalper.ex5
+INFO:     120.155.39.176:58971 - "POST /compile HTTP/1.1" 200 OK
+Compiling Gold_EMA_Scalper...
+Compile OK: C:\Users\Administrator\AppData\Roaming\MetaQuotes\Terminal\49CDDEAA95A409ED22BD2287BB67CB9C\MQL5\Experts\Gold_EMA_Scalper.ex5
+Running backtest: Gold_EMA_Scalper (XAUUSD H1)...
+Config: C:\Users\Administrator\Documents\metatrader\mt5_export\mt5_worker\config\Gold_EMA_Scalper_backtest.ini
+Backtest done: results\Gold_EMA_Scalper_report.htm
+INFO:     120.155.39.176:58973 - "POST /backtest HTTP/1.1" 200 OK
+Compiling Gold_EMA_Scalper...
+Compile OK: C:\Users\Administrator\AppData\Roaming\MetaQuotes\Terminal\49CDDEAA95A409ED22BD2287BB67CB9C\MQL5\Experts\Gold_EMA_Scalper.ex5
+INFO:     120.155.39.176:59046 - "POST /compile HTTP/1.1" 200 OK
+Compiling Gold_EMA_Scalper...
+Compile OK: C:\Users\Administrator\AppData\Roaming\MetaQuotes\Terminal\49CDDEAA95A409ED22BD2287BB67CB9C\MQL5\Experts\Gold_EMA_Scalper.ex5
+Running backtest: Gold_EMA_Scalper (XAUUSD H1)...
+Config: C:\Users\Administrator\Documents\metatrader\mt5_export\mt5_worker\config\Gold_EMA_Scalper_backtest.ini
+Backtest done: results\Gold_EMA_Scalper_report.htm
+INFO:     120.155.39.176:59060 - "POST /backtest HTTP/1.1" 200 OK
+Compiling Gold_Scalper_EMA_Cross...
+Compile OK: C:\Users\Administrator\AppData\Roaming\MetaQuotes\Terminal\49CDDEAA95A409ED22BD2287BB67CB9C\MQL5\Experts\Gold_Scalper_EMA_Cross.ex5
+INFO:     120.155.39.176:59609 - "POST /compile HTTP/1.1" 200 OK
+Compiling Gold_Scalper_EMA_Cross...
+Compile OK: C:\Users\Administrator\AppData\Roaming\MetaQuotes\Terminal\49CDDEAA95A409ED22BD2287BB67CB9C\MQL5\Experts\Gold_Scalper_EMA_Cross.ex5
+Running backtest: Gold_Scalper_EMA_Cross (XAUUSD H1)...
+Config: C:\Users\Administrator\Documents\metatrader\mt5_export\mt5_worker\config\Gold_Scalper_EMA_Cross_backtest.ini
+Backtest done: results\Gold_Scalper_EMA_Cross_report.htm
+INFO:     120.155.39.176:59614 - "POST /backtest HTTP/1.1" 200 OK
+Compiling Gold_EMA_Scalping...
+Compile FAILED for Gold_EMA_Scalping
+
+ 
+ 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p i n g . m q 5   :   i n f o r m a t i o n :   c o m p i l i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p i n g . m q 5 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p i n g . m q 5   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ S t d L i b E r r . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ O r d e r I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ H i s t o r y O r d e r I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ P o s i t i o n I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ D e a l I n f o . m q h 
+ 
+   :   i n f o r m a t i o n :   g e n e r a t i n g   c o d e 
+ 
+   :   i n f o r m a t i o n :   g e n e r a t i n g   c o d e   3 % 
+ 
+   :   i n f o r m a t i o n :   g e n e r a t i n g   c o d e   6 % 
+ 
+   :   i n f o r m a t i o n :   g e n e r a t i n g   c o d e   9 % 
+ 
+   :   i n f o r m a t i o n :   g e n e r a t i n g   c o d e   1 2 % 
+ 
+   :   i n f o r m a t i o n :   g e n e r a t i n g   c o d e   1 5 % 
+ 
+   :   i n f o r m a t i o n :   g e n e r a t i n g   c o d e   1 8 % 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p i n g . m q 5 ( 0 , 0 )   :   e r r o r   0 :   I n t e r n a l   c o m p i l e r   e r r o r 
+ 
+ 
+INFO:     120.155.39.176:59721 - "POST /compile HTTP/1.1" 200 OK
+Compiling Gold_EMA_Scalping...
+Compile FAILED for Gold_EMA_Scalping
+
+ 
+ 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p i n g . m q 5   :   i n f o r m a t i o n :   c o m p i l i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p i n g . m q 5 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p i n g . m q 5 ( 1 , 1 )   :   e r r o r   1 1 0 :   u n k n o w n   s y m b o l   ' ` '   ( 0 x 6 0 ) 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p i n g . m q 5 ( 1 , 2 )   :   e r r o r   1 1 0 :   u n k n o w n   s y m b o l   ' ` '   ( 0 x 6 0 ) 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p i n g . m q 5 ( 1 , 3 )   :   e r r o r   1 1 0 :   u n k n o w n   s y m b o l   ' ` '   ( 0 x 6 0 ) 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p i n g . m q 5   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ S t d L i b E r r . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ O r d e r I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ H i s t o r y O r d e r I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ P o s i t i o n I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ D e a l I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p i n g . m q 5 ( 1 1 9 , 1 )   :   e r r o r   1 1 0 :   u n k n o w n   s y m b o l   ' ` '   ( 0 x 6 0 ) 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p i n g . m q 5 ( 1 1 9 , 2 )   :   e r r o r   1 1 0 :   u n k n o w n   s y m b o l   ' ` '   ( 0 x 6 0 ) 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p i n g . m q 5 ( 1 1 9 , 3 )   :   e r r o r   1 1 0 :   u n k n o w n   s y m b o l   ' ` '   ( 0 x 6 0 ) 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p i n g . m q 5 ( 1 , 4 )   :   e r r o r   1 4 9 :   ' m q l 5 '   -   u n e x p e c t e d   t o k e n ,   p r o b a b l y   t y p e   i s   m i s s i n g ? 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p i n g . m q 5 ( 2 , 1 )   :   e r r o r   1 5 4 :   ' # p r o p e r t y '   -   s e m i c o l o n   e x p e c t e d 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 1 5 , 4 )   :   e r r o r   1 4 9 :   ' C O b j e c t '   -   u n e x p e c t e d   t o k e n ,   p r o b a b l y   t y p e   i s   m i s s i n g ? 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 1 5 , 2 1 )   :   e r r o r   1 5 4 :   ' * '   -   s e m i c o l o n   e x p e c t e d 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 1 7 , 1 )   :   e r r o r   1 4 9 :   ' p u b l i c '   -   u n e x p e c t e d   t o k e n ,   p r o b a b l y   t y p e   i s   m i s s i n g ? 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 1 8 , 5 0 )   :   e r r o r   1 4 9 :   ' m _ n e x t '   -   u n e x p e c t e d   t o k e n ,   p r o b a b l y   t y p e   i s   m i s s i n g ? 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 1 8 , 5 0 )   :   e r r o r   2 9 9 :   ' m _ n e x t '   -   c l a s s   t y p e   e x p e c t e d 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 1 8 , 9 2 )   :   e r r o r   1 5 4 :   s e m i c o l o n   e x p e c t e d 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 1 8 , 9 2 )   :   e r r o r   1 7 5 :   ' } '   -   e x p r e s s i o n s   a r e   n o t   a l l o w e d   o n   a   g l o b a l   s c o p e 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 1 9 , 2 1 )   :   e r r o r   1 7 5 :   ' ~ '   -   e x p r e s s i o n s   a r e   n o t   a l l o w e d   o n   a   g l o b a l   s c o p e 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 1 , 4 )   :   e r r o r   1 4 9 :   ' C O b j e c t '   -   u n e x p e c t e d   t o k e n ,   p r o b a b l y   t y p e   i s   m i s s i n g ? 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 1 , 2 1 )   :   e r r o r   1 5 4 :   ' * '   -   s e m i c o l o n   e x p e c t e d 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 1 , 9 2 )   :   e r r o r   1 7 5 :   ' } '   -   e x p r e s s i o n s   a r e   n o t   a l l o w e d   o n   a   g l o b a l   s c o p e 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 2 , 2 7 )   :   e r r o r   1 1 6 :   d e c l a r a t i o n   w i t h o u t   t y p e 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 2 , 3 5 )   :   e r r o r   1 5 5 :   ' * '   -   c o m m a   e x p e c t e d 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 3 , 4 )   :   e r r o r   1 4 9 :   ' C O b j e c t '   -   u n e x p e c t e d   t o k e n ,   p r o b a b l y   t y p e   i s   m i s s i n g ? 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 3 , 2 1 )   :   e r r o r   1 5 4 :   ' * '   -   s e m i c o l o n   e x p e c t e d 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 3 , 9 2 )   :   e r r o r   1 7 5 :   ' } '   -   e x p r e s s i o n s   a r e   n o t   a l l o w e d   o n   a   g l o b a l   s c o p e 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 4 , 2 7 )   :   e r r o r   1 1 6 :   d e c l a r a t i o n   w i t h o u t   t y p e 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 4 , 3 5 )   :   e r r o r   1 5 5 :   ' * '   -   c o m m a   e x p e c t e d 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 6 , 4 )   :   e r r o r   1 4 9 :   u n e x p e c t e d   t o k e n 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 7 , 4 )   :   e r r o r   1 4 9 :   u n e x p e c t e d   t o k e n 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 9 , 4 )   :   e r r o r   1 4 9 :   u n e x p e c t e d   t o k e n 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 9 , 6 8 )   :   e r r o r   2 7 2 :   ' c o n s t '   m o d i f i e r   n o t   a l l o w e d   f o r   n o n m e m b e r   f u n c t i o n s 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 3 1 , 4 )   :   e r r o r   1 4 9 :   u n e x p e c t e d   t o k e n 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 3 1 , 3 6 )   :   e r r o r   1 1 6 :   d e c l a r a t i o n   w i t h o u t   t y p e 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 3 1 , 4 4 )   :   e r r o r   1 5 5 :   ' * '   -   c o m m a   e x p e c t e d 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 3 1 , 6 8 )   :   e r r o r   2 7 2 :   ' c o n s t '   m o d i f i e r   n o t   a l l o w e d   f o r   n o n m e m b e r   f u n c t i o n s 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 3 2 , 3 )   :   e r r o r   1 7 5 :   ' } '   -   e x p r e s s i o n s   a r e   n o t   a l l o w e d   o n   a   g l o b a l   s c o p e 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ O r d e r I n f o . m q h ( 1 2 , 2 7 )   :   e r r o r   2 3 9 :   c l a s s   t y p e   e x p e c t e d 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ H i s t o r y O r d e r I n f o . m q h ( 1 2 , 3 4 )   :   e r r o r   2 3 9 :   c l a s s   t y p e   e x p e c t e d 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ P o s i t i o n I n f o . m q h ( 1 2 , 3 0 )   :   e r r o r   2 3 9 :   c l a s s   t y p e   e x p e c t e d 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ D e a l I n f o . m q h ( 1 2 , 2 6 )   :   e r r o r   2 3 9 :   c l a s s   t y p e   e x p e c t e d 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h ( 2 5 , 2 3 )   :   e r r o r   2 3 9 :   c l a s s   t y p e   e x p e c t e d 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 2 , 7 6 )   :   e r r o r   2 5 6 :   u n d e c l a r e d   i d e n t i f i e r   ' m _ p r e v ' 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 2 , 8 3 )   :   e r r o r   2 5 6 :   u n d e c l a r e d   i d e n t i f i e r   ' n o d e ' 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 4 , 8 3 )   :   e r r o r   2 5 6 :   u n d e c l a r e d   i d e n t i f i e r   ' n o d e ' 
+ 
+ R e s u l t :   4 3   e r r o r s ,   0   w a r n i n g s 
+ 
+ 
+INFO:     120.155.39.176:59744 - "POST /compile HTTP/1.1" 200 OK
+Compiling Gold_EMA_Scalping...
+Compile FAILED for Gold_EMA_Scalping
+
+ 
+ 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p i n g . m q 5   :   i n f o r m a t i o n :   c o m p i l i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p i n g . m q 5 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p i n g . m q 5   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ S t d L i b E r r . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ O r d e r I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ H i s t o r y O r d e r I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ P o s i t i o n I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ D e a l I n f o . m q h 
+ 
+   :   i n f o r m a t i o n :   g e n e r a t i n g   c o d e 
+ 
+   :   i n f o r m a t i o n :   g e n e r a t i n g   c o d e   3 % 
+ 
+   :   i n f o r m a t i o n :   g e n e r a t i n g   c o d e   6 % 
+ 
+   :   i n f o r m a t i o n :   g e n e r a t i n g   c o d e   9 % 
+ 
+   :   i n f o r m a t i o n :   g e n e r a t i n g   c o d e   1 2 % 
+ 
+   :   i n f o r m a t i o n :   g e n e r a t i n g   c o d e   1 5 % 
+ 
+   :   i n f o r m a t i o n :   g e n e r a t i n g   c o d e   1 8 % 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p i n g . m q 5 ( 0 , 0 )   :   e r r o r   0 :   I n t e r n a l   c o m p i l e r   e r r o r 
+ 
+ 
+INFO:     120.155.39.176:59752 - "POST /compile HTTP/1.1" 200 OK
+Compiling Gold_EMA_Scalper...
+Compile OK: C:\Users\Administrator\AppData\Roaming\MetaQuotes\Terminal\49CDDEAA95A409ED22BD2287BB67CB9C\MQL5\Experts\Gold_EMA_Scalper.ex5
+INFO:     120.155.39.176:59932 - "POST /compile HTTP/1.1" 200 OK
+Compiling Gold_EMA_Scalper...
+Compile OK: C:\Users\Administrator\AppData\Roaming\MetaQuotes\Terminal\49CDDEAA95A409ED22BD2287BB67CB9C\MQL5\Experts\Gold_EMA_Scalper.ex5
+Running backtest: Gold_EMA_Scalper (XAUUSD H1)...
+Config: C:\Users\Administrator\Documents\metatrader\mt5_export\mt5_worker\config\Gold_EMA_Scalper_backtest.ini
+Backtest done: results\Gold_EMA_Scalper_report.htm
+INFO:     120.155.39.176:59934 - "POST /backtest HTTP/1.1" 200 OK
+Compiling Gold_EMA_Scalper...
+Compile FAILED for Gold_EMA_Scalper
+
+ 
+ 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5   :   i n f o r m a t i o n :   c o m p i l i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 ( 1 , 1 )   :   e r r o r   1 1 0 :   u n k n o w n   s y m b o l   ' ` '   ( 0 x 6 0 ) 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 ( 1 , 2 )   :   e r r o r   1 1 0 :   u n k n o w n   s y m b o l   ' ` '   ( 0 x 6 0 ) 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 ( 1 , 3 )   :   e r r o r   1 1 0 :   u n k n o w n   s y m b o l   ' ` '   ( 0 x 6 0 ) 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ S t d L i b E r r . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ O r d e r I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ H i s t o r y O r d e r I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ P o s i t i o n I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h   :   i n f o r m a t i o n :   i n c l u d i n g   C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ D e a l I n f o . m q h 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 ( 1 3 5 , 1 )   :   e r r o r   1 1 0 :   u n k n o w n   s y m b o l   ' ` '   ( 0 x 6 0 ) 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 ( 1 3 5 , 2 )   :   e r r o r   1 1 0 :   u n k n o w n   s y m b o l   ' ` '   ( 0 x 6 0 ) 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 ( 1 3 5 , 3 )   :   e r r o r   1 1 0 :   u n k n o w n   s y m b o l   ' ` '   ( 0 x 6 0 ) 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 ( 1 , 4 )   :   e r r o r   1 4 9 :   ' m q l 5 '   -   u n e x p e c t e d   t o k e n ,   p r o b a b l y   t y p e   i s   m i s s i n g ? 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ E x p e r t s \ G o l d _ E M A _ S c a l p e r . m q 5 ( 2 , 1 )   :   e r r o r   1 5 4 :   ' # p r o p e r t y '   -   s e m i c o l o n   e x p e c t e d 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 1 5 , 4 )   :   e r r o r   1 4 9 :   ' C O b j e c t '   -   u n e x p e c t e d   t o k e n ,   p r o b a b l y   t y p e   i s   m i s s i n g ? 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 1 5 , 2 1 )   :   e r r o r   1 5 4 :   ' * '   -   s e m i c o l o n   e x p e c t e d 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 1 7 , 1 )   :   e r r o r   1 4 9 :   ' p u b l i c '   -   u n e x p e c t e d   t o k e n ,   p r o b a b l y   t y p e   i s   m i s s i n g ? 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 1 8 , 5 0 )   :   e r r o r   1 4 9 :   ' m _ n e x t '   -   u n e x p e c t e d   t o k e n ,   p r o b a b l y   t y p e   i s   m i s s i n g ? 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 1 8 , 5 0 )   :   e r r o r   2 9 9 :   ' m _ n e x t '   -   c l a s s   t y p e   e x p e c t e d 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 1 8 , 9 2 )   :   e r r o r   1 5 4 :   s e m i c o l o n   e x p e c t e d 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 1 8 , 9 2 )   :   e r r o r   1 7 5 :   ' } '   -   e x p r e s s i o n s   a r e   n o t   a l l o w e d   o n   a   g l o b a l   s c o p e 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 1 9 , 2 1 )   :   e r r o r   1 7 5 :   ' ~ '   -   e x p r e s s i o n s   a r e   n o t   a l l o w e d   o n   a   g l o b a l   s c o p e 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 1 , 4 )   :   e r r o r   1 4 9 :   ' C O b j e c t '   -   u n e x p e c t e d   t o k e n ,   p r o b a b l y   t y p e   i s   m i s s i n g ? 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 1 , 2 1 )   :   e r r o r   1 5 4 :   ' * '   -   s e m i c o l o n   e x p e c t e d 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 1 , 9 2 )   :   e r r o r   1 7 5 :   ' } '   -   e x p r e s s i o n s   a r e   n o t   a l l o w e d   o n   a   g l o b a l   s c o p e 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 2 , 2 7 )   :   e r r o r   1 1 6 :   d e c l a r a t i o n   w i t h o u t   t y p e 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 2 , 3 5 )   :   e r r o r   1 5 5 :   ' * '   -   c o m m a   e x p e c t e d 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 3 , 4 )   :   e r r o r   1 4 9 :   ' C O b j e c t '   -   u n e x p e c t e d   t o k e n ,   p r o b a b l y   t y p e   i s   m i s s i n g ? 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 3 , 2 1 )   :   e r r o r   1 5 4 :   ' * '   -   s e m i c o l o n   e x p e c t e d 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 3 , 9 2 )   :   e r r o r   1 7 5 :   ' } '   -   e x p r e s s i o n s   a r e   n o t   a l l o w e d   o n   a   g l o b a l   s c o p e 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 4 , 2 7 )   :   e r r o r   1 1 6 :   d e c l a r a t i o n   w i t h o u t   t y p e 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 4 , 3 5 )   :   e r r o r   1 5 5 :   ' * '   -   c o m m a   e x p e c t e d 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 6 , 4 )   :   e r r o r   1 4 9 :   u n e x p e c t e d   t o k e n 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 7 , 4 )   :   e r r o r   1 4 9 :   u n e x p e c t e d   t o k e n 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 9 , 4 )   :   e r r o r   1 4 9 :   u n e x p e c t e d   t o k e n 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 9 , 6 8 )   :   e r r o r   2 7 2 :   ' c o n s t '   m o d i f i e r   n o t   a l l o w e d   f o r   n o n m e m b e r   f u n c t i o n s 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 3 1 , 4 )   :   e r r o r   1 4 9 :   u n e x p e c t e d   t o k e n 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 3 1 , 3 6 )   :   e r r o r   1 1 6 :   d e c l a r a t i o n   w i t h o u t   t y p e 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 3 1 , 4 4 )   :   e r r o r   1 5 5 :   ' * '   -   c o m m a   e x p e c t e d 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 3 1 , 6 8 )   :   e r r o r   2 7 2 :   ' c o n s t '   m o d i f i e r   n o t   a l l o w e d   f o r   n o n m e m b e r   f u n c t i o n s 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 3 2 , 3 )   :   e r r o r   1 7 5 :   ' } '   -   e x p r e s s i o n s   a r e   n o t   a l l o w e d   o n   a   g l o b a l   s c o p e 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ O r d e r I n f o . m q h ( 1 2 , 2 7 )   :   e r r o r   2 3 9 :   c l a s s   t y p e   e x p e c t e d 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ H i s t o r y O r d e r I n f o . m q h ( 1 2 , 3 4 )   :   e r r o r   2 3 9 :   c l a s s   t y p e   e x p e c t e d 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ P o s i t i o n I n f o . m q h ( 1 2 , 3 0 )   :   e r r o r   2 3 9 :   c l a s s   t y p e   e x p e c t e d 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ D e a l I n f o . m q h ( 1 2 , 2 6 )   :   e r r o r   2 3 9 :   c l a s s   t y p e   e x p e c t e d 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ T r a d e \ T r a d e . m q h ( 2 5 , 2 3 )   :   e r r o r   2 3 9 :   c l a s s   t y p e   e x p e c t e d 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 2 , 7 6 )   :   e r r o r   2 5 6 :   u n d e c l a r e d   i d e n t i f i e r   ' m _ p r e v ' 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 2 , 8 3 )   :   e r r o r   2 5 6 :   u n d e c l a r e d   i d e n t i f i e r   ' n o d e ' 
+ 
+ C : \ U s e r s \ A d m i n i s t r a t o r \ A p p D a t a \ R o a m i n g \ M e t a Q u o t e s \ T e r m i n a l \ 4 9 C D D E A A 9 5 A 4 0 9 E D 2 2 B D 2 2 8 7 B B 6 7 C B 9 C \ M Q L 5 \ I n c l u d e \ O b j e c t . m q h ( 2 4 , 8 3 )   :   e r r o r   2 5 6 :   u n d e c l a r e d   i d e n t i f i e r   ' n o d e ' 
+ 
+ R e s u l t :   4 3   e r r o r s ,   0   w a r n i n g s 
+ 
+ 
+INFO:     120.155.39.176:59953 - "POST /compile HTTP/1.1" 200 OK

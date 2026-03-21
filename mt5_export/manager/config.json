@@ -1,0 +1,22 @@
+{
+  "slots": {
+    "0": {
+      "mt5_dir": "C:\\Program Files\\FTMO MetaTrader 5",
+      "data_dir": "C:\\Users\\Administrator\\AppData\\Roaming\\MetaQuotes\\Terminal\\49CDDEAA95A409ED22BD2287BB67CB9C",
+      "workspace": "C:\\MT5\\workspaces\\slot0",
+      "terminal": "C:\\Program Files\\FTMO MetaTrader 5\\terminal64.exe",
+      "metaeditor": "C:\\Program Files\\FTMO MetaTrader 5\\metaeditor64.exe",
+      "status": "ready",
+      "current_job": null
+    },
+    "1": {
+      "mt5_dir": "C:\\MT5\\slot1",
+      "data_dir": "C:\\Users\\Administrator\\AppData\\Roaming\\MetaQuotes\\Terminal\\188DBDBD16C4F1BF4DF3C954CB51194E",
+      "workspace": "C:\\MT5\\workspaces\\slot1",
+      "terminal": "C:\\MT5\\slot1\\terminal64.exe",
+      "metaeditor": "C:\\MT5\\slot1\\metaeditor64.exe",
+      "status": "ready",
+      "current_job": null
+    }
+  }
+}

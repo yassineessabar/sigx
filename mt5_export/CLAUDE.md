@@ -1,16 +1,10 @@
-# AI MQL5 Strategy Builder — Integration into ai-builder page
+# AI MQL5 Strategy Builder — Hybrid Manager Integration
 
 ## Context
 
-This project contains 7 Python scripts that form a complete pipeline for AI-powered MQL5 trading strategy generation, backtesting, optimization, and deployment. They were developed and tested on a Windows VPS with MetaTrader 5 installed.
+This export contains the **Hybrid Manager** — a single FastAPI service running on the Windows VPS that handles everything: AI code generation, compilation, backtesting, optimization, and deployment. Your webapp just makes HTTP calls to it.
 
-The goal is to integrate this pipeline into a **web app's `ai-builder` page** so users can:
-1. Describe a trading strategy in natural language (chat interface)
-2. AI generates MQL5 code automatically
-3. Backtest runs on a remote Windows VPS (user has NO MetaTrader)
-4. Results display as charts (equity curve, metrics)
-5. Optimize iteratively (AI improves based on backtest results)
-6. Deploy approved strategy to live trading
+**This replaces the old split architecture** (separate worker + backend scripts). The manager does it all.
 
 ## Architecture
 
@@ -18,332 +12,358 @@ The goal is to integrate this pipeline into a **web app's `ai-builder` page** so
 YOUR WEB APP (ai-builder page)
     │
     ├── Frontend: Chat UI + Results Dashboard
-    │   User describes strategy → sees code → sees backtest results → approves
+    │   User describes strategy → sees progress via SSE → sees results
     │
-    ├── Your API Backend (runs anywhere, no MT5 needed)
-    │   ├── Calls Claude API to generate .mq5 code    ← uses 02_generate_strategy.py
-    │   ├── Parses backtest reports into JSON           ← uses 04_analyse_results.py
-    │   ├── Orchestrates the optimize loop              ← uses 05_optimise_loop.py logic
-    │   └── Sends compile/backtest/deploy jobs to MT5 Worker via HTTP
-    │
-    └── MT5 Worker API (runs on Windows VPS with MetaTrader 5)
-        ├── POST /compile   — compiles .mq5 code       ← uses 03_run_backtest.py
-        ├── POST /backtest  — runs MT5 Strategy Tester  ← uses 03_run_backtest.py
-        ├── POST /deploy    — attaches EA to live chart  ← uses deploy_ea.py
-        └── POST /fetch     — pulls price data          ← uses 01_fetch_data.py
+    └── Your API Backend (Next.js / any framework)
+        │
+        │  All calls go to the Hybrid Manager on the VPS:
+        │
+        │  POST /run                → full pipeline (generate+compile+backtest+optimize)
+        │  GET  /job/{id}/stream    → SSE real-time progress
+        │  GET  /job/{id}           → poll for results
+        │  POST /compile-and-backtest → one-shot (no AI, you provide the code)
+        │  POST /deploy             → deploy EA to live trading
+        │
+        ▼
+   HYBRID MANAGER (FastAPI :8000 on Windows VPS)
+        │
+        ├── Claude Code generates/improves .mq5 code    (AI — creative)
+        ├── MetaEditor compiles .mq5 → .ex5              (direct — fast)
+        ├── Terminal64 runs backtests                     (direct — 30-60s)
+        ├── 04_analyse_results parses .htm reports        (direct — instant)
+        └── Manages MT5 slot pool for parallel jobs
 ```
 
-## The Scripts — What Each Does and Where It Runs
-
-### Scripts that run on YOUR BACKEND (no MT5 needed)
-
-**`02_generate_strategy.py`** — Calls Claude API, returns .mq5 source code.
-- Key function: `generate_strategy(prompt, strategy_name)` → returns file path
-- Only dependency: `anthropic` Python package
-- In your webapp: call this from your ai-builder API route when user submits a prompt
-- The function calls `client.messages.create()` with the user's prompt and returns raw MQL5 code
-
-**`04_analyse_results.py`** — Parses MT5 HTML backtest reports into a dict.
-- Key function: `parse_mt5_report(html_path)` → returns `{profit_factor, net_profit, max_drawdown, total_trades, sharpe, recovery_factor, ...}`
-- Only dependency: `beautifulsoup4`
-- MT5 reports are UTF-16 encoded .htm files — the parser handles this
-- In your webapp: use this to parse the .htm report returned by the MT5 Worker
-
-**`05_optimise_loop.py`** — Orchestrates generate → backtest → analyse → improve.
-- Key function: `optimise_loop(base_prompt, iterations, symbol, period)`
-- Imports `generate_strategy` from 02, `run_backtest` from 03, `parse_mt5_report` from 04
-- Each iteration: sends previous results + code to Claude → gets improved code → backtests → compares
-- In your webapp: rewrite this as an async task. Replace `run_backtest()` call with HTTP POST to MT5 Worker. Replace file I/O with database writes.
-
-**`dashboard.py`** — Dash/Plotly dashboard that reads .htm reports and shows charts.
-- Key function: `parse_report(filepath)` → returns metrics + equity curve data (times[] and balances[])
-- Extracts deal-by-deal balance for equity curve plotting
-- In your webapp: use `parse_report()` in your backend to extract chart data, send as JSON to your React frontend. Render with Plotly.js or Recharts.
-
-### Scripts that run ONLY on the Windows VPS (MT5 Worker)
-
-**`01_fetch_data.py`** — Connects to MT5 broker, pulls OHLCV candle data.
-- Uses `MetaTrader5` Python package (Windows-only, requires MT5 running)
-- In your webapp: wrap as `POST /fetch` endpoint on MT5 Worker
-
-**`03_run_backtest.py`** — The core MT5 integration. Compiles and backtests.
-- Key functions:
-  - `copy_ea_to_mt5(mq5_file)` — copies .mq5 to MT5 Experts folder
-  - `compile_ea(ea_name)` — runs `metaeditor64.exe`, returns True/False
-  - `create_backtest_config(ea_name, symbol, period, start, end, deposit)` — writes .ini file
-  - `run_backtest(ea_name, symbol, period)` — kills MT5, launches with config, polls for .htm report
-  - `kill_mt5()` — terminates MT5 process
-- Hardcoded Windows paths (MT5_TERMINAL, MT5_DATA, METAEDITOR) — these stay on the VPS
-- In your webapp: wrap as `POST /compile` and `POST /backtest` endpoints on MT5 Worker
-
-**`deploy_ea.py`** — Deploys a compiled EA to live trading.
-- Key function: `deploy(mq5_file, symbol, period)` — compiles, writes live config, restarts MT5 with EA attached
-- In your webapp: wrap as `POST /deploy` endpoint on MT5 Worker
-
-## How to Integrate into Your ai-builder Page
-
-### Step 1: Copy scripts into your project
+## What's in This Export
 
 ```
-your-webapp/
-├── mt5/
-│   ├── generate_strategy.py    ← copy from 02_generate_strategy.py
-│   ├── analyse_results.py      ← copy from 04_analyse_results.py
-│   ├── parse_report.py         ← copy parse_report() from dashboard.py
-│   └── optimise.py             ← rewrite from 05_optimise_loop.py
+mt5_export/
+├── CLAUDE.md              ← this file (integration guide)
 │
-├── mt5_worker/                  ← this folder deploys to the Windows VPS only
-│   ├── worker.py               ← FastAPI app wrapping 01, 03, deploy_ea
-│   ├── 01_fetch_data.py        ← copy as-is
-│   ├── 03_run_backtest.py      ← copy as-is
-│   └── deploy_ea.py            ← copy as-is
+├── manager/               ← DEPLOY TO WINDOWS VPS
+│   ├── manager.py         ← the hybrid manager service
+│   ├── provision.py       ← slot provisioner CLI
+│   ├── analyse_results.py ← report parser (used by manager)
+│   └── requirements.txt   ← Python dependencies
 │
-├── app/
-│   ├── api/
-│   │   └── ai-builder/
-│   │       ├── generate/route.ts    ← calls mt5/generate_strategy.py
-│   │       ├── backtest/route.ts    ← proxies to MT5 Worker
-│   │       ├── optimize/route.ts    ← runs optimize loop
-│   │       └── deploy/route.ts      ← proxies to MT5 Worker
-│   └── ai-builder/
-│       └── page.tsx                 ← the ai-builder UI
+└── webapp-examples/       ← COPY INTO YOUR WEBAPP
+    ├── ai-builder-api.ts  ← Next.js API route example
+    └── use-strategy.ts    ← React hook for SSE streaming
 ```
 
-### Step 2: Build the MT5 Worker (on Windows VPS)
+## Setup on Windows VPS
 
-Create `mt5_worker/worker.py` — a FastAPI app that wraps 01, 03, and deploy_ea:
+### 1. Copy the manager/ folder to `C:\MT5\manager\`
 
-```python
-# mt5_worker/worker.py
-# Deploy this ONLY on the Windows VPS that has MetaTrader 5
-# Run: pip install fastapi uvicorn && uvicorn worker:app --host 0.0.0.0 --port 8000
-
-from fastapi import FastAPI, Header, HTTPException
-from pydantic import BaseModel
-import os, sys
-
-# Import existing scripts
-sys.path.insert(0, os.path.dirname(__file__))
-from importlib import import_module
-mod03 = import_module("03_run_backtest")
-mod04 = import_module("04_analyse_results")
-
-app = FastAPI()
-API_KEY = os.getenv("MT5_WORKER_KEY", "changeme")
-
-def check_key(x_api_key: str = Header()):
-    if x_api_key != API_KEY:
-        raise HTTPException(401)
-
-class CompileReq(BaseModel):
-    ea_name: str
-    mq5_code: str
-
-class BacktestReq(BaseModel):
-    ea_name: str
-    symbol: str = "EURUSD"
-    period: str = "H1"
-    start: str = "2023.01.01"
-    end: str = "2025.01.01"
-    deposit: int = 100000
-
-class DeployReq(BaseModel):
-    ea_name: str
-    mq5_code: str
-    symbol: str = "EURUSD"
-    period: str = "H1"
-
-@app.post("/compile")
-def compile_ea(req: CompileReq, x_api_key: str = Header()):
-    check_key(x_api_key)
-    path = os.path.join(mod03.MT5_EXPERTS, f"{req.ea_name}.mq5")
-    with open(path, "w") as f:
-        f.write(req.mq5_code)
-    ok = mod03.compile_ea(req.ea_name)
-    err = ""
-    if not ok:
-        log = path.replace(".mq5", ".log")
-        if os.path.exists(log):
-            with open(log, "r", errors="ignore") as f:
-                err = f.read()
-    return {"success": ok, "errors": err}
-
-@app.post("/backtest")
-def backtest(req: BacktestReq, x_api_key: str = Header()):
-    check_key(x_api_key)
-    mod03.run_backtest(req.ea_name, req.symbol, req.period)
-    for ext in [".htm", ".html"]:
-        p = os.path.join("results", f"{req.ea_name}_report{ext}")
-        if os.path.exists(p):
-            metrics = mod04.parse_mt5_report(p)
-            # Read raw report for equity curve parsing on caller side
-            with open(p, "rb") as f:
-                raw = f.read()
-            import base64
-            return {"success": True, "metrics": metrics, "report_b64": base64.b64encode(raw).decode()}
-    return {"success": False, "metrics": {}, "error": "No report generated"}
-
-@app.post("/deploy")
-def deploy(req: DeployReq, x_api_key: str = Header()):
-    check_key(x_api_key)
-    from deploy_ea import deploy as do_deploy
-    path = f"strategies/{req.ea_name}.mq5"
-    os.makedirs("strategies", exist_ok=True)
-    with open(path, "w") as f:
-        f.write(req.mq5_code)
-    ok = do_deploy(path, req.symbol, req.period)
-    return {"success": ok}
-
-@app.get("/status")
-def status():
-    import subprocess
-    r = subprocess.run(["tasklist"], capture_output=True, text=True)
-    mt5 = "terminal64.exe" in r.stdout.lower()
-    return {"mt5_running": mt5, "ready": True}
+```bash
+# On the VPS
+mkdir C:\MT5\manager
+# Copy manager.py, provision.py, analyse_results.py, requirements.txt
 ```
 
-### Step 3: Wire the ai-builder page flow
+### 2. Install dependencies
 
-The ai-builder page has this user flow:
-
-```
-[Chat Input] → User describes strategy
-      │
-      ▼
-[Generate] → Your backend calls Claude API (02_generate_strategy.py logic)
-      │        Returns .mq5 code, show in code preview panel
-      ▼
-[Compile] → Your backend POSTs to MT5 Worker /compile
-      │       If fails: send errors to Claude, auto-fix, retry (max 3x)
-      ▼
-[Backtest] → Your backend POSTs to MT5 Worker /backtest
-      │        Takes 30-120 seconds. Show loading spinner.
-      │        Returns metrics + report HTML
-      ▼
-[Results Panel] → Show equity curve, PF, Sharpe, DD, trades
-      │            Use parse_report() from dashboard.py for chart data
-      │            Render with Plotly.js in React
-      ▼
-[Optimize] → User clicks optimize button
-      │        Your backend loops N times:
-      │          1. Claude API (improve based on results)
-      │          2. MT5 Worker /compile
-      │          3. MT5 Worker /backtest
-      │          4. Compare results, keep best
-      │        Show progress bar + iteration results in real-time
-      ▼
-[Deploy] → User approves → POST to MT5 Worker /deploy
-             EA attached to live MT5 chart on VPS
+```bash
+pip install -r requirements.txt
 ```
 
-### Step 4: How your backend calls the MT5 Worker
+### 3. Set environment variable
 
-```python
-# In your webapp backend (Python example)
-import httpx
-
-MT5_WORKER = os.getenv("MT5_WORKER_URL")  # http://VPS_IP:8000
-MT5_KEY = os.getenv("MT5_WORKER_KEY")
-
-async def compile_and_backtest(ea_name: str, mq5_code: str, symbol="EURUSD", period="H1"):
-    headers = {"x-api-key": MT5_KEY}
-
-    # Compile
-    r = await httpx.AsyncClient().post(f"{MT5_WORKER}/compile",
-        json={"ea_name": ea_name, "mq5_code": mq5_code},
-        headers=headers, timeout=60)
-    data = r.json()
-    if not data["success"]:
-        return {"step": "compile", "success": False, "errors": data["errors"]}
-
-    # Backtest
-    r = await httpx.AsyncClient().post(f"{MT5_WORKER}/backtest",
-        json={"ea_name": ea_name, "symbol": symbol, "period": period},
-        headers=headers, timeout=300)
-    return r.json()
+```bash
+set MT5_WORKER_KEY=your-secret-key-here
 ```
 
-```typescript
-// In your Next.js API route (if backend is Node/TS)
-// app/api/ai-builder/backtest/route.ts
+### 4. Register the main MT5 install and create slots
 
-export async function POST(req: Request) {
-  const { ea_name, mq5_code, symbol, period } = await req.json()
+```bash
+cd C:\MT5\manager
+python provision.py register-main    # Register main FTMO install as slot 0
+python provision.py create           # Create slot 1 (copies MT5, ~30s)
+python provision.py list             # Verify
+```
 
-  // 1. Compile on MT5 Worker
-  const compile = await fetch(`${process.env.MT5_WORKER_URL}/compile`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.MT5_WORKER_KEY },
-    body: JSON.stringify({ ea_name, mq5_code })
-  })
-  const compileResult = await compile.json()
-  if (!compileResult.success) {
-    return Response.json({ step: 'compile', success: false, errors: compileResult.errors })
-  }
+### 5. Start the manager
 
-  // 2. Backtest on MT5 Worker (can take 30-120s)
-  const backtest = await fetch(`${process.env.MT5_WORKER_URL}/backtest`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.MT5_WORKER_KEY },
-    body: JSON.stringify({ ea_name, symbol, period })
-  })
-  return Response.json(await backtest.json())
+```bash
+cd C:\MT5\manager
+python -m uvicorn manager:app --host 0.0.0.0 --port 8000
+```
+
+### 6. Ensure Claude Code is installed and authenticated
+
+```bash
+claude login
+claude -p "say hello" --dangerously-skip-permissions
+```
+
+## API Reference
+
+### Agent Mode: Full Autonomous Pipeline
+
+**POST /run** — Start a full generate→compile→backtest→optimize job
+
+```json
+// Request
+{
+  "prompt": "Create an RSI mean-reversion strategy for EURUSD H1 with ATR-based stops",
+  "iterations": 5,
+  "symbol": "EURUSD",
+  "period": "H1",
+  "ea_name": "RSI_MeanRev"  // optional, auto-generated if omitted
+}
+
+// Response (immediate)
+{
+  "job_id": "a1b2c3d4",
+  "status": "running",
+  "ea_name": "RSI_MeanRev"
 }
 ```
 
-### Step 5: Compile error auto-fix
+**GET /job/{job_id}/stream** — SSE event stream (real-time progress)
 
-When .mq5 fails to compile, send errors back to Claude to fix:
+Events emitted:
+| Event | Data | When |
+|-------|------|------|
+| `started` | `{ea_name, iterations}` | Job begins |
+| `iteration_start` | `{iteration, total}` | Each iteration |
+| `generating` | `{ea_name}` | Claude Code writing code |
+| `improving` | `{ea_name, metrics}` | Claude Code improving |
+| `fixing` | `{ea_name, reason}` | Fixing compile errors |
+| `compiled` | `{iteration, attempt}` | Compile OK |
+| `compile_failed` | `{iteration, attempt, errors}` | Compile failed |
+| `backtesting` | `{iteration, slot_id}` | Backtest running |
+| `iteration_done` | `{iteration, metrics, success, duration_s}` | Iteration complete |
+| `new_best` | `{iteration, pf, trades}` | New best found |
+| `early_exit` | `{reason, pf, trades}` | Stopped early (target met) |
+| `completed` | `{best_metrics, iterations_run}` | Done |
+| `error` | `{error}` | Failed |
+| `done` | `{status}` | Final event |
 
-```python
-async def generate_and_compile(prompt: str, ea_name: str, max_retries=3):
-    mq5_code = generate_strategy(prompt, ea_name)  # from 02_generate_strategy.py
+**GET /job/{job_id}** — Poll for results
 
-    for attempt in range(max_retries):
-        result = await compile_on_worker(ea_name, mq5_code)
-        if result["success"]:
-            return mq5_code
+```json
+// Response (when completed)
+{
+  "job_id": "a1b2c3d4",
+  "status": "completed",
+  "current_step": "completed",
+  "ea_name": "RSI_MeanRev",
+  "result": {
+    "best_ea_name": "RSI_MeanRev",
+    "best_code": "// full .mq5 source code...",
+    "best_metrics": {
+      "profit_factor": 1.8,
+      "net_profit": 342.50,
+      "total_trades": 187,
+      "max_drawdown": "-45.20 (0.05%)",
+      "sharpe": 1.2
+    },
+    "iterations_run": 5,
+    "all_iterations": [
+      {"iteration": 1, "metrics": {...}, "success": true, "duration_s": 95.2},
+      {"iteration": 2, "metrics": {...}, "success": true, "duration_s": 88.7},
+      ...
+    ]
+  }
+}
+```
 
-        # Send errors to Claude for fixing
-        fix_prompt = f"""This MQL5 code has compile errors. Fix them.
+### Direct Mode: Individual Operations
 
-Errors:
-{result["errors"]}
+**POST /compile** — Compile code on a specific slot
+```json
+{"ea_name": "MyEA", "mq5_code": "...", "slot_id": "0"}
+// Returns: {"success": true, "errors": ""}
+```
 
-Code:
-{mq5_code}
+**POST /backtest** — Backtest a compiled EA
+```json
+{"ea_name": "MyEA", "symbol": "EURUSD", "period": "H1", "slot_id": "0"}
+// Returns: {"success": true, "metrics": {...}, "report_b64": "..."}
+```
 
-Output ONLY the fixed .mq5 code. No explanation, no markdown fences."""
+**POST /compile-and-backtest** — Both in one call (auto-selects slot)
+```json
+{"ea_name": "MyEA", "mq5_code": "...", "symbol": "EURUSD", "period": "H1"}
+// Returns: {"success": true, "metrics": {...}, "report_b64": "..."}
+```
 
-        mq5_code = generate_strategy(fix_prompt, ea_name)
+**POST /deploy** — Deploy EA to live trading
+```json
+{"ea_name": "MyEA", "mq5_code": "...", "symbol": "EURUSD", "period": "H1", "slot_id": "0"}
+// Returns: {"success": true, "message": "EA MyEA deployed on EURUSD H1", "pid": 1234}
+```
 
-    raise Exception(f"Failed to compile after {max_retries} attempts")
+### Management
+
+**GET /status** — Health check (no auth)
+```json
+{"ready": true, "total_slots": 2, "available_slots": 2, "busy_slots": 0, "running_jobs": 0}
+```
+
+**GET /slots** — List slots
+**GET /jobs** — List all jobs
+**DELETE /job/{id}** — Delete job + workspace
+
+All endpoints (except /status) require `x-api-key` header.
+
+## Integrating into Your ai-builder Page
+
+### Option A: Full Pipeline (recommended)
+
+Your ai-builder page makes ONE call and streams progress:
+
+```typescript
+// app/api/ai-builder/run/route.ts
+
+export async function POST(req: Request) {
+  const { prompt, iterations = 3, symbol = 'EURUSD', period = 'H1' } = await req.json()
+
+  const res = await fetch(`${process.env.MT5_MANAGER_URL}/run`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.MT5_WORKER_KEY!,
+    },
+    body: JSON.stringify({ prompt, iterations, symbol, period }),
+  })
+
+  return Response.json(await res.json())
+}
+```
+
+```typescript
+// app/api/ai-builder/stream/[jobId]/route.ts
+
+export async function GET(req: Request, { params }: { params: { jobId: string } }) {
+  const { jobId } = params
+
+  const res = await fetch(`${process.env.MT5_MANAGER_URL}/job/${jobId}/stream`, {
+    headers: { 'x-api-key': process.env.MT5_WORKER_KEY! },
+  })
+
+  // Proxy the SSE stream to the client
+  return new Response(res.body, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    },
+  })
+}
+```
+
+```typescript
+// React component — connecting to SSE
+function useStrategyStream(jobId: string | null) {
+  const [events, setEvents] = useState<any[]>([])
+  const [status, setStatus] = useState<string>('idle')
+
+  useEffect(() => {
+    if (!jobId) return
+
+    const source = new EventSource(`/api/ai-builder/stream/${jobId}`)
+
+    source.addEventListener('iteration_done', (e) => {
+      const data = JSON.parse(e.data)
+      setEvents(prev => [...prev, data])
+    })
+
+    source.addEventListener('new_best', (e) => {
+      const data = JSON.parse(e.data)
+      // Update best strategy display
+    })
+
+    source.addEventListener('completed', (e) => {
+      setStatus('completed')
+    })
+
+    source.addEventListener('error', (e) => {
+      setStatus('error')
+    })
+
+    source.addEventListener('done', () => {
+      source.close()
+    })
+
+    return () => source.close()
+  }, [jobId])
+
+  return { events, status }
+}
+```
+
+### Option B: Direct Control
+
+If your ai-builder page wants to control each step:
+
+```typescript
+// Your backend orchestrates step by step
+async function buildStrategy(prompt: string) {
+  const headers = {
+    'Content-Type': 'application/json',
+    'x-api-key': process.env.MT5_WORKER_KEY!,
+  }
+  const base = process.env.MT5_MANAGER_URL!
+
+  // 1. Generate code with your own Claude API call
+  const mq5Code = await generateWithClaude(prompt)
+
+  // 2. Compile + backtest via manager (auto-selects slot)
+  const res = await fetch(`${base}/compile-and-backtest`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      ea_name: 'MyStrategy',
+      mq5_code: mq5Code,
+      symbol: 'EURUSD',
+      period: 'H1',
+    }),
+  })
+  const result = await res.json()
+
+  // 3. If compile failed, fix and retry
+  if (!result.success && result.step === 'compile') {
+    const fixedCode = await fixWithClaude(mq5Code, result.errors)
+    // retry...
+  }
+
+  return result
+}
 ```
 
 ## Environment Variables for Your Webapp
 
-```
-ANTHROPIC_API_KEY=sk-ant-...          # For Claude API (strategy generation)
-MT5_WORKER_URL=http://VPS_IP:8000     # Windows VPS running mt5_worker
-MT5_WORKER_KEY=your-secret-key        # Auth between your backend and MT5 Worker
-```
-
-## Environment Variables for MT5 Worker (already set on Windows VPS)
-
-```
-MT5_TERMINAL=C:\Program Files\FTMO MetaTrader 5\terminal64.exe
-MT5_DATA=C:\Users\Administrator\AppData\Roaming\MetaQuotes\Terminal\49CDDEAA95A409ED22BD2287BB67CB9C
-METAEDITOR=C:\Program Files\FTMO MetaTrader 5\metaeditor64.exe
-MT5_WORKER_KEY=your-secret-key
+```bash
+MT5_MANAGER_URL=http://YOUR_VPS_IP:8000    # Hybrid Manager on Windows VPS
+MT5_WORKER_KEY=your-secret-key              # Shared auth key
 ```
 
-## Key Points
+## Key Differences from Old Architecture
 
-1. **02_generate_strategy.py runs in YOUR backend** — it only calls Claude API, no MT5 needed
-2. **03_run_backtest.py runs ONLY on Windows VPS** — it needs metaeditor64.exe and terminal64.exe
-3. **04_analyse_results.py runs in YOUR backend** — it just parses HTML, no MT5 needed
-4. **05_optimise_loop.py becomes your orchestration logic** — replace `run_backtest()` calls with HTTP to MT5 Worker
-5. **dashboard.py chart logic ports to your React frontend** — use Plotly.js, data comes as JSON from your API
-6. **Backtest takes 30-120 seconds** — use async/loading states in your ai-builder page
-7. **Compile can fail** — always retry with Claude auto-fix (max 3 attempts)
-8. **MT5 runs ONE backtest at a time** — queue requests if you have multiple users
+| Old (Worker) | New (Hybrid Manager) |
+|---|---|
+| Webapp backend calls Claude API directly | Manager calls Claude Code on VPS |
+| Webapp backend orchestrates the loop | Manager orchestrates autonomously |
+| One MT5 instance, one backtest at a time | Slot pool, parallel backtests |
+| No streaming | SSE real-time progress |
+| Separate compile + backtest calls | One `/run` call does everything |
+| Manual compile-error fixing | Auto-fix with Claude Code (3 retries) |
+| No deploy endpoint | `POST /deploy` included |
+
+## How the Hybrid Pipeline Works Per Iteration
+
+```
+Time   What Happens                      Slot?
+─────  ────────────────────────────────  ─────
+0s     Claude Code generates .mq5        FREE
+30s    Acquire slot, compile             LOCKED
+33s    Backtest runs                     LOCKED
+90s    Parse report, release slot        FREE
+91s    Claude Code improves .mq5         FREE
+120s   Acquire slot, compile             LOCKED
+...
+```
+
+Slots are only locked during compile+backtest (~30-60s), released during AI thinking (~30-60s). This means 2 slots can handle 3-4 concurrent jobs efficiently.
