@@ -7,6 +7,7 @@ import { PromptInput } from './prompt-input'
 import { ChatTopBar } from './chat-top-bar'
 import { RightPanel } from './right-panel'
 import { useStrategy } from '@/lib/use-strategy'
+import { useVersions, type StrategyVersion } from '@/lib/use-versions'
 import type { ChatMessage as ChatMessageType } from '@/lib/types'
 
 interface SplitLayoutProps {
@@ -74,6 +75,9 @@ export function SplitLayout({
 
   // ── Hybrid Manager integration ──
   const strategy = useStrategy(accessToken)
+
+  // ── Version history ──
+  const versionHistory = useVersions()
 
   // Listen for job_started events from the chat stream
   // The parent component passes chatPipelineStatus which may contain job info
@@ -312,7 +316,7 @@ export function SplitLayout({
                 const data = await res.json()
 
                 if (data.success && data.metrics) {
-                  setOptimizedBacktest({
+                  const btSnapshot = {
                     sharpe: data.metrics.sharpe ?? 0,
                     max_drawdown: data.metrics.max_drawdown ?? 0,
                     win_rate: data.metrics.win_rate ?? 0,
@@ -321,8 +325,19 @@ export function SplitLayout({
                     total_trades: data.metrics.total_trades ?? 0,
                     net_profit: data.metrics.net_profit ?? 0,
                     equity_curve: data.equity_curve || [],
-                  })
-                  setPipelineStatus(`Backtest done — ${data.metrics.total_trades} trades`)
+                  }
+                  setOptimizedBacktest(btSnapshot)
+
+                  // Save as a version
+                  const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')
+                  versionHistory.addVersion(
+                    displayCode!,
+                    btSnapshot,
+                    latestStrategy as Record<string, unknown> | null,
+                    lastUserMsg?.content || 'Backtest',
+                  )
+
+                  setPipelineStatus(`Backtest done — ${data.metrics.total_trades} trades (v${versionHistory.versions.length + 1})`)
                   setPanelOpen(true)
                 } else {
                   setPipelineStatus(data.error || 'Backtest failed')
@@ -354,6 +369,15 @@ export function SplitLayout({
             isOpen={panelOpen}
             onToggle={() => setPanelOpen((prev) => !prev)}
             onOptimize={handleOptimize}
+            versions={versionHistory.versions}
+            activeVersion={versionHistory.activeVersion}
+            onRestoreVersion={(version) => {
+              const v = versionHistory.restoreVersion(version)
+              if (v) {
+                setOptimizedCode(v.code)
+                if (v.metrics) setOptimizedBacktest(v.metrics)
+              }
+            }}
             onStopOptimize={handleStopOptimize}
             isOptimizing={isOptimizing}
             optimizeProgress={optimizeProgress}

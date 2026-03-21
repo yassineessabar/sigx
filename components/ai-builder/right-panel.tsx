@@ -9,6 +9,7 @@ import { StrategyScore } from './strategy-score'
 import { CodeViewer } from './code-viewer'
 import type { ChatMessageMetadata } from '@/lib/types'
 import type { IterationResult } from '@/lib/use-strategy'
+import type { StrategyVersion } from '@/lib/use-versions'
 
 interface RightPanelProps {
   strategySnapshot: ChatMessageMetadata['strategy_snapshot'] | null
@@ -21,6 +22,10 @@ interface RightPanelProps {
   isOptimizing?: boolean
   optimizeProgress?: { iteration: number; total: number }
   pipelineStatus?: string | null
+  // Version history
+  versions?: StrategyVersion[]
+  activeVersion?: number | null
+  onRestoreVersion?: (version: number) => void
   // Hybrid Manager props
   hybridIterations?: IterationResult[]
   hybridRunning?: boolean
@@ -39,6 +44,9 @@ export function RightPanel({
   isOptimizing,
   optimizeProgress,
   pipelineStatus,
+  versions = [],
+  activeVersion,
+  onRestoreVersion,
   hybridIterations = [],
   hybridRunning = false,
   hybridCurrentStep,
@@ -146,6 +154,62 @@ export function RightPanel({
                   )}
                   {strategySnapshot && (
                     <StrategyCard strategy={strategySnapshot} />
+                  )}
+
+                  {/* Version history */}
+                  {versions.length > 1 && (
+                    <div className="rounded-2xl border border-foreground/[0.08] bg-secondary overflow-hidden">
+                      <div className="border-b border-foreground/[0.06] px-4 py-2.5">
+                        <span className="font-medium text-[13px] text-foreground/70">Version History</span>
+                      </div>
+                      <div className="divide-y divide-foreground/[0.04]">
+                        {[...versions].reverse().map((v) => {
+                          const isActive = v.version === activeVersion
+                          return (
+                            <div
+                              key={v.id}
+                              className={cn(
+                                'flex items-center justify-between px-4 py-2.5 transition-colors',
+                                isActive ? 'bg-foreground/[0.04]' : 'hover:bg-foreground/[0.02]'
+                              )}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className={cn(
+                                  'text-[12px] font-bold tabular-nums px-1.5 py-0.5 rounded',
+                                  isActive ? 'bg-white text-black' : 'bg-foreground/[0.06] text-foreground/50'
+                                )}>
+                                  v{v.version}
+                                </span>
+                                <div>
+                                  <span className="text-[12px] text-foreground/60 font-medium">
+                                    {v.metrics ? `PF ${v.metrics.profit_factor.toFixed(2)} · ${v.metrics.total_trades} trades` : 'No backtest'}
+                                  </span>
+                                  {v.metrics?.net_profit !== undefined && (
+                                    <span className={cn(
+                                      'text-[11px] ml-2 font-semibold',
+                                      (v.metrics.net_profit ?? 0) >= 0 ? 'text-emerald-400/70' : 'text-red-400/70'
+                                    )}>
+                                      {(v.metrics.net_profit ?? 0) >= 0 ? '+' : ''}${(v.metrics.net_profit ?? 0).toFixed(0)}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              {!isActive && onRestoreVersion && (
+                                <button
+                                  onClick={() => onRestoreVersion(v.version)}
+                                  className="text-[11px] font-medium text-foreground/40 hover:text-foreground/70 transition-colors"
+                                >
+                                  Restore
+                                </button>
+                              )}
+                              {isActive && (
+                                <span className="text-[10px] font-semibold text-emerald-400/60 uppercase">Current</span>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
                   )}
 
                   {/* Optimize progress — only shown when running */}
