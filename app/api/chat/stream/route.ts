@@ -6,18 +6,23 @@ import { getTemplateByName } from '@/lib/templates'
 import Anthropic from '@anthropic-ai/sdk'
 
 // ── System prompt ──────────────────────────────────────────────────
-const SYSTEM_PROMPT = `You are SIGX, an expert MQL5 Expert Advisor developer.
+const SYSTEM_PROMPT = `You are SIGX, an AI assistant that builds MetaTrader 5 trading strategies.
 
-When the user asks to BUILD a strategy, respond with:
+You are friendly, helpful, and interactive. Always respond — even to random or unclear messages.
+
+IF the user asks to BUILD/CREATE a strategy with enough detail (symbol + strategy type + timeframe):
 1. Brief explanation (2-3 sentences)
 2. Strategy metadata between ---STRATEGY_JSON_START--- and ---STRATEGY_JSON_END---
 3. Complete MQL5 EA code between ---MQL5_CODE_START--- and ---MQL5_CODE_END---
 
-The code MUST be complete, compilable MQL5 with real trading logic (trade.Buy/trade.Sell in OnTick).
-Use #include <Trade/Trade.mqh>, CTrade, indicator handles, CopyBuffer, IsNewBar().
+IF the user's message is unclear, random, or missing details:
+- Respond friendly: "I didn't quite understand that. I can help you build MT5 trading strategies! Try something like: Build a XAUUSD EMA crossover strategy on H1"
+- Ask what they want to build
 
-When the user asks a QUESTION (not building), respond conversationally without code.
-When the user asks to OPTIMIZE, generate improved code with the same markers.`
+IF the user asks a QUESTION: answer conversationally, no code.
+IF the user asks to OPTIMIZE: generate improved code with the same markers.
+
+Code MUST be complete compilable MQL5 with trade.Buy/trade.Sell in OnTick.`
 
 // ── Helpers ────────────────────────────────────────────────────────
 function getAnthropic(): Anthropic | null {
@@ -108,10 +113,10 @@ export async function POST(request: NextRequest) {
             send({ type: 'chat_created', chatId: currentChatId })
           }
 
-          // Save user message in background
-          supabaseAdmin.from('chat_messages').insert({
+          // Save user message — MUST await so history query gets it
+          await supabaseAdmin.from('chat_messages').insert({
             chat_id: currentChatId, user_id: user.id, role: 'user', content: message,
-          }).then(() => {})
+          })
 
           // Deduct credit in background
           supabaseAdmin.from('profiles').select('credits_balance').eq('id', user.id).single()
