@@ -167,11 +167,12 @@ export default function AIBuilderPage() {
       })
 
       if (!res.ok) {
-        const errData = await res.json()
-        if (res.status === 402 || errData.error === 'NO_CREDITS') {
+        const errData = await res.json().catch(() => ({ error: 'Request failed' }))
+        if (res.status === 402 || res.status === 503 || errData.error === 'NO_CREDITS' || errData.error?.includes('credit')) {
           setMessages((prev) => prev.filter((m) => m.id !== userMsg.id))
           setIsGenerating(false)
           setStreamingContent('')
+          setPipelineStatus(null)
           setShowUpgradeModal(true)
           return
         }
@@ -206,6 +207,8 @@ export default function AIBuilderPage() {
               setPipelineStatus(null)
             } else if (data.type === 'status') {
               setPipelineStatus(data.message || null)
+            } else if (data.type === 'credit_error') {
+              setShowUpgradeModal(true)
             } else if (data.type === 'done' && data.message) {
               setStreamingContent('')
               setPipelineStatus(null)

@@ -451,7 +451,16 @@ export async function POST(request: NextRequest) {
             },
           })
         } catch (apiError) {
-          console.error('Stream error:', apiError instanceof Error ? apiError.message : apiError)
+          const errMsg = apiError instanceof Error ? apiError.message : String(apiError)
+          console.error('Stream error:', errMsg)
+
+          // Detect Anthropic credit/billing errors
+          const isCreditError = errMsg.toLowerCase().includes('credit') || errMsg.toLowerCase().includes('billing') || errMsg.includes('429') || errMsg.includes('insufficient')
+
+          if (isCreditError) {
+            send({ type: 'credit_error', message: 'No AI credits available. Please upgrade your plan.' })
+          }
+
           send({
             type: 'done',
             message: {
@@ -459,7 +468,9 @@ export async function POST(request: NextRequest) {
               chat_id: currentChatId,
               user_id: user.id,
               role: 'assistant',
-              content: 'Sorry, an error occurred while generating the strategy. Please try again.',
+              content: isCreditError
+                ? 'You need credits to generate strategies. Please upgrade your plan to continue.'
+                : 'Sorry, an error occurred while generating the strategy. Please try again.',
               metadata: {},
               created_at: new Date().toISOString(),
             },
