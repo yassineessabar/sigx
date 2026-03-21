@@ -391,12 +391,8 @@ export async function POST(request: NextRequest) {
 
             fullContent = `${explanation}\n\n---STRATEGY_JSON_START---\n${stratJson}\n---STRATEGY_JSON_END---\n\n---MQL5_CODE_START---\n${template.mql5Code}\n---MQL5_CODE_END---\n\n---BACKTEST_JSON_START---\n${backtestJson}\n---BACKTEST_JSON_END---`
 
-            // Stream the explanation part
-            const words = explanation.split(' ')
-            for (const word of words) {
-              send({ type: 'delta', text: word + ' ' })
-              await new Promise(r => setTimeout(r, 12))
-            }
+            // Stream the explanation — send first chunk immediately, then word by word
+            send({ type: 'delta', text: explanation })
           } else {
             // Stream Claude response
             const messageStream = anthropic.messages.stream({
