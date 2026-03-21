@@ -445,8 +445,11 @@ export async function POST(request: NextRequest) {
 
           } else if (isStrategyRequest) {
             // ── HYBRID MANAGER PATH — Claude Code on VPS does everything ($0) ──
-            send({ type: 'delta', text: `Starting the strategy engine...\n\nYour request is being sent to the MT5 server where Claude Code will generate, compile, and backtest the strategy. Watch the **Iterations** tab in the right panel for real-time progress.` })
-            fullContent = 'Strategy pipeline started.'
+            const statusMsg = `Starting the strategy engine...\n\nYour request is being sent to the MT5 server where Claude Code will generate, compile, and backtest the strategy. Watch the **Iterations** tab in the right panel for real-time progress.`
+            send({ type: 'delta', text: statusMsg })
+            // Small delay to ensure delta is flushed to client
+            await new Promise(r => setTimeout(r, 50))
+            fullContent = statusMsg
 
             // Build full prompt with context from chat history
             let fullPrompt = message
