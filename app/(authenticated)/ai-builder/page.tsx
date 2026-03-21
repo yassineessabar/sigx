@@ -190,15 +190,27 @@ export default function AIBuilderPage() {
     }, 180000)
 
     try {
-      // Get fresh token at request time
-      const { data: { session: freshSession } } = await supabase.auth.getSession()
-      const token = freshSession?.access_token || session?.access_token
+      // Get token — use existing, try refresh with timeout
+      let token = session?.access_token
+      try {
+        const refreshPromise = supabase.auth.getSession()
+        const timeout = new Promise<null>((r) => setTimeout(() => r(null), 3000))
+        const result = await Promise.race([refreshPromise, timeout])
+        if (result && 'data' in result && result.data.session?.access_token) {
+          token = result.data.session.access_token
+        }
+      } catch { /* use existing token */ }
+
+      console.log('[SIGX] handleSend: token=' + (token ? 'yes' : 'NO'), 'chatId=' + currentChatId)
+
       if (!token) {
         toast.error('Session expired. Please sign in again.')
         setMessages((prev) => prev.filter((m) => m.id !== userMsg.id))
+        setIsGenerating(false)
         return
       }
 
+      console.log('[SIGX] Fetching /api/chat/stream...')
       const res = await fetch('/api/chat/stream', {
         method: 'POST',
         headers: {
@@ -208,6 +220,8 @@ export default function AIBuilderPage() {
         body: JSON.stringify({ chatId: currentChatId, message }),
         signal: controller.signal,
       })
+
+      console.log('[SIGX] Response status:', res.status)
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({ error: 'Request failed' }))
