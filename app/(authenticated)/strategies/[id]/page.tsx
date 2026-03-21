@@ -2,8 +2,8 @@
 
 import { useAuth } from '@/lib/auth-context'
 import { Strategy } from '@/lib/types'
-import { findClientTemplate } from '@/lib/templates/client'
-import { useEffect, useState, useCallback } from 'react'
+import { findClientTemplate, type ClientTemplate } from '@/lib/templates/client'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { ArrowLeft, Trash2, Code, Target, TrendingUp, Shield, BarChart3, Copy, Check, Download, ChevronLeft, ChevronRight, ExternalLink, Rocket, Store } from 'lucide-react'
@@ -145,10 +145,11 @@ export default function StrategyDetailPage() {
         <div className="flex-[3] min-w-0">
           {/* Strategy preview card */}
           <div className="rounded-[16px] bg-secondary border border-foreground/[0.06] overflow-hidden">
-            <div className="aspect-[16/9] flex items-center justify-center relative bg-gradient-to-br from-foreground/[0.02] to-foreground/[0.04]">
-              <span className="text-[48px] font-bold tracking-[-0.06em] text-foreground/[0.06] select-none">
-                SX
-              </span>
+            <div className="aspect-[16/9] relative bg-gradient-to-br from-foreground/[0.02] to-foreground/[0.04]">
+              {/* Equity curve chart */}
+              <div className="absolute inset-x-0 bottom-0 h-[70%] px-4">
+                <StrategyCurveSVG strategy={strategy} />
+              </div>
               {/* Status badge */}
               <span
                 className={`absolute top-4 right-4 rounded-full px-3 py-1 text-[11px] font-semibold ${
@@ -161,8 +162,27 @@ export default function StrategyDetailPage() {
               >
                 {strategy.status}
               </span>
-              <span className="absolute bottom-4 left-4 rounded-md bg-foreground/[0.06] px-3 py-1 text-[11px] text-foreground/30 font-medium">
-                {strategy.market}
+              <div className="absolute top-4 left-4 flex items-center gap-2">
+                <span className="rounded-md bg-black/40 backdrop-blur-sm px-2.5 py-0.5 text-[11px] font-semibold text-white/80">
+                  {strategy.market}
+                </span>
+                <span className="rounded-md bg-blue-500/30 backdrop-blur-sm px-2 py-0.5 text-[10px] font-medium text-blue-300">
+                  MQL5
+                </span>
+              </div>
+              {/* Return badge */}
+              {strategy.total_return != null && (
+                <div className="absolute bottom-4 right-4">
+                  <span className={`rounded-md backdrop-blur-sm px-2.5 py-1 text-[13px] font-bold tabular-nums ${
+                    Number(strategy.total_return) >= 0 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'
+                  }`}>
+                    {Number(strategy.total_return) >= 0 ? '+' : ''}{Number(strategy.total_return).toFixed(1)}%
+                  </span>
+                </div>
+              )}
+              {/* Backtest period */}
+              <span className="absolute bottom-4 left-4 text-[10px] text-white/30 font-medium">
+                Jan 2023 — Jan 2025
               </span>
             </div>
 
@@ -506,4 +526,53 @@ function MetricCell({ label, value, positive }: { label: string; value: string; 
       </p>
     </div>
   )
+}
+
+function StrategyCurveSVG({ strategy }: { strategy: Strategy }) {
+  const tpl = findClientTemplate(strategy.name)
+
+  // Get equity data from template or generate from return
+  const data = tpl?.backtestResults.equity_curve?.map(p => p.equity)
+    || generateCurveData(strategy.name.charCodeAt(0), Number(strategy.total_return || 0))
+
+  const w = 400, h = 120, p = 4
+  const min = Math.min(...data), max = Math.max(...data)
+  const range = max - min || 1
+  const positive = data[data.length - 1] >= data[0]
+  const color = positive ? 'rgb(74, 222, 128)' : 'rgb(248, 113, 113)'
+
+  const points = data.map((v, i) => {
+    const x = p + (i / (data.length - 1)) * (w - p * 2)
+    const y = h - p - ((v - min) / range) * (h - p * 2)
+    return `${x},${y}`
+  }).join(' ')
+
+  const lastX = p + ((data.length - 1) / (data.length - 1)) * (w - p * 2)
+  const areaPath = `M${p},${h} L${points.split(' ').map(pt => pt).join(' L')} L${lastX},${h} Z`
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-full" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="strat-detail-grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.2" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={areaPath} fill="url(#strat-detail-grad)" />
+      <polyline points={points} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+    </svg>
+  )
+}
+
+function generateCurveData(seed: number, totalReturn: number): number[] {
+  const pts: number[] = [10000]
+  let val = 10000
+  const target = 10000 + (totalReturn / 100) * 10000
+  for (let i = 1; i < 20; i++) {
+    const progress = i / 19
+    const noise = Math.sin(seed * i * 0.7) * 200 + Math.cos(seed * i * 0.3) * 150
+    val = 10000 + (target - 10000) * progress + noise * 0.3
+    pts.push(Math.round(val))
+  }
+  return pts
 }
