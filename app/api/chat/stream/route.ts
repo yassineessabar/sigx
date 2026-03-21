@@ -292,30 +292,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { chatId, message } = body
 
+    // Check for template FIRST — before any DB work
+    const template = getTemplateByName(message)
+
     let currentChatId = chatId
-
-    // Create new chat if needed
-    if (!currentChatId) {
-      const title = message.slice(0, 50) + (message.length > 50 ? '...' : '')
-      const { data: chat, error: chatError } = await supabaseAdmin
-        .from('chats')
-        .insert({ user_id: user.id, title })
-        .select()
-        .single()
-
-      if (chatError) {
-        return new Response(JSON.stringify({ error: 'Failed to create chat' }), { status: 500 })
-      }
-      currentChatId = chat.id
-    }
-
-    // Save user message
-    await supabaseAdmin.from('chat_messages').insert({
-      chat_id: currentChatId,
-      user_id: user.id,
-      role: 'user',
-      content: message,
-    })
 
     const encoder = new TextEncoder()
 
@@ -325,63 +305,43 @@ export async function POST(request: NextRequest) {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
         }
 
-        // Send chatId immediately for new chats
-        if (!chatId) {
-          send({ type: 'chat_created', chatId: currentChatId })
-        }
-
-
-        let fullContent = ''
-
         try {
-          const anthropic = getAnthropic()
+          // Create chat if needed
+          if (!currentChatId) {
+            const title = message.slice(0, 50) + (message.length > 50 ? '...' : '')
+            const { data: chat, error: chatError } = await supabaseAdmin
+              .from('chats')
+              .insert({ user_id: user.id, title })
+              .select()
+              .single()
 
-          if (!anthropic) {
-            // No API key — send error as a chat message
-            const errorMsg = 'ANTHROPIC_API_KEY is not configured. Please set it in your environment variables to enable AI strategy generation.'
-            send({ type: 'status', message: '' })
-            send({ type: 'delta', text: errorMsg })
-            fullContent = errorMsg
-
-            await supabaseAdmin.from('chat_messages').insert({
-              chat_id: currentChatId,
-              user_id: user.id,
-              role: 'assistant',
-              content: errorMsg,
-              metadata: {},
-            })
-
-            send({
-              type: 'done',
-              message: {
-                id: crypto.randomUUID(),
-                chat_id: currentChatId,
-                user_id: user.id,
-                role: 'assistant',
-                content: errorMsg,
-                metadata: {},
-                created_at: new Date().toISOString(),
-              },
-            })
-            controller.close()
-            return
+            if (chatError) {
+              send({ type: 'done', message: { id: crypto.randomUUID(), chat_id: '', user_id: user.id, role: 'assistant', content: 'Failed to create chat', metadata: {}, created_at: new Date().toISOString() } })
+              controller.close()
+              return
+            }
+            currentChatId = chat.id
+            send({ type: 'chat_created', chatId: currentChatId })
           }
 
-          // Get chat history
-          const { data: history } = await supabaseAdmin
-            .from('chat_messages')
-            .select('role, content')
-            .eq('chat_id', currentChatId)
-            .order('created_at', { ascending: true })
-            .limit(20)
+          // Save user message (don't await — do it in background for speed)
+          supabaseAdmin.from('chat_messages').insert({
+            chat_id: currentChatId,
+            user_id: user.id,
+            role: 'user',
+            content: message,
+          }).then(() => {})
 
-          const chatMessages: Anthropic.MessageParam[] = (history || []).map((m) => ({
-            role: m.role as 'user' | 'assistant',
-            content: m.content,
-          }))
+          // Deduct credit in background
+          supabaseAdmin.from('profiles').select('credits_balance').eq('id', user.id).single()
+            .then(({ data: p }) => {
+              if (p) {
+                const nb = Math.max((p.credits_balance ?? 0) - 1, 0)
+                supabaseAdmin.from('profiles').update({ credits_balance: nb }).eq('id', user.id)
+              }
+            })
 
-          // Check if message matches a template
-          const template = getTemplateByName(message)
+          let fullContent = ''
 
           if (template) {
             // Use pre-built template EA with real backtest results
@@ -394,18 +354,37 @@ export async function POST(request: NextRequest) {
             // Stream the explanation — send first chunk immediately, then word by word
             send({ type: 'delta', text: explanation })
           } else {
-            // Stream Claude response
-            const messageStream = anthropic.messages.stream({
-              model: 'claude-sonnet-4-20250514',
-              max_tokens: 8192,
-              system: SYSTEM_PROMPT,
-              messages: chatMessages,
-            })
+            // ── CLAUDE PATH — AI generation ──
+            const anthropic = getAnthropic()
+            if (!anthropic) {
+              send({ type: 'delta', text: 'ANTHROPIC_API_KEY is not configured.' })
+              fullContent = 'ANTHROPIC_API_KEY is not configured.'
+            } else {
+              // Get chat history
+              const { data: history } = await supabaseAdmin
+                .from('chat_messages')
+                .select('role, content')
+                .eq('chat_id', currentChatId)
+                .order('created_at', { ascending: true })
+                .limit(20)
 
-            for await (const event of messageStream) {
-              if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-                fullContent += event.delta.text
-                send({ type: 'delta', text: event.delta.text })
+              const chatMessages: Anthropic.MessageParam[] = (history || []).map((m) => ({
+                role: m.role as 'user' | 'assistant',
+                content: m.content,
+              }))
+
+              const messageStream = anthropic.messages.stream({
+                model: 'claude-sonnet-4-20250514',
+                max_tokens: 8192,
+                system: SYSTEM_PROMPT,
+                messages: chatMessages,
+              })
+
+              for await (const event of messageStream) {
+                if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+                  fullContent += event.delta.text
+                  send({ type: 'delta', text: event.delta.text })
+                }
               }
             }
           }

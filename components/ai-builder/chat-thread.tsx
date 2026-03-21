@@ -23,7 +23,7 @@ function ThinkingBubble() {
     return () => clearInterval(interval)
   }, [])
 
-  const hint = elapsed < 3 ? null : elapsed < 8 ? 'Analyzing your request...' : 'Generating strategy — this may take a moment...'
+  const hint = elapsed < 5 ? null : 'Connecting to AI...'
 
   return (
     <div className="flex gap-3">
