@@ -32,20 +32,19 @@ const SUGGESTION_PILLS = [
 
 const EXAMPLE_PROMPTS = [
   {
-    icon: Zap,
-    text: 'Build a gold scalping EA using EMA crossovers on M5 with ATR-based stops',
-  },
-  {
     icon: TrendingUp,
-    text: 'Create a London breakout strategy for XAUUSD with Asian session sweep',
+    text: 'London Breakout — Asian range breakout during London session. +$585 profit, PF 1.04.',
+    template: 'Build a London Breakout strategy',
   },
   {
     icon: BarChart3,
-    text: 'Design a mean reversion EA using Bollinger Bands and RSI on H1',
+    text: 'Trend Rider — EMA crossover with trend filter and trailing stop. +$5,208 profit, PF 1.10.',
+    template: 'Build a Trend Rider strategy',
   },
   {
     icon: Shield,
-    text: 'Build a momentum pullback strategy using EMA and volume confirmation',
+    text: 'Mean Reversion — Bollinger Band bounce with RSI confirmation. +$2,296 profit, PF 1.02.',
+    template: 'Build a Mean Reversion strategy',
   },
 ]
 
@@ -543,7 +542,7 @@ export default function AIBuilderPage() {
               {EXAMPLE_PROMPTS.map((prompt) => (
                 <button
                   key={prompt.text}
-                  onClick={() => openCreateModal(prompt.text)}
+                  onClick={() => openCreateModal((prompt as any).template || prompt.text)}
                   className="flex items-start gap-3 rounded-[14px] border border-foreground/[0.08] bg-foreground/[0.03] px-4 py-3.5 text-left transition-all duration-200 hover:border-foreground/[0.15] hover:bg-foreground/[0.06] group"
                 >
                   <prompt.icon className="h-4 w-4 shrink-0 mt-0.5 text-foreground/40 group-hover:text-foreground/60 transition-colors" />
