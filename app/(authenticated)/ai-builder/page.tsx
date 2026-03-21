@@ -292,7 +292,24 @@ export default function AIBuilderPage() {
   const handleCreateProject = useCallback(async () => {
     if (!projectName.trim() || !pendingTemplatePrompt || !session?.access_token) return
     setShowNameModal(false)
-    const name = projectName.trim()
+
+    // Check for duplicate names and add (2), (3), etc.
+    let name = projectName.trim()
+    try {
+      const { data: freshSession } = await supabase.auth.getSession()
+      const tk = freshSession?.session?.access_token || session.access_token
+      const res = await fetch('/api/strategies', { headers: { Authorization: `Bearer ${tk}` } })
+      if (res.ok) {
+        const data = await res.json()
+        const names: string[] = (data.strategies || []).map((s: { name: string }) => s.name)
+        const baseName = name
+        let counter = 1
+        while (names.includes(name)) {
+          counter++
+          name = `${baseName} (${counter})`
+        }
+      }
+    } catch { /* proceed with original name */ }
     const prompt = pendingTemplatePrompt
     setPendingTemplatePrompt(null)
     setProjectName('')
