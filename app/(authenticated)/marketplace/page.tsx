@@ -5,6 +5,7 @@ import { Search, TrendingUp, BarChart3, Copy, Target, Shield, ExternalLink, Chev
 import { cn } from '@/lib/utils'
 import { PageTransition } from '@/components/ui/page-transition'
 import { useAuth } from '@/lib/auth-context'
+import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
@@ -192,12 +193,17 @@ export default function MarketplacePage() {
   const copyStrategyToCollection = async (strategy: MockStrategy) => {
     if (!session?.access_token) return
     setPurchasing(true)
+
+    // Get fresh token
+    const { data: { session: freshSession } } = await supabase.auth.getSession()
+    const token = freshSession?.access_token || session.access_token
+
     try {
       // For real DB strategies, use the purchase API
       if (isRealId(strategy.id)) {
         const res = await fetch('/api/marketplace/purchase', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ strategy_id: strategy.id }),
         })
         const data = await res.json()
@@ -218,7 +224,7 @@ export default function MarketplacePage() {
         // Mock strategy — create directly in user's strategies
         const res = await fetch('/api/strategies', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({
             name: strategy.name,
             market: strategy.market,
