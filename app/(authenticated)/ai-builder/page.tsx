@@ -256,7 +256,8 @@ export default function AIBuilderPage() {
 
   const openCreateModal = useCallback((templatePrompt: string) => {
     setPendingTemplatePrompt(templatePrompt)
-    setProjectName('')
+    const tpl = findClientTemplate(templatePrompt)
+    setProjectName(tpl ? `${tpl.name} ${tpl.market} ${tpl.timeframe}` : '')
     setShowNameModal(true)
   }, [])
 
