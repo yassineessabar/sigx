@@ -51,6 +51,8 @@ export default function StrategiesPage() {
   const [renameId, setRenameId] = useState<string | null>(null)
   const [renameName, setRenameName] = useState('')
   const [renaming, setRenaming] = useState(false)
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false)
+  const [deletingAll, setDeletingAll] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -249,6 +251,15 @@ export default function StrategiesPage() {
           <Plus size={16} />
           Strategy
         </button>
+        {strategies.length > 0 && (
+          <button
+            onClick={() => setShowDeleteAllModal(true)}
+            className="flex items-center gap-2 shrink-0 rounded-xl border border-red-500/20 px-4 py-2.5 text-[13px] font-medium text-red-400/70 hover:bg-red-500/[0.06] transition-colors"
+          >
+            <Trash2 size={14} />
+            Delete All
+          </button>
+        )}
       </div>
 
       {/* Category pills */}
@@ -339,10 +350,21 @@ export default function StrategiesPage() {
                 >
                   {s.status}
                 </span>
-                {/* Market tag */}
-                <span className="absolute bottom-3 left-3 rounded-md bg-foreground/[0.04] px-2 py-0.5 text-[10px] text-foreground/25 font-medium">
-                  {s.market}
-                </span>
+                {/* Market tag + metrics */}
+                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
+                  <span className="rounded-md bg-foreground/[0.04] px-2 py-0.5 text-[10px] text-foreground/25 font-medium">
+                    {s.market}
+                  </span>
+                  {s.sharpe_ratio != null && (
+                    <div className="flex items-center gap-2">
+                      {s.sharpe_ratio != null && <span className="text-[9px] text-foreground/25 font-medium">Sharpe {Number(s.sharpe_ratio).toFixed(2)}</span>}
+                      {s.max_drawdown != null && <span className="text-[9px] text-red-400/50 font-medium">DD {Number(s.max_drawdown).toFixed(1)}%</span>}
+                      {s.total_return != null && <span className={`text-[9px] font-medium ${Number(s.total_return) >= 0 ? 'text-emerald-400/50' : 'text-red-400/50'}`}>
+                        {Number(s.total_return) >= 0 ? '+' : ''}{Number(s.total_return).toFixed(1)}%
+                      </span>}
+                    </div>
+                  )}
+                </div>
                 {/* Hover overlay */}
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-xl">
                   <span className="bg-white text-black rounded-lg px-6 py-2 text-[13px] font-medium">
@@ -364,7 +386,7 @@ export default function StrategiesPage() {
                       {s.name}
                     </p>
                     <p className="text-[12px] text-foreground/25 font-medium">
-                      {timeAgo(s.updated_at || s.created_at)}
+                      {s.status === 'backtested' ? 'Backtested ' : ''}{timeAgo(s.updated_at || s.created_at)}
                     </p>
                   </div>
                 </div>
@@ -624,6 +646,51 @@ export default function StrategiesPage() {
               className="rounded-xl bg-foreground px-5 py-2.5 text-[14px] font-semibold text-background hover:bg-foreground/90 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
               {renaming ? 'Renaming...' : 'Rename'}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete All Confirmation Modal */}
+      <Dialog open={showDeleteAllModal} onOpenChange={setShowDeleteAllModal}>
+        <DialogContent className="bg-surface border-foreground/[0.08] sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Delete All Strategies</DialogTitle>
+            <DialogDescription className="text-foreground/40">
+              Are you sure you want to delete all {strategies.length} strategies? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="bg-transparent border-t-0 gap-2 sm:gap-2">
+            <button
+              onClick={() => setShowDeleteAllModal(false)}
+              className="rounded-xl px-4 py-2 text-[13px] font-medium text-foreground/50 hover:text-foreground/70 hover:bg-foreground/[0.04] transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={async () => {
+                if (!session?.access_token) return
+                setDeletingAll(true)
+                try {
+                  await Promise.all(strategies.map((s) =>
+                    fetch(`/api/strategies/${s.id}`, {
+                      method: 'DELETE',
+                      headers: { Authorization: `Bearer ${session.access_token}` },
+                    })
+                  ))
+                  setStrategies([])
+                  setShowDeleteAllModal(false)
+                  toast.success('All strategies deleted')
+                } catch {
+                  toast.error('Failed to delete some strategies')
+                } finally {
+                  setDeletingAll(false)
+                }
+              }}
+              disabled={deletingAll}
+              className="rounded-xl px-4 py-2 text-[13px] font-medium bg-red-500/[0.1] text-red-400 hover:bg-red-500/[0.2] transition-colors disabled:opacity-50"
+            >
+              {deletingAll ? 'Deleting...' : `Delete All (${strategies.length})`}
             </button>
           </DialogFooter>
         </DialogContent>
