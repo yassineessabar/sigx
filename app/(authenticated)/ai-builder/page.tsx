@@ -359,6 +359,21 @@ export default function AIBuilderPage() {
           const chatData = await chatRes.json()
           if (chatData.chat?.id) {
             setCurrentChatId(chatData.chat.id)
+            // Save messages to DB so they load when reopening
+            const chatId = chatData.chat.id
+            await fetch('/api/chat/' + chatId + '/messages', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+              body: JSON.stringify({ messages: [
+                { role: 'user', content: prompt },
+                { role: 'assistant', content: explanation, metadata: {
+                  type: 'strategy',
+                  strategy_snapshot: clientTemplate.strategySnapshot,
+                  backtest_snapshot: clientTemplate.backtestResults,
+                  mql5_code: clientTemplate.mql5Code,
+                }},
+              ]}),
+            }).catch(() => {})
           }
         }
       }).catch(() => {})
