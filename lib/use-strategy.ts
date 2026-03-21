@@ -78,120 +78,65 @@ export function useStrategy(accessToken?: string | null): UseStrategyReturn {
   }, [])
 
   const connectSSE = useCallback((id: string) => {
-    // Close any existing connection
+    // Close any existing polling
     sourceRef.current?.close()
 
     setJobId(id)
     setStatus('running')
-    setCurrentStep('Connecting...')
+    setCurrentStep('Pipeline starting...')
 
-    const source = new EventSource(`/api/ai-builder/stream/${id}`)
-    sourceRef.current = source
-
-    const addEvent = (event: string, data: Record<string, unknown>) => {
-      setEvents(prev => [...prev, { event, data }])
-    }
-
-    source.addEventListener('started', (e) => {
-      const data = JSON.parse((e as MessageEvent).data)
-      setStatus('running')
-      setCurrentStep('Starting...')
-      addEvent('started', data)
-    })
-
-    source.addEventListener('iteration_start', (e) => {
-      const data = JSON.parse((e as MessageEvent).data)
-      setCurrentStep(`Iteration ${data.iteration}/${data.total}`)
-      addEvent('iteration_start', data)
-    })
-
-    source.addEventListener('generating', (e) => {
-      const data = JSON.parse((e as MessageEvent).data)
-      setCurrentStep('Generating code...')
-      addEvent('generating', data)
-    })
-
-    source.addEventListener('improving', (e) => {
-      const data = JSON.parse((e as MessageEvent).data)
-      setCurrentStep('Improving strategy...')
-      addEvent('improving', data)
-    })
-
-    source.addEventListener('fixing', (e) => {
-      const data = JSON.parse((e as MessageEvent).data)
-      setCurrentStep('Fixing compile errors...')
-      addEvent('fixing', data)
-    })
-
-    source.addEventListener('compiled', (e) => {
-      const data = JSON.parse((e as MessageEvent).data)
-      setCurrentStep('Compiled successfully')
-      addEvent('compiled', data)
-    })
-
-    source.addEventListener('compile_failed', (e) => {
-      const data = JSON.parse((e as MessageEvent).data)
-      setCurrentStep(`Compile failed (attempt ${data.attempt})`)
-      addEvent('compile_failed', data)
-    })
-
-    source.addEventListener('backtesting', (e) => {
-      const data = JSON.parse((e as MessageEvent).data)
-      setCurrentStep('Running backtest...')
-      addEvent('backtesting', data)
-    })
-
-    source.addEventListener('iteration_done', (e) => {
-      const data = JSON.parse((e as MessageEvent).data) as IterationResult
-      setIterations(prev => [...prev, data])
-      setCurrentStep(
-        `Iteration ${data.iteration} done — PF: ${(data.metrics?.profit_factor as number)?.toFixed(2) ?? 'N/A'}`
-      )
-      addEvent('iteration_done', data as unknown as Record<string, unknown>)
-    })
-
-    source.addEventListener('new_best', (e) => {
-      const data = JSON.parse((e as MessageEvent).data)
-      setBestMetrics(data)
-      addEvent('new_best', data)
-    })
-
-    source.addEventListener('early_exit', (e) => {
-      const data = JSON.parse((e as MessageEvent).data)
-      setCurrentStep('Target met — stopping early')
-      addEvent('early_exit', data)
-    })
-
-    source.addEventListener('completed', (e) => {
-      const data = JSON.parse((e as MessageEvent).data)
-      setStatus('completed')
-      setCurrentStep('Completed')
-      if (data.best_metrics) setBestMetrics(data.best_metrics)
-      if (data.best_code) setBestCode(data.best_code)
-      addEvent('completed', data)
-    })
-
-    source.addEventListener('error', (e) => {
+    // Poll every 3 seconds (Hybrid Manager uses polling, not SSE)
+    const interval = setInterval(async () => {
       try {
-        const data = JSON.parse((e as MessageEvent).data)
-        setError(data.error as string)
-        addEvent('error', data)
+        const res = await fetch(`/api/ai-builder/job/${id}`)
+        if (!res.ok) return
+
+        const data = await res.json()
+
+        // Update current step
+        if (data.current_step) {
+          setCurrentStep(data.current_step)
+          setEvents(prev => {
+            const lastStep = prev[prev.length - 1]?.data?.step
+            if (lastStep !== data.current_step) {
+              return [...prev, { event: 'status', data: { step: data.current_step } }]
+            }
+            return prev
+          })
+        }
+
+        // Check completion
+        if (data.status === 'completed' && data.result) {
+          clearInterval(interval)
+          sourceRef.current = null
+          setStatus('completed')
+          setCurrentStep('Completed')
+
+          if (data.result.best_code) setBestCode(data.result.best_code)
+          if (data.result.best_metrics) setBestMetrics(data.result.best_metrics)
+          if (data.result.all_iterations) {
+            setIterations(data.result.all_iterations.map((iter: Record<string, unknown>, idx: number) => ({
+              iteration: idx + 1,
+              metrics: (iter.metrics || iter) as Record<string, unknown>,
+              success: iter.success !== false,
+              duration_s: iter.duration_s as number | undefined,
+            })))
+          }
+          setEvents(prev => [...prev, { event: 'completed', data: data.result }])
+        } else if (data.status === 'error' || data.status === 'failed') {
+          clearInterval(interval)
+          sourceRef.current = null
+          setStatus('error')
+          setError(data.error || 'Pipeline failed')
+          setEvents(prev => [...prev, { event: 'error', data: { error: data.error } }])
+        }
       } catch {
-        setError('Connection lost')
+        // Network error — keep polling
       }
-      setStatus('error')
-    })
+    }, 3000)
 
-    source.addEventListener('done', () => {
-      source.close()
-      sourceRef.current = null
-    })
-
-    source.onerror = () => {
-      // SSE reconnects automatically, but if job is done it won't help
-      // Poll for result as fallback
-      setCurrentStep('Connection lost, polling...')
-    }
+    // Store cleanup function
+    sourceRef.current = { close: () => clearInterval(interval) } as EventSource
   }, [])
 
   const startJob = useCallback(async (

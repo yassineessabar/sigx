@@ -51,16 +51,21 @@ async function startHybridManagerJob(
 // Detect if the user message is asking to build/create a strategy (vs a question)
 function detectStrategyRequest(message: string): boolean {
   const lower = message.toLowerCase()
-  const strategyKeywords = ['build', 'create', 'generate', 'make', 'design', 'develop', 'code', 'write']
+  const buildKeywords = ['build', 'create', 'generate', 'make', 'design', 'develop', 'code', 'write']
+  const optimizeKeywords = ['optimize', 'optimise', 'improve', 'reduce drawdown', 'increase', 'better', 'maximize', 'minimise', 'fix', 'adjust']
   const tradingKeywords = ['strategy', 'ea', 'expert advisor', 'scalp', 'breakout', 'trend', 'reversion', 'crossover', 'ema', 'rsi', 'macd', 'bollinger', 'atr']
   const symbolKeywords = ['xauusd', 'eurusd', 'gbpusd', 'usdjpy', 'btcusd', 'nas100', 'gold', 'forex']
+  const metricKeywords = ['sharpe', 'drawdown', 'win rate', 'profit factor', 'return', 'trades', 'profit']
 
-  const hasAction = strategyKeywords.some(k => lower.includes(k))
+  const hasBuild = buildKeywords.some(k => lower.includes(k))
+  const hasOptimize = optimizeKeywords.some(k => lower.includes(k))
   const hasTrading = tradingKeywords.some(k => lower.includes(k))
   const hasSymbol = symbolKeywords.some(k => lower.includes(k))
+  const hasMetric = metricKeywords.some(k => lower.includes(k))
 
-  // Need at least action + trading context, or symbol + trading context
-  return (hasAction && hasTrading) || (hasSymbol && hasTrading) || (hasAction && hasSymbol)
+  // Strategy build: action + trading/symbol
+  // Optimization: optimize keyword + metric/trading context
+  return (hasBuild && hasTrading) || (hasSymbol && hasTrading) || (hasBuild && hasSymbol) || (hasOptimize && (hasMetric || hasTrading))
 }
 
 function extractSymbol(message: string): string {
