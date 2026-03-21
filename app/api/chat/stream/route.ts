@@ -445,13 +445,51 @@ export async function POST(request: NextRequest) {
 
           } else if (isStrategyRequest) {
             // ── HYBRID MANAGER PATH — Claude Code on VPS does everything ($0) ──
-            send({ type: 'delta', text: `Building your strategy...\n\nI'm sending your request to the strategy engine. You'll see real-time progress as the code is generated, compiled, and backtested on MetaTrader 5.` })
-            fullContent = 'Strategy build started. Watch the progress in the right panel.'
+            send({ type: 'delta', text: `Starting the strategy engine...\n\nYour request is being sent to the MT5 server where Claude Code will generate, compile, and backtest the strategy. Watch the **Iterations** tab in the right panel for real-time progress.` })
+            fullContent = 'Strategy pipeline started.'
+
+            // Build full prompt with context from chat history
+            let fullPrompt = message
+
+            // Get existing code from chat history for optimization requests
+            const { data: history } = await supabaseAdmin
+              .from('chat_messages')
+              .select('role, content, metadata')
+              .eq('chat_id', currentChatId)
+              .order('created_at', { ascending: false })
+              .limit(10)
+
+            if (history) {
+              // Find the most recent MQL5 code in the conversation
+              for (const msg of history) {
+                const meta = msg.metadata as Record<string, unknown> | null
+                if (meta?.mql5_code) {
+                  fullPrompt = `${message}\n\nHere is the current MQL5 code to optimize:\n\n${meta.mql5_code}`
+                  break
+                }
+              }
+
+              // Also find strategy context (symbol, market)
+              for (const msg of history) {
+                const meta = msg.metadata as Record<string, unknown> | null
+                const snap = meta?.strategy_snapshot as Record<string, unknown> | undefined
+                if (snap?.market) {
+                  // Use the strategy's symbol if not specified in message
+                  if (!message.toLowerCase().match(/xauusd|eurusd|gbpusd|usdjpy|btcusd/)) {
+                    fullPrompt = fullPrompt.replace(message, `${message} (Symbol: ${snap.market})`)
+                  }
+                  break
+                }
+              }
+            }
+
+            const detectedSymbol = extractSymbol(fullPrompt)
+            const detectedPeriod = extractPeriod(fullPrompt)
 
             const strategyJob = await startHybridManagerJob(
-              message,
-              extractSymbol(message),
-              extractPeriod(message),
+              fullPrompt,
+              detectedSymbol,
+              detectedPeriod,
               3,
             )
 
