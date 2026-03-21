@@ -6,7 +6,7 @@ import { SplitLayout } from '@/components/ai-builder/split-layout'
 import { PromptInput } from '@/components/ai-builder/prompt-input'
 import { UpgradeModal } from '@/components/layout/upgrade-modal'
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { findClientTemplate } from '@/lib/templates/client'
@@ -95,7 +95,40 @@ export default function AIBuilderPage() {
   const abortRef = useRef<AbortController | null>(null)
   const newChatIdRef = useRef<string | null>(null)
   const router = useRouter()
+  const pathname = usePathname()
   const { setOpen: setSidebarOpen } = useSidebar()
+
+  // Reset state when navigating to /ai-builder (new chat)
+  // This uses a ref to track if we've had a session, so clicking "New Chat" resets
+  const hadSession = useRef(false)
+  useEffect(() => {
+    if (messages.length > 0 || currentChatId) {
+      hadSession.current = true
+    }
+  }, [messages.length, currentChatId])
+
+  // The sidebar "AI Builder" and "New Chat" links both go to /ai-builder
+  // Since this is the same component, we need a way to detect "new" navigation
+  // Solution: expose a reset via the window, called by the sidebar link
+  useEffect(() => {
+    const resetChat = () => {
+      setMessages([])
+      setCurrentChatId(null)
+      setIsGenerating(false)
+      setStreamingContent('')
+      setPipelineStatus(null)
+      abortRef.current?.abort()
+      abortRef.current = null
+      newChatIdRef.current = null
+      hadSession.current = false
+    }
+    // @ts-expect-error — exposing reset function on window for sidebar
+    window.__sigxResetChat = resetChat
+    return () => {
+      // @ts-expect-error
+      delete window.__sigxResetChat
+    }
+  }, [])
 
   // Load credits
   useEffect(() => {
@@ -246,11 +279,7 @@ export default function AIBuilderPage() {
       setStreamingContent('')
       setPipelineStatus(null)
       abortRef.current = null
-      // Update URL silently so browser back works, but DON'T navigate (avoids remount)
-      if (newChatIdRef.current) {
-        window.history.replaceState(null, '', `/ai-builder/${newChatIdRef.current}`)
-        newChatIdRef.current = null
-      }
+      newChatIdRef.current = null
     }
   }, [session?.access_token, currentChatId, user, router])
 
@@ -330,7 +359,6 @@ export default function AIBuilderPage() {
           const chatData = await chatRes.json()
           if (chatData.chat?.id) {
             setCurrentChatId(chatData.chat.id)
-            window.history.replaceState(null, '', `/ai-builder/${chatData.chat.id}`)
           }
         }
       }).catch(() => {})

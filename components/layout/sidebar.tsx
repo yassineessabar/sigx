@@ -234,6 +234,10 @@ export function Sidebar({ chats = [], onNewChat, onDeleteChat }: SidebarProps) {
         <div className="px-3 pt-3 pb-1">
           <Link
             href="/ai-builder"
+            onClick={() => {
+              // @ts-expect-error — reset chat state when clicking New Chat
+              if (typeof window !== 'undefined' && window.__sigxResetChat) window.__sigxResetChat()
+            }}
             className="flex w-full items-center gap-2.5 rounded-xl bg-white px-3 py-2.5 text-[13px] font-semibold text-black hover:bg-white/90 transition-colors"
           >
             <Plus className="h-4 w-4" />
@@ -249,6 +253,11 @@ export function Sidebar({ chats = [], onNewChat, onDeleteChat }: SidebarProps) {
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={() => {
+                  // Reset chat state when clicking AI Builder
+                  // @ts-expect-error
+                  if (item.href === '/ai-builder' && typeof window !== 'undefined' && window.__sigxResetChat) window.__sigxResetChat()
+                }}
                 className={cn(
                   'flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] transition-colors duration-200 font-medium',
                   isActive
