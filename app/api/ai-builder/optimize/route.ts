@@ -10,12 +10,11 @@ import Anthropic from '@anthropic-ai/sdk'
 
 const MAX_FIX_RETRIES = 3
 
-const anthropicKey = process.env.ANTHROPIC_API_KEY
-const isValidKey =
-  anthropicKey &&
-  anthropicKey !== 'your-anthropic-key-here' &&
-  anthropicKey.startsWith('sk-ant-')
-const anthropic = isValidKey ? new Anthropic({ apiKey: anthropicKey }) : null
+function getAnthropic(): Anthropic | null {
+  const key = process.env.ANTHROPIC_API_KEY
+  if (!key || key === 'your-anthropic-key-here' || !key.startsWith('sk-ant-')) return null
+  return new Anthropic({ apiKey: key })
+}
 
 /**
  * POST /api/ai-builder/optimize  (SSE stream)
@@ -109,7 +108,7 @@ export async function POST(request: NextRequest) {
               }
               if (
                 r < MAX_FIX_RETRIES &&
-                anthropic &&
+                getAnthropic() &&
                 compileResult.errors?.length
               ) {
                 const fixed = await autoFixCode(
@@ -212,20 +211,15 @@ async function improveMql5Code(
   symbol: string,
   iteration: number
 ): Promise<string | null> {
-  if (!anthropic) {
-    // Mock: return the same code with a small comment change
-    return mq5Code.replace(
-      '//+------------------------------------------------------------------+',
-      `//+------------------------------------------------------------------+\n// Optimization iteration ${iteration}`
-    )
-  }
+  const client = getAnthropic()
+  if (!client) return null
 
   try {
     const metricsText = previousMetrics
       ? `Previous backtest results on ${symbol}:\n${JSON.stringify(previousMetrics, null, 2)}`
       : `This is the initial version, being optimized for ${symbol}.`
 
-    const response = await anthropic.messages.create({
+    const response = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 4096,
       system:
@@ -251,10 +245,11 @@ async function autoFixCode(
   mq5Code: string,
   errors: string[]
 ): Promise<string | null> {
-  if (!anthropic) return null
+  const fixClient = getAnthropic()
+  if (!fixClient) return null
 
   try {
-    const response = await anthropic.messages.create({
+    const response = await fixClient.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 4096,
       system:

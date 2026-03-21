@@ -52,7 +52,7 @@ export function ChatThread({ messages, isGenerating, streamingContent, pipelineS
   const displayedStreaming = streamingContent ? cleanStreamingDisplay(streamingContent) : ''
 
   return (
-    <div className="flex-1 overflow-auto p-4">
+    <div className="flex-1 min-h-0 overflow-y-auto p-4">
       <div className="mx-auto max-w-3xl space-y-6">
         {messages.map((msg) => (
           <ChatMessage key={msg.id} message={msg} />

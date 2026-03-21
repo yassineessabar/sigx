@@ -87,7 +87,9 @@ export interface ChatMessageMetadata {
     total_return: number
     profit_factor: number
     total_trades: number
-    equity_curve: { date: string; equity: number }[]
+    net_profit?: number
+    recovery_factor?: number
+    equity_curve?: { date: string; equity: number }[]
   }
   mql5_code?: string
 }

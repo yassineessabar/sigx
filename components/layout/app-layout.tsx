@@ -6,6 +6,7 @@ import { Chat } from '@/lib/types'
 import { ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import { PanelLeft } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface AppLayoutProps {
   children: ReactNode
@@ -18,10 +19,10 @@ function MainContent({ children }: { children: ReactNode }) {
   const { open, toggle } = useSidebar()
   const pathname = usePathname()
   // AI builder chat pages have their own sidebar toggle in the top bar
-  const isAiBuilderChat = pathname.startsWith('/ai-builder/')
+  const isAiBuilder = pathname === '/ai-builder' || pathname.startsWith('/ai-builder/')
   return (
     <div className="flex flex-1 flex-col overflow-hidden relative">
-      {!open && !isAiBuilderChat && (
+      {!open && !isAiBuilder && (
         <button
           onClick={toggle}
           className="absolute top-3 left-3 z-20 rounded-lg p-2 text-foreground/40 hover:bg-foreground/[0.04] hover:text-foreground/70 transition-colors"
@@ -29,7 +30,7 @@ function MainContent({ children }: { children: ReactNode }) {
           <PanelLeft className="h-4 w-4" />
         </button>
       )}
-      <div className="flex-1 overflow-auto">
+      <div className={cn('flex-1 min-h-0', isAiBuilder ? 'overflow-hidden flex flex-col' : 'overflow-auto')}>
         {children}
       </div>
     </div>

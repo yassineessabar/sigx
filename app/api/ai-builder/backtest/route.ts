@@ -9,12 +9,11 @@ import Anthropic from '@anthropic-ai/sdk'
 
 const MAX_FIX_RETRIES = 3
 
-const anthropicKey = process.env.ANTHROPIC_API_KEY
-const isValidKey =
-  anthropicKey &&
-  anthropicKey !== 'your-anthropic-key-here' &&
-  anthropicKey.startsWith('sk-ant-')
-const anthropic = isValidKey ? new Anthropic({ apiKey: anthropicKey }) : null
+function getAnthropic(): Anthropic | null {
+  const key = process.env.ANTHROPIC_API_KEY
+  if (!key || key === 'your-anthropic-key-here' || !key.startsWith('sk-ant-')) return null
+  return new Anthropic({ apiKey: key })
+}
 
 /**
  * POST /api/ai-builder/backtest
@@ -59,7 +58,7 @@ export async function POST(request: NextRequest) {
         break
       }
 
-      if (i < MAX_FIX_RETRIES && anthropic && compileResult.errors?.length) {
+      if (i < MAX_FIX_RETRIES && getAnthropic() && compileResult.errors?.length) {
         const fixed = await autoFixCode(currentCode, compileResult.errors)
         if (fixed) {
           currentCode = fixed
@@ -96,10 +95,11 @@ async function autoFixCode(
   mq5Code: string,
   errors: string[]
 ): Promise<string | null> {
-  if (!anthropic) return null
+  const client = getAnthropic()
+  if (!client) return null
 
   try {
-    const response = await anthropic.messages.create({
+    const response = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 4096,
       system:

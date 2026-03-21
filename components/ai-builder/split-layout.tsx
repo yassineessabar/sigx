@@ -180,7 +180,7 @@ export function SplitLayout({
   const displayCode = optimizedCode || latestCode
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col min-h-0">
       <ChatTopBar
         title={title}
         credits={credits}
@@ -194,7 +194,7 @@ export function SplitLayout({
       />
       <div className="flex flex-1 overflow-hidden relative">
         {/* Left: Chat */}
-        <div className="flex flex-1 flex-col min-w-0">
+        <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
           <ChatThread
             messages={messages}
             isGenerating={isGenerating}

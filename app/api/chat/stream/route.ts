@@ -4,13 +4,11 @@ import { getUserFromToken } from '@/lib/api-auth'
 import { compileEA, backtestEA, isWorkerConfigured } from '@/lib/mt5-worker'
 import Anthropic from '@anthropic-ai/sdk'
 
-const anthropicKey = process.env.ANTHROPIC_API_KEY
-const isValidKey = anthropicKey
-  && anthropicKey !== 'your-anthropic-key-here'
-  && anthropicKey.startsWith('sk-ant-')
-const anthropic = isValidKey
-  ? new Anthropic({ apiKey: anthropicKey })
-  : null
+function getAnthropic(): Anthropic | null {
+  const key = process.env.ANTHROPIC_API_KEY
+  if (!key || key === 'your-anthropic-key-here' || !key.startsWith('sk-ant-')) return null
+  return new Anthropic({ apiKey: key })
+}
 
 const SYSTEM_PROMPT = `You are SIGX, an expert MQL5 Expert Advisor developer. Your ONLY job is to generate COMPLETE, WORKING trading EAs that ACTUALLY OPEN AND CLOSE TRADES when backtested.
 
@@ -186,10 +184,11 @@ function parseAssistantResponse(content: string) {
 }
 
 async function mt5AutoFixCode(mq5Code: string, errors: string[]): Promise<string | null> {
-  if (!anthropic) return null
+  const client = getAnthropic()
+  if (!client) return null
 
   try {
-    const response = await anthropic.messages.create({
+    const response = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 4096,
       system: 'You are an MQL5 compiler error fixer. Fix the compile errors while preserving ALL trading logic. The EA must still have trade.Buy() and trade.Sell() calls in OnTick(). Use MQL5 syntax only (CTrade, CopyBuffer, not MQL4 OrderSend). Output ONLY the fixed code.',
@@ -276,6 +275,8 @@ export async function POST(request: NextRequest) {
         let fullContent = ''
 
         try {
+          const anthropic = getAnthropic()
+
           if (!anthropic) {
             // No API key — send error as a chat message
             const errorMsg = 'ANTHROPIC_API_KEY is not configured. Please set it in your environment variables to enable AI strategy generation.'
@@ -454,13 +455,14 @@ export async function POST(request: NextRequest) {
           const errMsg = apiError instanceof Error ? apiError.message : String(apiError)
           console.error('Stream error:', errMsg)
 
-          // Detect Anthropic credit/billing errors
-          const isCreditError = errMsg.toLowerCase().includes('credit') || errMsg.toLowerCase().includes('billing') || errMsg.includes('429') || errMsg.includes('insufficient')
+          // Only detect the specific Anthropic "credit balance too low" error
+          const isCreditError = errMsg.includes('credit balance is too low')
 
           if (isCreditError) {
-            send({ type: 'credit_error', message: 'No AI credits available. Please upgrade your plan.' })
+            send({ type: 'credit_error', message: 'Anthropic API credits depleted. Add credits at console.anthropic.com.' })
           }
 
+          // Show the actual error to help debug
           send({
             type: 'done',
             message: {
@@ -469,8 +471,8 @@ export async function POST(request: NextRequest) {
               user_id: user.id,
               role: 'assistant',
               content: isCreditError
-                ? 'You need credits to generate strategies. Please upgrade your plan to continue.'
-                : 'Sorry, an error occurred while generating the strategy. Please try again.',
+                ? 'Anthropic API credits are depleted. Please add credits at console.anthropic.com to continue.'
+                : `An error occurred: ${errMsg}`,
               metadata: {},
               created_at: new Date().toISOString(),
             },

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { ArrowUp, Square } from 'lucide-react'
+import { ArrowUp, Square, StopCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 
@@ -40,6 +40,18 @@ export function PromptInput({ onSend, isGenerating, onStop, placeholder, variant
       isHero ? '' : 'border-t border-foreground/[0.04] bg-card p-4'
     )}>
       <div className={cn(isHero ? '' : 'mx-auto max-w-3xl')}>
+        {/* Stop button — visible above input when generating */}
+        {isGenerating && !isHero && (
+          <div className="flex justify-center mb-3">
+            <button
+              onClick={onStop}
+              className="flex items-center gap-2 rounded-full border border-foreground/[0.10] bg-foreground/[0.04] px-4 py-2 text-[13px] font-medium text-foreground/60 hover:bg-foreground/[0.08] hover:text-foreground/80 transition-colors"
+            >
+              <StopCircle size={14} />
+              Stop generating
+            </button>
+          </div>
+        )}
         <div className="relative rounded-2xl border border-foreground/[0.08] bg-surface transition-all duration-200 focus-within:border-foreground/[0.14]">
           {/* Textarea */}
           <textarea

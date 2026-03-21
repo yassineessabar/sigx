@@ -3,13 +3,11 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getUserFromToken } from '@/lib/api-auth'
 import Anthropic from '@anthropic-ai/sdk'
 
-const anthropicKey = process.env.ANTHROPIC_API_KEY
-const isValidKey = anthropicKey
-  && anthropicKey !== 'your-anthropic-key-here'
-  && anthropicKey.startsWith('sk-ant-')
-const anthropic = isValidKey
-  ? new Anthropic({ apiKey: anthropicKey })
-  : null
+function getAnthropic(): Anthropic | null {
+  const key = process.env.ANTHROPIC_API_KEY
+  if (!key || key === 'your-anthropic-key-here' || !key.startsWith('sk-ant-')) return null
+  return new Anthropic({ apiKey: key })
+}
 
 const SYSTEM_PROMPT = `You are SIGX, an expert MQL5 EA developer. Generate COMPLETE, WORKING Expert Advisors that OPEN AND CLOSE TRADES.
 
@@ -64,6 +62,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const anthropic = getAnthropic()
     if (!anthropic) {
       return NextResponse.json({ error: 'AI service not configured. Set ANTHROPIC_API_KEY.' }, { status: 503 })
     }
