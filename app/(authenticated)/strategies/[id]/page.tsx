@@ -146,10 +146,23 @@ export default function StrategyDetailPage() {
           {/* Strategy preview card */}
           <div className="rounded-[16px] bg-secondary border border-foreground/[0.06] overflow-hidden">
             <div className="aspect-[16/9] relative bg-gradient-to-br from-foreground/[0.02] to-foreground/[0.04]">
-              {/* Equity curve chart */}
-              <div className="absolute inset-x-0 bottom-0 h-[70%] px-4">
-                <StrategyCurveSVG strategy={strategy} />
-              </div>
+              {/* Equity curve chart or SX placeholder */}
+              {(() => {
+                const tpl = findClientTemplate(strategy.name)
+                const hasMetrics = strategy.sharpe_ratio != null || strategy.total_return != null
+                if (!hasMetrics && !tpl) {
+                  return (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-[48px] font-bold tracking-[-0.06em] text-foreground/[0.06] select-none">SX</span>
+                    </div>
+                  )
+                }
+                return (
+                  <div className="absolute inset-x-0 bottom-0 h-[70%] px-4">
+                    <StrategyCurveSVG strategy={strategy} />
+                  </div>
+                )
+              })()}
               {/* Status badge */}
               <span
                 className={`absolute top-4 right-4 rounded-full px-3 py-1 text-[11px] font-semibold ${
