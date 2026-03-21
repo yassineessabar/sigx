@@ -12,9 +12,11 @@ interface ChatThreadProps {
   streamingContent?: string
   pipelineStatus?: string | null
   backtestData?: { sharpe: number; max_drawdown: number; win_rate: number; total_return: number; profit_factor: number; total_trades: number } | null
+  pipelineError?: string | null
   onEditMessage?: (messageId: string, newContent: string) => void
   onRegenerateMessage?: (messageId: string) => void
   onSend?: (message: string) => void
+  onRetry?: () => void
 }
 
 function OptimizeSuggestions({ backtest, onSend }: {
@@ -110,7 +112,7 @@ function cleanStreamingDisplay(text: string): string {
   return clean.replace(/\n{3,}/g, '\n\n').trim()
 }
 
-export function ChatThread({ messages, isGenerating, streamingContent, pipelineStatus, backtestData, onEditMessage, onRegenerateMessage, onSend }: ChatThreadProps) {
+export function ChatThread({ messages, isGenerating, streamingContent, pipelineStatus, backtestData, pipelineError, onEditMessage, onRegenerateMessage, onSend, onRetry }: ChatThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const [hasHadMessages, setHasHadMessages] = useState(false)
@@ -195,8 +197,41 @@ export function ChatThread({ messages, isGenerating, streamingContent, pipelineS
           <PipelineTracker status={pipelineStatus} statusMessage={pipelineStatus} />
         )}
 
+        {/* Pipeline error with retry */}
+        {pipelineError && !isGenerating && (
+          <div className="flex gap-3">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-red-500/20">
+              <span className="text-[8px] font-black text-red-400 tracking-[-0.06em]">!</span>
+            </div>
+            <div className="max-w-[85%] space-y-2">
+              <div className="rounded-[14px] border border-red-500/20 bg-red-500/[0.04] px-4 py-3">
+                <p className="text-[13px] text-red-400/80 font-medium">Strategy pipeline failed</p>
+                <p className="text-[12px] text-red-400/50 mt-1">{pipelineError}</p>
+              </div>
+              <div className="flex gap-2">
+                {onRetry && (
+                  <button
+                    onClick={onRetry}
+                    className="rounded-full border border-foreground/[0.10] bg-foreground/[0.04] px-4 py-1.5 text-[12px] font-medium text-foreground/60 hover:bg-foreground/[0.08] transition-colors"
+                  >
+                    Retry
+                  </button>
+                )}
+                {onSend && (
+                  <button
+                    onClick={() => onSend('Try a different approach — use simpler entry logic with fewer indicators')}
+                    className="rounded-full border border-foreground/[0.10] bg-foreground/[0.04] px-4 py-1.5 text-[12px] font-medium text-foreground/60 hover:bg-foreground/[0.08] transition-colors"
+                  >
+                    Try different approach
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Optimize suggestions — based on actual backtest recommendations */}
-        {backtestData && !isGenerating && !pipelineStatus && onSend && (
+        {backtestData && !isGenerating && !pipelineStatus && !pipelineError && onSend && (
           <OptimizeSuggestions backtest={backtestData} onSend={onSend} />
         )}
 

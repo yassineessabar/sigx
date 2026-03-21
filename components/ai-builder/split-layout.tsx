@@ -288,9 +288,18 @@ export function SplitLayout({
             streamingContent={streamingContent}
             pipelineStatus={chatPipelineStatus || pipelineStatus}
             backtestData={displayBacktest}
+            pipelineError={strategy.status === 'error' ? strategy.error : null}
             onEditMessage={onEditMessage}
             onRegenerateMessage={onRegenerateMessage}
             onSend={onSend}
+            onRetry={() => {
+              // Retry: resend the last user message
+              const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')
+              if (lastUserMsg) {
+                strategy.reset()
+                onSend(lastUserMsg.content)
+              }
+            }}
           />
           <PromptInput onSend={onSend} isGenerating={isGenerating} onStop={onStop} />
         </div>
