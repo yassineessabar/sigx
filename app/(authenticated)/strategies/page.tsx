@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth-context'
 import { Strategy, Chat } from '@/lib/types'
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, Plus, MoreHorizontal, Sparkles, LayoutTemplate, Trash2, Copy } from 'lucide-react'
+import { Search, Plus, MoreHorizontal, Sparkles, LayoutTemplate, Trash2, Copy, Pencil } from 'lucide-react'
 import { PageTransition } from '@/components/ui/page-transition'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -48,6 +48,9 @@ export default function StrategiesPage() {
   const [menuOpen, setMenuOpen] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [renameId, setRenameId] = useState<string | null>(null)
+  const [renameName, setRenameName] = useState('')
+  const [renaming, setRenaming] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -130,6 +133,29 @@ export default function StrategiesPage() {
       toast.success('Strategy duplicated!')
     } catch { toast.error('Failed to duplicate') }
     setMenuOpen(null)
+  }
+
+  const handleRename = async () => {
+    if (!renameId || !renameName.trim() || !session?.access_token) return
+    setRenaming(true)
+    try {
+      const res = await fetch(`/api/strategies/${renameId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ name: renameName.trim() }),
+      })
+      if (!res.ok) throw new Error('Failed to rename')
+      setStrategies(prev => prev.map(s => s.id === renameId ? { ...s, name: renameName.trim() } : s))
+      toast.success('Strategy renamed')
+      setRenameId(null)
+    } catch {
+      toast.error('Failed to rename strategy')
+    } finally {
+      setRenaming(false)
+    }
   }
 
   const openNameModal = (type: 'blank' | 'ai') => {
@@ -375,6 +401,18 @@ export default function StrategiesPage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
+                            setRenameName(s.name)
+                            setRenameId(s.id)
+                            setMenuOpen(null)
+                          }}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-foreground/60 hover:bg-foreground/[0.04] transition-colors"
+                        >
+                          <Pencil size={13} />
+                          Rename
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
                             handleDuplicate(s.id)
                           }}
                           className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-foreground/60 hover:bg-foreground/[0.04] transition-colors"
@@ -549,6 +587,43 @@ export default function StrategiesPage() {
               className="rounded-xl bg-foreground px-5 py-2.5 text-[14px] font-semibold text-background hover:bg-foreground/90 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
               {creating ? 'Creating...' : 'Create Project'}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rename Modal */}
+      <Dialog open={!!renameId} onOpenChange={(open) => !open && setRenameId(null)}>
+        <DialogContent showCloseButton={false} className="bg-card border-foreground/[0.08] sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle className="text-[18px] font-bold text-foreground">Rename Strategy</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <label className="text-[13px] font-medium text-foreground/60">Strategy Name</label>
+            <input
+              type="text"
+              value={renameName}
+              onChange={(e) => setRenameName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && renameName.trim() && !renaming) handleRename()
+              }}
+              autoFocus
+              className="w-full rounded-xl border border-foreground/[0.10] bg-background px-4 py-3 text-[14px] text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-foreground/[0.25] transition-colors"
+            />
+          </div>
+          <DialogFooter className="sm:flex-row gap-2">
+            <button
+              onClick={() => setRenameId(null)}
+              className="rounded-xl border border-foreground/[0.10] bg-foreground/[0.04] px-5 py-2.5 text-[14px] font-medium text-foreground/70 hover:bg-foreground/[0.08] transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleRename}
+              disabled={!renameName.trim() || renaming}
+              className="rounded-xl bg-foreground px-5 py-2.5 text-[14px] font-semibold text-background hover:bg-foreground/90 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              {renaming ? 'Renaming...' : 'Rename'}
             </button>
           </DialogFooter>
         </DialogContent>

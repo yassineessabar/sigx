@@ -3,12 +3,18 @@
 import { useState, useMemo, useEffect } from 'react'
 import {
   TrendingUp, TrendingDown, ArrowUpDown,
-  ChevronUp, ChevronDown, BarChart3, Copy, Users, Target, Info
+  ChevronUp, ChevronDown, BarChart3, Copy, Users, Target, Info, Shield, ExternalLink, X
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PageTransition } from '@/components/ui/page-transition'
 import { toast } from 'sonner'
 import { useAuth } from '@/lib/auth-context'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 // ── Mock fallback data ──────────────────────────────────────────────────────────
 
@@ -101,12 +107,56 @@ function Avatar({ item, size = 'sm' }: { item: LeaderboardEntry; size?: 'sm' | '
   )
 }
 
+// ── Sparkline SVG ────────────────────────────────────────────────────────────────
+
+function SparklineSVG({ data, id, height = 80 }: { data: number[]; id: string; height?: number }) {
+  const width = 320
+  const padding = 4
+  const min = Math.min(...data)
+  const max = Math.max(...data)
+  const range = max - min || 1
+
+  const points = data
+    .map((val, i) => {
+      const x = padding + (i / (data.length - 1)) * (width - padding * 2)
+      const y = height - padding - ((val - min) / range) * (height - padding * 2)
+      return `${x},${y}`
+    })
+    .join(' ')
+
+  const firstX = padding
+  const lastX = padding + ((data.length - 1) / (data.length - 1)) * (width - padding * 2)
+  const areaPath = `M${firstX},${height} L${points.split(' ').map((p) => p).join(' L')} L${lastX},${height} Z`
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id={`spark-grad-${id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="rgb(74, 222, 128)" stopOpacity="0.15" />
+          <stop offset="100%" stopColor="rgb(74, 222, 128)" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={areaPath} fill={`url(#spark-grad-${id})`} />
+      <polyline
+        points={points}
+        fill="none"
+        stroke="rgb(74, 222, 128)"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
+  )
+}
+
 // ── Main page ───────────────────────────────────────────────────────────────────
 
 export default function LeaderboardPage() {
   const { session, profile } = useAuth()
   const [sortBy, setSortBy] = useState<SortKey>('score')
   const [sortAsc, setSortAsc] = useState(false)
+  const [selectedEntry, setSelectedEntry] = useState<LeaderboardEntry | null>(null)
   const leaderboardData = mockLeaderboard
   const seasonData = mockSeason
   const [userRank, setUserRank] = useState<number | null>(null)
@@ -226,8 +276,9 @@ export default function LeaderboardPage() {
             return (
               <div
                 key={item.name}
+                onClick={() => setSelectedEntry(item)}
                 className={cn(
-                  'rounded-[16px] border border-foreground/[0.06] bg-card p-5 border-l-[3px] transition-colors hover:bg-foreground/[0.02]',
+                  'rounded-[16px] border border-foreground/[0.06] bg-card p-5 border-l-[3px] transition-colors hover:bg-foreground/[0.02] cursor-pointer',
                   borderAccent,
                 )}
               >
@@ -292,7 +343,9 @@ export default function LeaderboardPage() {
         {allEntries.map((s, idx) => (
           <div key={`${s.name}-${s.rank}`}>
             {/* Desktop row */}
-            <div className={cn(
+            <div
+              onClick={() => setSelectedEntry(s)}
+              className={cn(
               'hidden lg:grid grid-cols-[3rem_1fr_5rem_5.5rem_5rem_5.5rem_5rem_5rem_4.5rem] gap-2 items-center px-5 py-3 border-t border-foreground/[0.04] hover:bg-foreground/[0.025] transition-colors cursor-pointer group',
               idx % 2 === 0 ? 'bg-transparent' : 'bg-foreground/[0.015]',
             )}>
@@ -342,8 +395,10 @@ export default function LeaderboardPage() {
             </div>
 
             {/* Mobile card */}
-            <div className={cn(
-              'lg:hidden border-t border-foreground/[0.04] px-5 py-4 hover:bg-foreground/[0.02] transition-colors',
+            <div
+              onClick={() => setSelectedEntry(s)}
+              className={cn(
+              'lg:hidden border-t border-foreground/[0.04] px-5 py-4 hover:bg-foreground/[0.02] transition-colors cursor-pointer',
               idx % 2 === 0 ? 'bg-transparent' : 'bg-foreground/[0.015]',
             )}>
               <div className="flex items-center gap-3">
@@ -381,6 +436,162 @@ export default function LeaderboardPage() {
           </div>
         ))}
       </div>
+
+      {/* ── Strategy Detail Modal ────────────────────────────────────── */}
+      <Dialog open={!!selectedEntry} onOpenChange={(open) => !open && setSelectedEntry(null)}>
+        {selectedEntry && (
+          <DialogContent showCloseButton={true} className="bg-card border-foreground/[0.08] sm:max-w-[800px] p-0 overflow-hidden">
+            <div className="flex flex-col sm:flex-row max-h-[80vh]">
+              {/* Left panel — Chart + Metrics */}
+              <div className="sm:w-[55%] bg-secondary overflow-y-auto p-6 space-y-5">
+                {/* Equity curve */}
+                <div>
+                  <h3 className="text-[11px] font-semibold text-foreground/30 uppercase tracking-wider mb-2">Performance Curve</h3>
+                  <div className="h-[140px] w-full rounded-xl bg-foreground/[0.03] p-3">
+                    <SparklineSVG data={selectedEntry.sparkline} id={`detail-${selectedEntry.name}`} height={120} />
+                  </div>
+                </div>
+
+                {/* Metrics grid */}
+                <div>
+                  <h3 className="text-[11px] font-semibold text-foreground/30 uppercase tracking-wider mb-2">Performance Metrics</h3>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { label: 'Score', value: selectedEntry.score.toFixed(1), positive: true },
+                      { label: 'Sharpe', value: selectedEntry.sharpe.toFixed(2), positive: selectedEntry.sharpe > 1 },
+                      { label: 'Total Return', value: `+${selectedEntry.return.toFixed(1)}%`, positive: true },
+                      { label: 'Max Drawdown', value: `${selectedEntry.drawdown.toFixed(1)}%`, positive: false },
+                      { label: 'Win Rate', value: `${selectedEntry.winRate.toFixed(1)}%`, positive: selectedEntry.winRate > 50 },
+                      { label: 'Profit Factor', value: selectedEntry.profitFactor.toFixed(2), positive: selectedEntry.profitFactor > 1 },
+                    ].map((m) => (
+                      <div key={m.label} className="rounded-lg bg-foreground/[0.04] p-3 text-center">
+                        <p className="text-[9px] text-foreground/25 font-semibold uppercase tracking-wider">{m.label}</p>
+                        <p className={cn('text-[15px] font-bold tabular-nums mt-0.5', m.positive ? 'text-emerald-400/70' : 'text-red-400/70')}>
+                          {m.value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Additional info */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg bg-foreground/[0.04] p-3">
+                    <p className="text-[9px] text-foreground/25 font-semibold uppercase tracking-wider">Market</p>
+                    <p className="text-[14px] font-semibold text-foreground/70 mt-0.5">{selectedEntry.market}</p>
+                  </div>
+                  <div className="rounded-lg bg-foreground/[0.04] p-3">
+                    <p className="text-[9px] text-foreground/25 font-semibold uppercase tracking-wider">Timeframe</p>
+                    <p className="text-[14px] font-semibold text-foreground/70 mt-0.5">{selectedEntry.timeframe}</p>
+                  </div>
+                  <div className="rounded-lg bg-foreground/[0.04] p-3">
+                    <p className="text-[9px] text-foreground/25 font-semibold uppercase tracking-wider">Platform</p>
+                    <p className="text-[14px] font-semibold text-foreground/70 mt-0.5">{selectedEntry.platform.toUpperCase()}</p>
+                  </div>
+                  <div className="rounded-lg bg-foreground/[0.04] p-3">
+                    <p className="text-[9px] text-foreground/25 font-semibold uppercase tracking-wider">Copies</p>
+                    <p className="text-[14px] font-semibold text-foreground/70 mt-0.5">{selectedEntry.copies}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right panel — Details */}
+              <div className="sm:w-[45%] overflow-y-auto p-6 space-y-5">
+                {/* Rank badge */}
+                <div className="flex items-center gap-3">
+                  <span className={cn('text-[36px] font-bold tabular-nums leading-none', rankColor(selectedEntry.rank))}>
+                    #{selectedEntry.rank}
+                  </span>
+                  {selectedEntry.badge && (
+                    <span className="rounded-full bg-foreground/[0.06] px-3 py-1 text-[11px] font-semibold text-foreground/50">
+                      {selectedEntry.badge}
+                    </span>
+                  )}
+                </div>
+
+                {/* Title */}
+                <h2 className="text-[22px] font-bold tracking-[-0.02em] text-foreground leading-tight">
+                  {selectedEntry.name}
+                </h2>
+
+                {/* Author */}
+                <div className="flex items-center gap-2 text-[13px]">
+                  <Avatar item={selectedEntry} size="sm" />
+                  <span className="text-foreground/50">by {selectedEntry.author}</span>
+                  <span className="text-foreground/20">&middot;</span>
+                  <Users size={12} className="text-foreground/30" />
+                  <span className="text-foreground/40">{selectedEntry.copies} copies</span>
+                </div>
+
+                {/* Divider */}
+                <div className="h-px bg-foreground/[0.06]" />
+
+                {/* Score breakdown */}
+                <div>
+                  <h3 className="text-[13px] font-semibold text-foreground/60 mb-3">Score Breakdown</h3>
+                  <div className="space-y-2.5">
+                    {[
+                      { label: 'Sharpe Contribution', value: (selectedEntry.sharpe * 30).toFixed(1), pct: Math.min((selectedEntry.sharpe * 30 / selectedEntry.score) * 100, 100) },
+                      { label: 'Return Contribution', value: (selectedEntry.return * 0.5).toFixed(1), pct: Math.min((selectedEntry.return * 0.5 / selectedEntry.score) * 100, 100) },
+                      { label: 'Win Rate Contribution', value: (selectedEntry.winRate * 0.2).toFixed(1), pct: Math.min((selectedEntry.winRate * 0.2 / selectedEntry.score) * 100, 100) },
+                      { label: 'Drawdown Penalty', value: `−${(selectedEntry.drawdown * 0.5).toFixed(1)}`, pct: Math.min((selectedEntry.drawdown * 0.5 / selectedEntry.score) * 100, 100) },
+                    ].map((item) => (
+                      <div key={item.label}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[12px] text-foreground/40">{item.label}</span>
+                          <span className="text-[12px] font-semibold text-foreground/60 tabular-nums">{item.value}</span>
+                        </div>
+                        <div className="h-1 rounded-full bg-foreground/[0.06] overflow-hidden">
+                          <div
+                            className={cn('h-full rounded-full', item.label.includes('Penalty') ? 'bg-red-400/50' : 'bg-emerald-400/40')}
+                            style={{ width: `${Math.min(item.pct, 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-foreground/[0.06]">
+                    <span className="text-[13px] font-semibold text-foreground/50">Total Score</span>
+                    <span className="text-[18px] font-bold text-foreground/80 tabular-nums">{selectedEntry.score.toFixed(1)}</span>
+                  </div>
+                </div>
+
+                {/* Streak */}
+                {selectedEntry.streak_days > 0 && (
+                  <div className="flex items-center gap-2 rounded-xl bg-emerald-500/[0.06] border border-emerald-500/[0.1] px-4 py-3">
+                    <TrendingUp size={16} className="text-emerald-400/70" />
+                    <span className="text-[13px] font-medium text-emerald-400/70">{selectedEntry.streak_days} day winning streak</span>
+                  </div>
+                )}
+
+                {/* Tags */}
+                <div className="flex flex-wrap gap-2">
+                  <span className="rounded-md bg-foreground/[0.04] border border-foreground/[0.04] px-2.5 py-1 text-[11px] text-foreground/45 font-medium">
+                    {selectedEntry.market}
+                  </span>
+                  <span className="rounded-md bg-foreground/[0.04] border border-foreground/[0.04] px-2.5 py-1 text-[11px] text-foreground/45 font-medium">
+                    {selectedEntry.timeframe}
+                  </span>
+                  <span className="rounded-md bg-blue-500/[0.08] border border-blue-500/[0.1] px-2.5 py-1 text-[11px] text-blue-400/70 font-medium">
+                    {selectedEntry.platform.toUpperCase()}
+                  </span>
+                </div>
+
+                {/* Copy button */}
+                <button
+                  onClick={() => {
+                    handleCopyStrategy(selectedEntry)
+                    setSelectedEntry(null)
+                  }}
+                  className="w-full rounded-xl bg-foreground/[0.06] px-4 py-3 text-[14px] font-medium text-foreground/70 hover:bg-foreground/[0.1] transition-colors flex items-center justify-center gap-2"
+                >
+                  <Copy size={14} /> Add to My Strategies
+                </button>
+              </div>
+            </div>
+          </DialogContent>
+        )}
+      </Dialog>
 
       {/* ── Scoring info ─────────────────────────────────────────────── */}
       <div className="flex items-start gap-2 text-[11px] text-foreground/20 pb-4">
