@@ -28,6 +28,11 @@ export default function StrategyDetailPage() {
   const [deleting, setDeleting] = useState(false)
   const [copied, setCopied] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showDeployModal, setShowDeployModal] = useState(false)
+  const [deploying, setDeploying] = useState(false)
+  const [deployBroker, setDeployBroker] = useState('IC Markets')
+  const [deployLotSize, setDeployLotSize] = useState('0.1')
+  const [deployMode, setDeployMode] = useState<'demo' | 'live'>('demo')
   const [activeTab, setActiveTab] = useState<'overview' | 'code'>('overview')
 
   const load = useCallback(async () => {
@@ -109,19 +114,7 @@ export default function StrategyDetailPage() {
         </button>
         <div className="flex items-center gap-2">
           <button
-            onClick={async () => {
-              if (!session?.access_token) return
-              try {
-                const res = await fetch(`/api/strategies/${id}/deploy`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-                  body: JSON.stringify({ broker: 'IC Markets', lot_size: 0.1 }),
-                })
-                if (!res.ok) throw new Error()
-                toast.success('Strategy deployed!')
-                load()
-              } catch { toast.error('Failed to deploy') }
-            }}
+            onClick={() => setShowDeployModal(true)}
             className="flex items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-[13px] font-semibold text-black hover:bg-white/90 transition-colors"
           >
             <Rocket size={14} />
@@ -197,7 +190,47 @@ export default function StrategyDetailPage() {
           {/* Action buttons */}
           <div className="flex gap-3">
             <button
-              onClick={() => router.push((strategy as any).chat_id ? `/ai-builder/${(strategy as any).chat_id}` : `/ai-builder`)}
+              onClick={async () => {
+                const chatId = (strategy as any).chat_id
+                if (chatId) {
+                  router.push(`/ai-builder/${chatId}`)
+                } else if (session?.access_token) {
+                  // No linked chat — create one with strategy data
+                  try {
+                    const chatRes = await fetch('/api/chats', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+                      body: JSON.stringify({ title: strategy.name, strategy_id: id }),
+                    })
+                    const chatData = await chatRes.json()
+                    if (chatData.chat?.id) {
+                      // Save strategy info as messages
+                      await fetch(`/api/chat/${chatData.chat.id}/messages`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+                        body: JSON.stringify({ messages: [
+                          { role: 'user', content: `Strategy: ${strategy.name}` },
+                          { role: 'assistant', content: `Here's your **${strategy.name}** strategy for ${strategy.market}.`, metadata: {
+                            type: 'strategy',
+                            strategy_snapshot: strategy.strategy_summary,
+                            backtest_snapshot: strategy.sharpe_ratio ? {
+                              sharpe: strategy.sharpe_ratio, max_drawdown: strategy.max_drawdown,
+                              win_rate: strategy.win_rate, total_return: strategy.total_return,
+                              profit_factor: 0, total_trades: 0, equity_curve: [],
+                            } : undefined,
+                            mql5_code: strategy.mql5_code,
+                          }},
+                        ]}),
+                      }).catch(() => {})
+                      router.push(`/ai-builder/${chatData.chat.id}`)
+                    }
+                  } catch {
+                    router.push('/ai-builder')
+                  }
+                } else {
+                  router.push('/ai-builder')
+                }
+              }}
               className="flex-1 rounded-xl bg-white px-4 py-2.5 text-[14px] font-semibold text-black hover:bg-white/90 transition-colors text-center"
             >
               Open in AI Builder
@@ -319,6 +352,71 @@ export default function StrategyDetailPage() {
       )}
 
       {/* Delete confirmation dialog */}
+      {/* Deploy Modal */}
+      <Dialog open={showDeployModal} onOpenChange={setShowDeployModal}>
+        <DialogContent className="bg-card border-foreground/[0.08] sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle className="text-[18px] font-bold text-foreground">Deploy Strategy</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label className="text-[13px] font-medium text-foreground/60">Mode</label>
+              <div className="flex gap-2">
+                <button onClick={() => setDeployMode('demo')} className={`flex-1 rounded-xl border px-4 py-3 text-[13px] font-medium transition-all text-center ${deployMode === 'demo' ? 'border-emerald-500/30 bg-emerald-500/[0.06] text-emerald-400' : 'border-foreground/[0.08] text-foreground/40'}`}>
+                  Demo
+                </button>
+                <button onClick={() => setDeployMode('live')} className={`flex-1 rounded-xl border px-4 py-3 text-[13px] font-medium transition-all text-center ${deployMode === 'live' ? 'border-orange-500/30 bg-orange-500/[0.06] text-orange-400' : 'border-foreground/[0.08] text-foreground/40'}`}>
+                  Live
+                </button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[13px] font-medium text-foreground/60">Broker</label>
+              <select value={deployBroker} onChange={(e) => setDeployBroker(e.target.value)} className="w-full rounded-xl border border-foreground/[0.10] bg-background px-4 py-3 text-[14px] text-foreground focus:outline-none">
+                <option>IC Markets</option><option>Pepperstone</option><option>FTMO</option><option>Exness</option><option>XM</option><option>OANDA</option><option>Other</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[13px] font-medium text-foreground/60">Lot Size</label>
+              <input type="number" step="0.01" min="0.01" value={deployLotSize} onChange={(e) => setDeployLotSize(e.target.value)} className="w-full rounded-xl border border-foreground/[0.10] bg-background px-4 py-3 text-[14px] text-foreground focus:outline-none" />
+            </div>
+            {deployMode === 'live' && (
+              <div className="flex items-start gap-2 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] px-4 py-3">
+                <Rocket size={14} className="text-orange-400/70 mt-0.5 shrink-0" />
+                <p className="text-[12px] text-orange-400/60">Live trading uses real capital. Ensure your broker account is funded.</p>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="sm:flex-row gap-2">
+            <button onClick={() => setShowDeployModal(false)} className="rounded-xl border border-foreground/[0.10] bg-foreground/[0.04] px-5 py-2.5 text-[14px] font-medium text-foreground/70 hover:bg-foreground/[0.08] transition-colors">Cancel</button>
+            <button
+              onClick={async () => {
+                if (!session?.access_token) return
+                setDeploying(true)
+                try {
+                  const res = await fetch(`/api/strategies/${id}/deploy`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+                    body: JSON.stringify({ broker: deployBroker, lot_size: parseFloat(deployLotSize) || 0.1 }),
+                  })
+                  if (!res.ok) throw new Error()
+                  toast.success('Strategy deployed!')
+                  setShowDeployModal(false)
+                  load()
+                } catch { toast.error('Failed to deploy') }
+                finally { setDeploying(false) }
+              }}
+              disabled={deploying}
+              className={`rounded-xl px-5 py-2.5 text-[14px] font-semibold transition-colors disabled:opacity-30 flex items-center gap-1.5 ${deployMode === 'live' ? 'bg-orange-500 text-white' : 'bg-white text-black'}`}
+            >
+              <Rocket size={14} />
+              {deploying ? 'Deploying...' : deployMode === 'live' ? 'Deploy Live' : 'Deploy Demo'}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent className="bg-surface border-foreground/[0.08]">
           <DialogHeader>
