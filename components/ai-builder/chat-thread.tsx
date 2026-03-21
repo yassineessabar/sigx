@@ -11,8 +11,10 @@ interface ChatThreadProps {
   isGenerating: boolean
   streamingContent?: string
   pipelineStatus?: string | null
+  hasBacktest?: boolean
   onEditMessage?: (messageId: string, newContent: string) => void
   onRegenerateMessage?: (messageId: string) => void
+  onSend?: (message: string) => void
 }
 
 function ThinkingBubble() {
@@ -53,7 +55,7 @@ function cleanStreamingDisplay(text: string): string {
   return clean.replace(/\n{3,}/g, '\n\n').trim()
 }
 
-export function ChatThread({ messages, isGenerating, streamingContent, pipelineStatus, onEditMessage, onRegenerateMessage }: ChatThreadProps) {
+export function ChatThread({ messages, isGenerating, streamingContent, pipelineStatus, hasBacktest, onEditMessage, onRegenerateMessage, onSend }: ChatThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const [hasHadMessages, setHasHadMessages] = useState(false)
@@ -136,6 +138,35 @@ export function ChatThread({ messages, isGenerating, streamingContent, pipelineS
         {/* Pipeline stage tracker — shows during compile/backtest stages only */}
         {pipelineStatus && pipelineStatus.length > 0 && (
           <PipelineTracker status={pipelineStatus} statusMessage={pipelineStatus} />
+        )}
+
+        {/* Optimize suggestions — show after backtest results, when not generating */}
+        {hasBacktest && !isGenerating && !pipelineStatus && onSend && (
+          <div className="flex gap-3">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-white">
+              <span className="text-[8px] font-black text-black tracking-[-0.06em]">SX</span>
+            </div>
+            <div className="max-w-[85%] space-y-2">
+              <p className="text-[13px] text-foreground/50 font-medium">What would you like to optimize?</p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { label: 'Maximize Return', prompt: 'Optimize this strategy to maximize total return. Keep drawdown under control but prioritize higher profits.' },
+                  { label: 'Reduce Drawdown', prompt: 'Optimize this strategy to reduce maximum drawdown. Tighten stop losses and add risk filters while maintaining profitability.' },
+                  { label: 'Improve Sharpe', prompt: 'Optimize this strategy to improve the Sharpe ratio. Focus on better risk-adjusted returns with more consistent performance.' },
+                  { label: 'More Trades', prompt: 'Optimize this strategy to generate more trading signals. Loosen entry conditions slightly while maintaining positive expectancy.' },
+                  { label: 'Better Win Rate', prompt: 'Optimize this strategy to improve win rate. Add confirmation filters and tighten entry conditions for higher probability setups.' },
+                ].map((opt) => (
+                  <button
+                    key={opt.label}
+                    onClick={() => onSend(opt.prompt)}
+                    className="rounded-full border border-foreground/[0.08] bg-foreground/[0.02] px-3.5 py-1.5 text-[12px] font-medium text-foreground/50 hover:bg-foreground/[0.06] hover:text-foreground/70 hover:border-foreground/[0.15] transition-all"
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         )}
 
         <div ref={bottomRef} />

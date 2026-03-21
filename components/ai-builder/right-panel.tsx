@@ -108,49 +108,31 @@ export function RightPanel({
                     <StrategyScore backtest={backtestSnapshot} />
                   )}
 
-                  {/* Optimize button */}
-                  {backtestSnapshot && onOptimize && (
-                    <div className="pt-2">
-                      {isOptimizing && optimizeProgress ? (
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between text-[12px]">
-                            <span className="text-foreground/50 font-medium flex items-center gap-1.5">
-                              <Loader2
-                                size={13}
-                                className="animate-spin text-violet-400"
-                              />
-                              Optimizing...
-                            </span>
-                            <span className="text-foreground/40">
-                              {optimizeProgress.iteration}/{optimizeProgress.total}
-                            </span>
-                          </div>
-                          <div className="h-1.5 rounded-full bg-foreground/[0.06] overflow-hidden">
-                            <div
-                              className="h-full rounded-full bg-violet-500 transition-all duration-500"
-                              style={{
-                                width: `${(optimizeProgress.iteration / optimizeProgress.total) * 100}%`,
-                              }}
-                            />
-                          </div>
-                          {onStopOptimize && (
-                            <button
-                              onClick={onStopOptimize}
-                              className="w-full flex items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-2.5 text-[12px] font-semibold text-red-400 hover:bg-red-500/[0.10] transition-colors"
-                            >
-                              <Square size={12} />
-                              Stop Optimization
-                            </button>
-                          )}
-                        </div>
-                      ) : (
+                  {/* Optimize progress — only shown when running */}
+                  {isOptimizing && optimizeProgress && (
+                    <div className="pt-2 space-y-3">
+                      <div className="flex items-center justify-between text-[12px]">
+                        <span className="text-foreground/50 font-medium flex items-center gap-1.5">
+                          <Loader2 size={13} className="animate-spin text-violet-400" />
+                          Optimizing...
+                        </span>
+                        <span className="text-foreground/40">
+                          {optimizeProgress.iteration}/{optimizeProgress.total}
+                        </span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-foreground/[0.06] overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-violet-500 transition-all duration-500"
+                          style={{ width: `${(optimizeProgress.iteration / optimizeProgress.total) * 100}%` }}
+                        />
+                      </div>
+                      {onStopOptimize && (
                         <button
-                          onClick={onOptimize}
-                          disabled={isOptimizing}
-                          className="w-full flex items-center justify-center gap-2 rounded-xl border border-violet-500/20 bg-violet-500/[0.06] px-4 py-3 text-[13px] font-semibold text-violet-400 hover:bg-violet-500/[0.10] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          onClick={onStopOptimize}
+                          className="w-full flex items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-2.5 text-[12px] font-semibold text-red-400 hover:bg-red-500/[0.10] transition-colors"
                         >
-                          <Sparkles size={14} />
-                          Optimize (3 iterations)
+                          <Square size={12} />
+                          Stop Optimization
                         </button>
                       )}
                     </div>
