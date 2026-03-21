@@ -5,6 +5,7 @@ import { Strategy, Chat } from '@/lib/types'
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, Plus, MoreHorizontal, Sparkles, LayoutTemplate, Trash2, Copy, Pencil } from 'lucide-react'
+import { findClientTemplate } from '@/lib/templates/client'
 import { PageTransition } from '@/components/ui/page-transition'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -18,6 +19,49 @@ import {
 } from '@/components/ui/dialog'
 
 const categories = ['All', 'Gold', 'Forex', 'Crypto', 'Scalping', 'Mean Reversion']
+
+function generateCurve(seed: number, totalReturn: number): number[] {
+  const pts: number[] = [100]
+  let val = 100
+  const target = 100 + totalReturn
+  for (let i = 1; i < 20; i++) {
+    const progress = i / 19
+    const noise = Math.sin(seed * i * 0.7) * 2 + Math.cos(seed * i * 0.3) * 1.5
+    val = 100 + (target - 100) * progress + noise * 0.5
+    pts.push(val)
+  }
+  return pts
+}
+
+function EquitySVG({ data, id }: { data: number[]; id: string }) {
+  const w = 320, h = 80, p = 4
+  const min = Math.min(...data), max = Math.max(...data)
+  const range = max - min || 1
+  const positive = data[data.length - 1] >= data[0]
+  const color = positive ? 'rgb(74, 222, 128)' : 'rgb(248, 113, 113)'
+
+  const points = data.map((v, i) => {
+    const x = p + (i / (data.length - 1)) * (w - p * 2)
+    const y = h - p - ((v - min) / range) * (h - p * 2)
+    return `${x},${y}`
+  }).join(' ')
+
+  const lastX = p + ((data.length - 1) / (data.length - 1)) * (w - p * 2)
+  const areaPath = `M${p},${h} L${points.split(' ').map(pt => pt).join(' L')} L${lastX},${h} Z`
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-full" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id={`sg-${id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.15" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={areaPath} fill={`url(#sg-${id})`} />
+      <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+    </svg>
+  )
+}
 
 function timeAgo(dateStr: string): string {
   const now = new Date()
@@ -333,11 +377,18 @@ export default function StrategiesPage() {
           {filtered.map((s) => (
             <div key={s.id} className="group cursor-pointer" onClick={() => router.push(`/strategies/${s.id}`)}>
               {/* Preview card */}
-              <div className="aspect-[16/10] rounded-xl border border-foreground/[0.06] bg-secondary flex items-center justify-center relative overflow-hidden hover:border-foreground/[0.12] transition-colors">
-                {/* SIGX logo watermark */}
-                <span className="text-[24px] font-bold tracking-[-0.06em] text-foreground/[0.06] select-none">
-                  SX
-                </span>
+              <div className="aspect-[16/10] rounded-xl border border-foreground/[0.06] bg-secondary relative overflow-hidden hover:border-foreground/[0.12] transition-colors">
+                {/* Equity curve */}
+                {(() => {
+                  const tpl = findClientTemplate(s.name)
+                  const curveData = tpl?.backtestResults.equity_curve?.map(p => p.equity)
+                    || generateCurve(s.name.charCodeAt(0), Number(s.total_return || 0))
+                  return (
+                    <div className="absolute inset-x-0 bottom-0 h-[65%] px-2">
+                      <EquitySVG data={curveData} id={s.id} />
+                    </div>
+                  )
+                })()}
                 {/* Status badge */}
                 <span
                   className={`absolute top-3 right-3 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
