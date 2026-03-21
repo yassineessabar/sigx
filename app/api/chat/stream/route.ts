@@ -123,13 +123,54 @@ double CalculateLotSize(double slDistance) {
 }
 \`\`\`
 
-## Common patterns that WORK (use these)
+## Common patterns that WORK and GUARANTEE TRADES (use these)
 
-- **EMA Crossover**: iMA fast vs iMA slow, buy when fast crosses above slow
-- **RSI Reversal**: iRSI, buy when RSI crosses above 30, sell when crosses below 70
-- **Bollinger Breakout**: iBands, buy on upper band break with volume
-- **MACD Signal**: iMACD, buy when MACD crosses signal line
-- **ATR Stops**: iATR for dynamic SL/TP: SL = 1.5*ATR, TP = 2*ATR
+- **EMA Crossover**: iMA(fast=10) vs iMA(slow=30). Buy when fast crosses above slow. Use SHORT periods to ensure frequent signals.
+- **RSI Reversal**: iRSI(14). Buy when RSI < 35 (not 30 — slightly looser). Sell when RSI > 65.
+- **MACD Signal**: iMACD(12,26,9). Buy when MACD line crosses above signal. Very reliable.
+- **ATR Stops**: iATR(14) for SL = 1.5×ATR, TP = 2.0×ATR from entry price.
+
+## CRITICAL: Ensuring trades fire
+
+The EA MUST generate trades during backtest. Common reasons for 0 trades:
+1. **Indicator periods too long** — Use EMA 10/30, not EMA 50/200. Shorter periods = more crossovers = more trades.
+2. **Conditions too strict** — Don't require 5 indicators to all agree. Use 1-2 conditions max for entry.
+3. **Wrong CopyBuffer usage** — ALWAYS call ArraySetAsSeries(arr, true) BEFORE CopyBuffer. Copy at least 3 bars.
+4. **Max positions check** — Allow at least 2-3 concurrent positions. Don't limit to 1.
+5. **Missing market info** — For SL/TP calculation, use point-based values, not raw price. Example: SL = ask - atr[1], TP = ask + atr[1]*2.
+6. **Wrong lot size** — If CalculateLotSize returns 0, fallback to 0.01. NEVER pass lots=0 to trade.Buy().
+
+ALWAYS structure OnTick like this:
+\`\`\`
+void OnTick() {
+    if(!IsNewBar()) return;
+
+    // Read indicators
+    double ema_fast[], ema_slow[], atr[];
+    ArraySetAsSeries(ema_fast, true);
+    ArraySetAsSeries(ema_slow, true);
+    ArraySetAsSeries(atr, true);
+    CopyBuffer(hEmaFast, 0, 0, 3, ema_fast);
+    CopyBuffer(hEmaSlow, 0, 0, 3, ema_slow);
+    CopyBuffer(hATR, 0, 0, 3, atr);
+
+    if(CountPositions() >= MaxPositions) return;
+
+    double lots = CalculateLotSize(atr[1] * SL_Multiplier);
+    if(lots < 0.01) lots = 0.01;  // NEVER let lots be 0
+
+    // BUY: fast EMA crossed above slow EMA
+    if(ema_fast[2] < ema_slow[2] && ema_fast[1] > ema_slow[1]) {
+        double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+        trade.Buy(lots, _Symbol, ask, ask - atr[1]*SL_Multiplier, ask + atr[1]*TP_Multiplier);
+    }
+    // SELL: fast EMA crossed below slow EMA
+    if(ema_fast[2] > ema_slow[2] && ema_fast[1] < ema_slow[1]) {
+        double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+        trade.Sell(lots, _Symbol, bid, bid + atr[1]*SL_Multiplier, bid - atr[1]*TP_Multiplier);
+    }
+}
+\`\`\`
 
 ## NEVER do these
 
@@ -137,6 +178,7 @@ double CalculateLotSize(double slDistance) {
 - OrderSend() with 7+ parameters (that's MQL4, not MQL5)
 - Missing indicator handles (iMA returns INVALID_HANDLE if wrong params)
 - Using ArraySetAsSeries without CopyBuffer first
+- Lot size of 0 (always fallback to 0.01)
 - Forgetting to check CountPositions() before opening new trades
 
 ## When iterating
@@ -373,18 +415,69 @@ export async function POST(request: NextRequest) {
               break
             }
 
-            // Backtest (only if compiled)
+            // Backtest (only if compiled) — with auto-retry on 0 trades
             if (compiled) {
-              send({ type: 'status', message: 'Running backtest on MT5 (this may take 30-120s)...' })
-              const btResult = await backtestEA(eaName, symbol, 'H1')
-              if (btResult.success && btResult.metrics) {
-                metadata.backtest_snapshot = {
-                  ...btResult.metrics,
-                  equity_curve: btResult.equity_curve || [],
+              let backtestAttempts = 0
+              const maxBacktestRetries = 2
+
+              while (backtestAttempts <= maxBacktestRetries) {
+                send({ type: 'status', message: backtestAttempts === 0
+                  ? 'Running backtest on MT5 (this may take 30-120s)...'
+                  : `Re-running backtest (attempt ${backtestAttempts + 1})...`
+                })
+
+                const btResult = await backtestEA(eaName, symbol, 'H1')
+
+                if (btResult.success && btResult.metrics) {
+                  // Check if we got trades
+                  if (btResult.metrics.total_trades === 0 && backtestAttempts < maxBacktestRetries) {
+                    send({ type: 'status', message: '0 trades detected — adjusting entry conditions...' })
+
+                    // Ask Claude to fix entry logic to be less restrictive
+                    const fixClient = getAnthropic()
+                    if (fixClient) {
+                      try {
+                        const fixResponse = await fixClient.messages.create({
+                          model: 'claude-sonnet-4-20250514',
+                          max_tokens: 4096,
+                          system: 'You are an MQL5 fixer. The EA below compiled but produced 0 trades in backtesting. The entry conditions are too strict or broken. Fix ONLY the entry logic to be LESS restrictive so trades actually fire. Use shorter EMA periods (10/30 instead of 50/200), looser RSI thresholds (35/65 instead of 30/70), and ensure CopyBuffer/ArraySetAsSeries are correct. Keep everything else the same. Output ONLY the complete fixed MQL5 code.',
+                          messages: [{ role: 'user', content: `This EA produced 0 trades on ${symbol} H1. Fix the entry conditions:\n\n${currentCode}` }],
+                        })
+                        const fixedText = fixResponse.content[0].type === 'text' ? fixResponse.content[0].text.trim() : ''
+                        if (fixedText && fixedText.length > 100) {
+                          currentCode = fixedText
+                          metadata.mql5_code = currentCode
+
+                          // Recompile the fixed code
+                          send({ type: 'status', message: 'Recompiling fixed code...' })
+                          const recompile = await compileEA(eaName, currentCode)
+                          if (!recompile.success) {
+                            // If recompile fails, keep original results
+                            metadata.backtest_snapshot = { ...btResult.metrics, equity_curve: btResult.equity_curve || [] }
+                            send({ type: 'status', message: 'Backtest complete (0 trades — could not fix)' })
+                            break
+                          }
+                          backtestAttempts++
+                          continue
+                        }
+                      } catch { /* ignore fix errors */ }
+                    }
+                  }
+
+                  // Got trades or exhausted retries
+                  metadata.backtest_snapshot = {
+                    ...btResult.metrics,
+                    equity_curve: btResult.equity_curve || [],
+                  }
+                  const tradeMsg = btResult.metrics.total_trades > 0
+                    ? `Backtest complete — ${btResult.metrics.total_trades} trades`
+                    : 'Backtest complete (0 trades)'
+                  send({ type: 'status', message: tradeMsg })
+                  break
+                } else {
+                  send({ type: 'status', message: btResult.error || 'Backtest failed' })
+                  break
                 }
-                send({ type: 'status', message: 'Backtest complete' })
-              } else {
-                send({ type: 'status', message: btResult.error || 'Backtest failed' })
               }
             }
           } else if (!isWorkerConfigured() && metadata.mql5_code) {

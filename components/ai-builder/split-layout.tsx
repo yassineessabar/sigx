@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useEffect, useCallback } from 'react'
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
 import { ChevronsLeft } from 'lucide-react'
 import { ChatThread } from './chat-thread'
 import { PromptInput } from './prompt-input'
@@ -58,6 +58,7 @@ export function SplitLayout({
   const [panelOpen, setPanelOpen] = useState(false)
 
   // Optimize state
+  const optimizeAbortRef = useRef<AbortController | null>(null)
   const [isOptimizing, setIsOptimizing] = useState(false)
   const [optimizeProgress, setOptimizeProgress] = useState<{ iteration: number; total: number } | undefined>(undefined)
   const [pipelineStatus, setPipelineStatus] = useState<string | null>(null)
@@ -85,6 +86,13 @@ export function SplitLayout({
     setOptimizedBacktest(null)
   }, [messages.length])
 
+  const handleStopOptimize = useCallback(() => {
+    optimizeAbortRef.current?.abort()
+    setIsOptimizing(false)
+    setOptimizeProgress(undefined)
+    setPipelineStatus('Optimization stopped')
+  }, [])
+
   const handleOptimize = useCallback(async () => {
     if (!latestCode || !accessToken) return
 
@@ -92,6 +100,9 @@ export function SplitLayout({
     const eaName = (stratSnap?.name || 'SigxEA').replace(/[^a-zA-Z0-9_]/g, '_')
     const symbol = stratSnap?.market || 'XAUUSD'
     const totalIterations = 3
+
+    const controller = new AbortController()
+    optimizeAbortRef.current = controller
 
     setIsOptimizing(true)
     setOptimizeProgress({ iteration: 0, total: totalIterations })
@@ -112,6 +123,7 @@ export function SplitLayout({
           iterations: totalIterations,
           previous_results: latestBacktest ? { metrics: latestBacktest } : undefined,
         }),
+        signal: controller.signal,
       })
 
       if (!res.ok) {
@@ -167,11 +179,16 @@ export function SplitLayout({
         }
       }
     } catch (err) {
-      console.error('Optimize error:', err)
-      setPipelineStatus('Optimization failed')
+      if ((err as Error).name === 'AbortError') {
+        setPipelineStatus('Optimization stopped')
+      } else {
+        console.error('Optimize error:', err)
+        setPipelineStatus('Optimization failed')
+      }
     } finally {
       setIsOptimizing(false)
       setOptimizeProgress(undefined)
+      optimizeAbortRef.current = null
     }
   }, [latestCode, latestStrategy, latestBacktest, accessToken])
 
@@ -213,6 +230,7 @@ export function SplitLayout({
             isOpen={panelOpen}
             onToggle={() => setPanelOpen((prev) => !prev)}
             onOptimize={handleOptimize}
+            onStopOptimize={handleStopOptimize}
             isOptimizing={isOptimizing}
             optimizeProgress={optimizeProgress}
             pipelineStatus={pipelineStatus}

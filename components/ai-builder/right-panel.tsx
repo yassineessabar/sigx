@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Eye, Code2, ChevronsRight, BarChart3, Sparkles, Loader2 } from 'lucide-react'
+import { Eye, Code2, ChevronsRight, BarChart3, Sparkles, Loader2, Square } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { StrategyCard } from './strategy-card'
 import { BacktestPreview } from './backtest-preview'
@@ -16,6 +16,7 @@ interface RightPanelProps {
   isOpen: boolean
   onToggle: () => void
   onOptimize?: () => void
+  onStopOptimize?: () => void
   isOptimizing?: boolean
   optimizeProgress?: { iteration: number; total: number }
   pipelineStatus?: string | null
@@ -28,6 +29,7 @@ export function RightPanel({
   isOpen,
   onToggle,
   onOptimize,
+  onStopOptimize,
   isOptimizing,
   optimizeProgress,
   pipelineStatus,
@@ -110,7 +112,7 @@ export function RightPanel({
                   {backtestSnapshot && onOptimize && (
                     <div className="pt-2">
                       {isOptimizing && optimizeProgress ? (
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           <div className="flex items-center justify-between text-[12px]">
                             <span className="text-foreground/50 font-medium flex items-center gap-1.5">
                               <Loader2
@@ -131,6 +133,15 @@ export function RightPanel({
                               }}
                             />
                           </div>
+                          {onStopOptimize && (
+                            <button
+                              onClick={onStopOptimize}
+                              className="w-full flex items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-2.5 text-[12px] font-semibold text-red-400 hover:bg-red-500/[0.10] transition-colors"
+                            >
+                              <Square size={12} />
+                              Stop Optimization
+                            </button>
+                          )}
                         </div>
                       ) : (
                         <button
