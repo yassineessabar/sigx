@@ -40,11 +40,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Strategy name is required' }, { status: 400 })
     }
 
+    // Check for duplicate names
+    let finalName = name.trim()
+    const { data: existingStrats } = await supabaseAdmin
+      .from('strategies')
+      .select('name')
+      .eq('user_id', user.id)
+    if (existingStrats) {
+      const names = existingStrats.map(s => s.name)
+      const baseName = finalName
+      let counter = 1
+      while (names.includes(finalName)) {
+        counter++
+        finalName = `${baseName} (${counter})`
+      }
+    }
+
     const { data: strategy, error } = await supabaseAdmin
       .from('strategies')
       .insert({
         user_id: user.id,
-        name: name.trim(),
+        name: finalName,
         market: market || null,
         description: description || null,
         timeframe: timeframe || null,

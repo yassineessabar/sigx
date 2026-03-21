@@ -545,8 +545,25 @@ export async function POST(request: NextRequest) {
             const strat = (metadata.strategy_snapshot as { name: string; market: string }) || {}
             const backtestData = metadata.backtest_snapshot as { sharpe: number; max_drawdown: number; win_rate: number; total_return: number; net_profit?: number } | undefined
 
-            const stratName = strat.name || message.slice(0, 50) || 'Untitled Strategy'
+            let stratName = strat.name || message.slice(0, 50) || 'Untitled Strategy'
             const stratMarket = strat.market || 'XAUUSD'
+
+            // Check for duplicate names and append (2), (3), etc.
+            try {
+              const { data: existingStrats } = await supabaseAdmin
+                .from('strategies')
+                .select('name')
+                .eq('user_id', user.id)
+              if (existingStrats) {
+                const names = existingStrats.map(s => s.name)
+                const baseName = stratName
+                let counter = 1
+                while (names.includes(stratName)) {
+                  counter++
+                  stratName = `${baseName} (${counter})`
+                }
+              }
+            } catch { /* proceed with original name */ }
 
             try {
               const { data: strategy, error: stratError } = await supabaseAdmin
