@@ -223,7 +223,7 @@ export function SplitLayout({
             isGenerating={isGenerating}
             streamingContent={streamingContent}
             pipelineStatus={chatPipelineStatus || pipelineStatus}
-            hasBacktest={!!(displayBacktest)}
+            backtestData={displayBacktest}
             onEditMessage={onEditMessage}
             onRegenerateMessage={onRegenerateMessage}
             onSend={onSend}
