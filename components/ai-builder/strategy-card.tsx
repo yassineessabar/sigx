@@ -33,24 +33,27 @@ export function StrategyCard({ strategy }: StrategyCardProps) {
             Entry Rules
           </div>
           <ul className="space-y-1 pl-5 text-[13px]">
-            {strategy.entry_rules.map((rule, i) => (
+            {(strategy.entry_rules || []).map((rule, i) => (
               <li key={i} className="list-disc text-[rgba(250,250,250,0.85)]">{rule}</li>
             ))}
           </ul>
         </div>
 
+        {(strategy.exit_rules?.length ?? 0) > 0 && (
         <div className="space-y-1.5">
           <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#d4d4d8] uppercase tracking-wider">
             <TrendingUp className="h-3 w-3" />
             Exit Rules
           </div>
           <ul className="space-y-1 pl-5 text-[13px]">
-            {strategy.exit_rules.map((rule, i) => (
+            {(strategy.exit_rules || []).map((rule, i) => (
               <li key={i} className="list-disc text-[rgba(250,250,250,0.85)]">{rule}</li>
             ))}
           </ul>
         </div>
+        )}
 
+        {strategy.risk_logic && (
         <div className="space-y-1.5">
           <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#d4d4d8] uppercase tracking-wider">
             <Shield className="h-3 w-3" />
@@ -58,6 +61,7 @@ export function StrategyCard({ strategy }: StrategyCardProps) {
           </div>
           <p className="text-[13px] text-[rgba(250,250,250,0.85)]">{strategy.risk_logic}</p>
         </div>
+        )}
       </div>
     </div>
   )
