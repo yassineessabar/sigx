@@ -8,53 +8,56 @@
 
 input double RiskPercent   = 1.0;
 input int    MagicNumber   = 200005;
-input int    MACD_Fast     = 12;
-input int    MACD_Slow     = 26;
-input int    MACD_Signal   = 9;
-input int    EMA_Period    = 50;    // Trend filter
+input int    EMA_Fast      = 10;
+input int    EMA_Slow      = 30;
 input int    ATR_Period    = 14;
 input double SL_Mult       = 1.5;
-input double TP_Mult       = 2.5;
-input int    MaxPositions  = 2;
+input double TP_Mult       = 4.0;   // Very wide TP — maximize winners
+input int    MaxPositions  = 1;
 
 CTrade trade;
-int hMACD, hEMA, hATR;
+int hEmaFast, hEmaSlow, hATR;
 
 int OnInit() {
     trade.SetExpertMagicNumber(MagicNumber);
-    hMACD = iMACD(_Symbol, PERIOD_H1, MACD_Fast, MACD_Slow, MACD_Signal, PRICE_CLOSE);
-    hEMA  = iMA(_Symbol, PERIOD_H1, EMA_Period, 0, MODE_EMA, PRICE_CLOSE);
-    hATR  = iATR(_Symbol, PERIOD_H1, ATR_Period);
-    if(hMACD == INVALID_HANDLE || hEMA == INVALID_HANDLE || hATR == INVALID_HANDLE)
+    hEmaFast = iMA(_Symbol, PERIOD_H1, EMA_Fast, 0, MODE_EMA, PRICE_CLOSE);
+    hEmaSlow = iMA(_Symbol, PERIOD_H1, EMA_Slow, 0, MODE_EMA, PRICE_CLOSE);
+    hATR = iATR(_Symbol, PERIOD_H1, ATR_Period);
+    if(hEmaFast == INVALID_HANDLE || hEmaSlow == INVALID_HANDLE || hATR == INVALID_HANDLE)
         return INIT_FAILED;
     return INIT_SUCCEEDED;
 }
 
 void OnDeinit(const int reason) {
-    IndicatorRelease(hMACD);
-    IndicatorRelease(hEMA);
+    IndicatorRelease(hEmaFast);
+    IndicatorRelease(hEmaSlow);
     IndicatorRelease(hATR);
 }
 
 void OnTick() {
+    // Trailing stop management
+    ManageTrailingStop();
+
     static datetime lastBar = 0;
     datetime currentBar = iTime(_Symbol, PERIOD_H1, 0);
     if(currentBar == lastBar) return;
     lastBar = currentBar;
 
-    double macdMain[], macdSignal[], ema[], atr[];
-    ArraySetAsSeries(macdMain, true);
-    ArraySetAsSeries(macdSignal, true);
-    ArraySetAsSeries(ema, true);
+    double emaF[], emaS[], atr[];
+    ArraySetAsSeries(emaF, true);
+    ArraySetAsSeries(emaS, true);
     ArraySetAsSeries(atr, true);
-    CopyBuffer(hMACD, 0, 0, 3, macdMain);     // MACD main line
-    CopyBuffer(hMACD, 1, 0, 3, macdSignal);   // MACD signal line
-    CopyBuffer(hEMA, 0, 0, 3, ema);
+    CopyBuffer(hEmaFast, 0, 0, 4, emaF);
+    CopyBuffer(hEmaSlow, 0, 0, 4, emaS);
     CopyBuffer(hATR, 0, 0, 3, atr);
 
     if(CountPositions() >= MaxPositions) return;
 
-    double close1 = iClose(_Symbol, PERIOD_H1, 1);
+    // Check for strong momentum: EMA gap widening for 2 bars
+    double gap1 = emaF[1] - emaS[1];
+    double gap2 = emaF[2] - emaS[2];
+    double gap3 = emaF[3] - emaS[3];
+
     double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
     double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
     double sl = atr[1] * SL_Mult;
@@ -62,14 +65,46 @@ void OnTick() {
     double lots = CalculateLotSize(sl);
     if(lots < 0.01) lots = 0.01;
 
-    // BUY: MACD crosses above signal + Price above EMA (bullish momentum)
-    if(macdMain[2] < macdSignal[2] && macdMain[1] > macdSignal[1] && close1 > ema[1]) {
+    // BUY: EMA cross up + momentum confirmed (gap widening)
+    if(emaF[2] < emaS[2] && emaF[1] > emaS[1] && gap1 > gap2) {
         trade.Buy(lots, _Symbol, ask, ask - sl, ask + tp);
     }
 
-    // SELL: MACD crosses below signal + Price below EMA (bearish momentum)
-    if(macdMain[2] > macdSignal[2] && macdMain[1] < macdSignal[1] && close1 < ema[1]) {
+    // SELL: EMA cross down + momentum confirmed (gap widening negative)
+    if(emaF[2] > emaS[2] && emaF[1] < emaS[1] && gap1 < gap2) {
         trade.Sell(lots, _Symbol, bid, bid + sl, bid - tp);
+    }
+}
+
+void ManageTrailingStop() {
+    double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+    for(int i = PositionsTotal() - 1; i >= 0; i--) {
+        if(PositionGetSymbol(i) != _Symbol) continue;
+        if(PositionGetInteger(POSITION_MAGIC) != MagicNumber) continue;
+        ulong ticket = PositionGetTicket(i);
+        double openPrice = PositionGetDouble(POSITION_PRICE_OPEN);
+        double currentSL = PositionGetDouble(POSITION_SL);
+        double currentTP = PositionGetDouble(POSITION_TP);
+        long type = PositionGetInteger(POSITION_TYPE);
+
+        double atr[];
+        ArraySetAsSeries(atr, true);
+        CopyBuffer(hATR, 0, 0, 2, atr);
+        double trailDist = atr[1];
+
+        if(type == POSITION_TYPE_BUY) {
+            double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+            if(bid - openPrice > trailDist) {
+                double newSL = bid - trailDist;
+                if(newSL > currentSL) trade.PositionModify(ticket, newSL, currentTP);
+            }
+        } else {
+            double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+            if(openPrice - ask > trailDist) {
+                double newSL = ask + trailDist;
+                if(newSL < currentSL || currentSL == 0) trade.PositionModify(ticket, newSL, currentTP);
+            }
+        }
     }
 }
 

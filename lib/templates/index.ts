@@ -43,9 +43,9 @@ const TEMPLATES: Record<string, Omit<TemplateEA, 'mql5Code'>> = {
   'scalper-pro': {
     id: 'scalper-pro',
     name: 'Scalper Pro',
-    description: 'Fast EMA(8)/EMA(21) crossover scalping on M5 with RSI filter. Tight stops and quick profits.',
+    description: 'Fast EMA(5)/EMA(13) crossover scalping on M15 with RSI + momentum filter. ATR-based stops.',
     market: 'XAUUSD',
-    timeframe: 'M5',
+    timeframe: 'M15',
     strategySnapshot: {
       name: 'Scalper Pro',
       market: 'XAUUSD',

@@ -10,11 +10,12 @@ input double RiskPercent   = 1.0;
 input int    MagicNumber   = 200003;
 input int    EMA_Fast      = 10;
 input int    EMA_Slow      = 30;
-input int    EMA_Trend     = 100;   // Trend filter
+input int    EMA_Trend     = 50;    // Shorter trend filter for more signals
 input int    ATR_Period    = 14;
 input double SL_Mult       = 1.5;
-input double TP_Mult       = 3.0;   // Wide TP for trend riding
+input double TP_Mult       = 2.0;   // Tighter TP (was 3.0)
 input int    MaxPositions  = 2;
+input int    TrailStart    = 100;   // Start trailing after X points profit
 
 CTrade trade;
 int hEmaFast, hEmaSlow, hEmaTrend, hATR;
@@ -39,6 +40,9 @@ void OnDeinit(const int reason) {
 }
 
 void OnTick() {
+    // Trailing stop management on every tick
+    ManageTrailingStop();
+
     static datetime lastBar = 0;
     datetime currentBar = iTime(_Symbol, PERIOD_H1, 0);
     if(currentBar == lastBar) return;
@@ -65,14 +69,50 @@ void OnTick() {
 
     double close1 = iClose(_Symbol, PERIOD_H1, 1);
 
-    // BUY: Fast crosses above Slow + Price above Trend EMA (uptrend)
-    if(emaF[2] < emaS[2] && emaF[1] > emaS[1] && close1 > emaT[1]) {
+    // BUY: Fast crosses above Slow + Price above Trend EMA + Trend rising
+    if(emaF[2] < emaS[2] && emaF[1] > emaS[1] && close1 > emaT[1] && emaT[1] > emaT[2]) {
         trade.Buy(lots, _Symbol, ask, ask - sl, ask + tp);
     }
 
-    // SELL: Fast crosses below Slow + Price below Trend EMA (downtrend)
-    if(emaF[2] > emaS[2] && emaF[1] < emaS[1] && close1 < emaT[1]) {
+    // SELL: Fast crosses below Slow + Price below Trend EMA + Trend falling
+    if(emaF[2] > emaS[2] && emaF[1] < emaS[1] && close1 < emaT[1] && emaT[1] < emaT[2]) {
         trade.Sell(lots, _Symbol, bid, bid + sl, bid - tp);
+    }
+}
+
+void ManageTrailingStop() {
+    double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+    double trailDist = TrailStart * point;
+
+    for(int i = PositionsTotal() - 1; i >= 0; i--) {
+        if(PositionGetSymbol(i) != _Symbol) continue;
+        if(PositionGetInteger(POSITION_MAGIC) != MagicNumber) continue;
+
+        ulong ticket = PositionGetTicket(i);
+        double openPrice = PositionGetDouble(POSITION_PRICE_OPEN);
+        double currentSL = PositionGetDouble(POSITION_SL);
+        double currentTP = PositionGetDouble(POSITION_TP);
+        long type = PositionGetInteger(POSITION_TYPE);
+
+        if(type == POSITION_TYPE_BUY) {
+            double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+            double profit = bid - openPrice;
+            if(profit > trailDist) {
+                double newSL = bid - trailDist;
+                if(newSL > currentSL) {
+                    trade.PositionModify(ticket, newSL, currentTP);
+                }
+            }
+        } else {
+            double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+            double profit = openPrice - ask;
+            if(profit > trailDist) {
+                double newSL = ask + trailDist;
+                if(newSL < currentSL || currentSL == 0) {
+                    trade.PositionModify(ticket, newSL, currentTP);
+                }
+            }
+        }
     }
 }
 

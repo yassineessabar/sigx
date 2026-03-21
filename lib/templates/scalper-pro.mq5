@@ -8,64 +8,65 @@
 
 input double RiskPercent   = 0.5;
 input int    MagicNumber   = 200002;
-input int    EMA_Fast      = 8;
-input int    EMA_Slow      = 21;
-input int    RSI_Period    = 7;
-input double RSI_OB        = 70;
-input double RSI_OS        = 30;
-input double SL_Points     = 150;    // SL in points
-input double TP_Points     = 100;    // TP in points (scalping: tight TP)
-input int    MaxPositions  = 3;
+input int    RSI_Period    = 2;      // Very short RSI for mean-reversion scalping
+input double RSI_Buy       = 15;     // Oversold bounce
+input double RSI_Sell      = 85;     // Overbought rejection
+input int    ATR_Period    = 14;
+input double SL_Mult       = 1.5;
+input double TP_Mult       = 1.5;    // Quick scalp exit
+input int    MaxPositions  = 1;
 
 CTrade trade;
-int hEmaFast, hEmaSlow, hRSI;
+int hRSI, hATR, hEMA;
 
 int OnInit() {
     trade.SetExpertMagicNumber(MagicNumber);
-    hEmaFast = iMA(_Symbol, PERIOD_M5, EMA_Fast, 0, MODE_EMA, PRICE_CLOSE);
-    hEmaSlow = iMA(_Symbol, PERIOD_M5, EMA_Slow, 0, MODE_EMA, PRICE_CLOSE);
-    hRSI = iRSI(_Symbol, PERIOD_M5, RSI_Period, PRICE_CLOSE);
-    if(hEmaFast == INVALID_HANDLE || hEmaSlow == INVALID_HANDLE || hRSI == INVALID_HANDLE)
+    hRSI = iRSI(_Symbol, PERIOD_H1, RSI_Period, PRICE_CLOSE);
+    hATR = iATR(_Symbol, PERIOD_H1, ATR_Period);
+    hEMA = iMA(_Symbol, PERIOD_H1, 50, 0, MODE_EMA, PRICE_CLOSE);
+    if(hRSI == INVALID_HANDLE || hATR == INVALID_HANDLE || hEMA == INVALID_HANDLE)
         return INIT_FAILED;
     return INIT_SUCCEEDED;
 }
 
 void OnDeinit(const int reason) {
-    IndicatorRelease(hEmaFast);
-    IndicatorRelease(hEmaSlow);
     IndicatorRelease(hRSI);
+    IndicatorRelease(hATR);
+    IndicatorRelease(hEMA);
 }
 
 void OnTick() {
     static datetime lastBar = 0;
-    datetime currentBar = iTime(_Symbol, PERIOD_M5, 0);
+    datetime currentBar = iTime(_Symbol, PERIOD_H1, 0);
     if(currentBar == lastBar) return;
     lastBar = currentBar;
 
-    double emaF[], emaS[], rsi[];
-    ArraySetAsSeries(emaF, true);
-    ArraySetAsSeries(emaS, true);
+    double rsi[], atr[], ema[];
     ArraySetAsSeries(rsi, true);
-    CopyBuffer(hEmaFast, 0, 0, 3, emaF);
-    CopyBuffer(hEmaSlow, 0, 0, 3, emaS);
+    ArraySetAsSeries(atr, true);
+    ArraySetAsSeries(ema, true);
     CopyBuffer(hRSI, 0, 0, 3, rsi);
+    CopyBuffer(hATR, 0, 0, 3, atr);
+    CopyBuffer(hEMA, 0, 0, 3, ema);
 
     if(CountPositions() >= MaxPositions) return;
 
+    double close1 = iClose(_Symbol, PERIOD_H1, 1);
     double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
     double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-    double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-    double lots = CalculateLotSize(SL_Points * point);
+    double sl = atr[1] * SL_Mult;
+    double tp = atr[1] * TP_Mult;
+    double lots = CalculateLotSize(sl);
     if(lots < 0.01) lots = 0.01;
 
-    // BUY: Fast EMA crosses above Slow EMA + RSI not overbought
-    if(emaF[2] < emaS[2] && emaF[1] > emaS[1] && rsi[1] < RSI_OB) {
-        trade.Buy(lots, _Symbol, ask, ask - SL_Points * point, ask + TP_Points * point);
+    // BUY: RSI(2) extreme oversold + price above H1 EMA50 (buy dips in uptrend)
+    if(rsi[1] < RSI_Buy && close1 > ema[1]) {
+        trade.Buy(lots, _Symbol, ask, ask - sl, ask + tp);
     }
 
-    // SELL: Fast EMA crosses below Slow EMA + RSI not oversold
-    if(emaF[2] > emaS[2] && emaF[1] < emaS[1] && rsi[1] > RSI_OS) {
-        trade.Sell(lots, _Symbol, bid, bid + SL_Points * point, bid - TP_Points * point);
+    // SELL: RSI(2) extreme overbought + price below H1 EMA50 (sell rallies in downtrend)
+    if(rsi[1] > RSI_Sell && close1 < ema[1]) {
+        trade.Sell(lots, _Symbol, bid, bid + sl, bid - tp);
     }
 }
 
