@@ -121,6 +121,10 @@ export default function ChatPage() {
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({ error: 'Request failed' }))
+        console.error('Chat stream error:', res.status, errData)
+        setIsGenerating(false)
+        setStreamingContent('')
+        setPipelineStatus(null)
         if (res.status === 401) {
           toast.error('Session expired. Please sign in again.')
           setMessages((prev) => prev.filter((m) => m.id !== userMsg.id))
@@ -128,9 +132,6 @@ export default function ChatPage() {
         }
         if (res.status === 402 || res.status === 503 || errData.error === 'NO_CREDITS' || errData.error?.includes('credit')) {
           setMessages((prev) => prev.filter((m) => m.id !== userMsg.id))
-          setIsGenerating(false)
-          setStreamingContent('')
-          setPipelineStatus(null)
           setShowUpgradeModal(true)
           return
         }

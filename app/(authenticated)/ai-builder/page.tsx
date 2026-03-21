@@ -178,6 +178,17 @@ export default function AIBuilderPage() {
     const controller = new AbortController()
     abortRef.current = controller
 
+    // Safety timeout — abort after 60 seconds if nothing happens
+    const safetyTimeout = setTimeout(() => {
+      if (abortRef.current === controller) {
+        controller.abort()
+        setIsGenerating(false)
+        setStreamingContent('')
+        setPipelineStatus(null)
+        toast.error('Request timed out. Please try again.')
+      }
+    }, 60000)
+
     try {
       // Get fresh token at request time
       const { data: { session: freshSession } } = await supabase.auth.getSession()
@@ -200,6 +211,10 @@ export default function AIBuilderPage() {
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({ error: 'Request failed' }))
+        console.error('Chat stream error:', res.status, errData)
+        setIsGenerating(false)
+        setStreamingContent('')
+        setPipelineStatus(null)
         if (res.status === 401) {
           toast.error('Session expired. Please sign in again.')
           setMessages((prev) => prev.filter((m) => m.id !== userMsg.id))
@@ -207,9 +222,6 @@ export default function AIBuilderPage() {
         }
         if (res.status === 402 || res.status === 503 || errData.error === 'NO_CREDITS' || errData.error?.includes('credit')) {
           setMessages((prev) => prev.filter((m) => m.id !== userMsg.id))
-          setIsGenerating(false)
-          setStreamingContent('')
-          setPipelineStatus(null)
           setShowUpgradeModal(true)
           return
         }
@@ -280,6 +292,7 @@ export default function AIBuilderPage() {
         setMessages((prev) => prev.filter((m) => m.id !== userMsg.id))
       }
     } finally {
+      clearTimeout(safetyTimeout)
       setIsGenerating(false)
       setStreamingContent('')
       setPipelineStatus(null)
