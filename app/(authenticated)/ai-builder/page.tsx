@@ -297,7 +297,7 @@ export default function AIBuilderPage() {
           type: 'strategy' as const,
           strategy_snapshot: clientTemplate.strategySnapshot,
           backtest_snapshot: clientTemplate.backtestResults,
-          mql5_code: '// Template code — click "Optimize" to compile on MT5 and generate real backtest results.',
+          mql5_code: clientTemplate.mql5Code,
         },
         created_at: new Date().toISOString(),
       }
