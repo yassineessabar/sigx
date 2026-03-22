@@ -260,7 +260,7 @@ function PublishContent() {
           <p className="text-[13px] text-foreground/35 max-w-md mx-auto">
             Your strategy doesn&apos;t meet all criteria yet. Improve your Sharpe ratio, reduce drawdown, or increase returns, then try again.
           </p>
-          <button onClick={() => router.push('/ai-builder')} className="rounded-xl bg-foreground/[0.06] px-5 py-2.5 text-[13px] font-medium text-foreground/60 hover:bg-foreground/[0.1] transition-colors">
+          <button onClick={() => router.push(strategy?.chat_id ? `/ai-builder/${strategy.chat_id}` : '/ai-builder')} className="rounded-xl bg-foreground/[0.06] px-5 py-2.5 text-[13px] font-medium text-foreground/60 hover:bg-foreground/[0.1] transition-colors">
             Iterate in AI Builder
           </button>
         </div>
