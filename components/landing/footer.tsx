@@ -21,7 +21,6 @@ const links: Record<string, { label: string; href: string }[]> = {
   Legal: [
     { label: "Privacy", href: "/privacy" },
     { label: "Terms", href: "/terms" },
-    { label: "Security", href: "/security" },
     { label: "Disclaimer", href: "/disclaimer" },
   ],
 };

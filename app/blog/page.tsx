@@ -1,61 +1,10 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { posts, categoryColors } from './posts'
 
 export const metadata: Metadata = {
   title: 'Blog — SIGX',
   description: 'Insights on AI trading, algorithmic strategies, and the future of quantitative finance.',
-}
-
-const posts = [
-  {
-    title: 'Why AI-Generated Trading Strategies Need Real Backtests',
-    excerpt: 'Simulated results and curve-fitted models can look impressive on paper. Here\'s why SIGX runs every strategy through real MetaTrader 5 infrastructure — and what that means for your results.',
-    date: 'March 20, 2026',
-    category: 'Engineering',
-    readTime: '5 min',
-  },
-  {
-    title: 'Understanding Profit Factor, Sharpe Ratio, and Max Drawdown',
-    excerpt: 'Three numbers that tell you almost everything about a trading strategy. A practical guide to reading backtest metrics without a finance degree.',
-    date: 'March 15, 2026',
-    category: 'Education',
-    readTime: '7 min',
-  },
-  {
-    title: 'From Idea to Expert Advisor in 60 Seconds',
-    excerpt: 'A walkthrough of the SIGX AI Builder — how natural language prompts become compiled MQL5 code, and what happens under the hood during each step.',
-    date: 'March 10, 2026',
-    category: 'Product',
-    readTime: '4 min',
-  },
-  {
-    title: 'The Case for Mean Reversion on Gold',
-    excerpt: 'XAUUSD has unique characteristics that make it well-suited for mean reversion strategies. We explore why, and share prompt templates that work well.',
-    date: 'March 5, 2026',
-    category: 'Strategy',
-    readTime: '6 min',
-  },
-  {
-    title: 'Managing Risk in Automated Trading',
-    excerpt: 'Position sizing, drawdown limits, and correlation — the risk management fundamentals that separate profitable systems from blown accounts.',
-    date: 'February 28, 2026',
-    category: 'Education',
-    readTime: '8 min',
-  },
-  {
-    title: 'How We Built a Parallel MT5 Backtesting Infrastructure',
-    excerpt: 'Running multiple MetaTrader 5 instances in parallel with slot pooling. A technical deep-dive into the infrastructure behind SIGX backtests.',
-    date: 'February 20, 2026',
-    category: 'Engineering',
-    readTime: '10 min',
-  },
-]
-
-const categoryColors: Record<string, string> = {
-  Engineering: 'text-blue-400/70 bg-blue-500/[0.06] border-blue-500/10',
-  Education: 'text-emerald-400/70 bg-emerald-500/[0.06] border-emerald-500/10',
-  Product: 'text-violet-400/70 bg-violet-500/[0.06] border-violet-500/10',
-  Strategy: 'text-amber-400/70 bg-amber-500/[0.06] border-amber-500/10',
 }
 
 export default function BlogPage() {
@@ -85,29 +34,24 @@ export default function BlogPage() {
 
         <div className="space-y-4">
           {posts.map((post) => (
-            <article
-              key={post.title}
-              className="group rounded-xl border border-foreground/[0.06] bg-foreground/[0.01] hover:border-foreground/[0.12] hover:bg-foreground/[0.02] transition-all p-6 cursor-pointer"
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${categoryColors[post.category] || 'text-foreground/40 bg-foreground/[0.04] border-foreground/[0.08]'}`}>
-                  {post.category}
-                </span>
-                <span className="text-[11px] text-foreground/30 font-medium">{post.date}</span>
-                <span className="text-[11px] text-foreground/25 font-medium">{post.readTime} read</span>
-              </div>
-              <h2 className="text-[17px] font-bold text-foreground/85 tracking-[-0.02em] mb-2 group-hover:text-foreground transition-colors">
-                {post.title}
-              </h2>
-              <p className="text-[13px] text-foreground/40 leading-[1.6] font-medium">
-                {post.excerpt}
-              </p>
-            </article>
+            <Link key={post.slug} href={`/blog/${post.slug}`}>
+              <article className="group rounded-xl border border-foreground/[0.06] bg-foreground/[0.01] hover:border-foreground/[0.12] hover:bg-foreground/[0.02] transition-all p-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${categoryColors[post.category] || 'text-foreground/40 bg-foreground/[0.04] border-foreground/[0.08]'}`}>
+                    {post.category}
+                  </span>
+                  <span className="text-[11px] text-foreground/30 font-medium">{post.date}</span>
+                  <span className="text-[11px] text-foreground/25 font-medium">{post.readTime} read</span>
+                </div>
+                <h2 className="text-[17px] font-bold text-foreground/85 tracking-[-0.02em] mb-2 group-hover:text-foreground transition-colors">
+                  {post.title}
+                </h2>
+                <p className="text-[13px] text-foreground/40 leading-[1.6] font-medium">
+                  {post.excerpt}
+                </p>
+              </article>
+            </Link>
           ))}
-        </div>
-
-        <div className="mt-12 text-center">
-          <p className="text-[13px] text-foreground/30 font-medium">More posts coming soon.</p>
         </div>
       </main>
 

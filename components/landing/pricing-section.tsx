@@ -9,6 +9,7 @@ const plans = [
     name: 'Starter',
     price: 19,
     credits: '1,000',
+    usage: '~125 AI messages or ~200 backtests',
     features: [
       'Unlimited strategies',
       'MQL5 Expert Advisors',
@@ -20,6 +21,7 @@ const plans = [
     price: 49,
     recommended: true,
     credits: '3,000',
+    usage: '~375 AI messages or ~600 backtests',
     features: [
       'Unlimited strategies',
       'MQL5 Expert Advisors',
@@ -33,14 +35,33 @@ const plans = [
     name: 'Pro',
     price: 99,
     credits: '8,000',
+    usage: '~1,000 AI messages or ~1,600 backtests',
     features: [
       'Unlimited strategies',
       'MQL5 Expert Advisors',
       '8,000 credits/month',
       'Priority backtesting',
       'API access',
+      'Share strategies',
       'Early access to beta features',
       'Dedicated support',
+    ],
+  },
+  {
+    name: 'Elite',
+    price: 199,
+    credits: '20,000',
+    usage: '~2,500 AI messages or ~4,000 backtests',
+    features: [
+      'Unlimited strategies',
+      'MQL5 Expert Advisors',
+      '20,000 credits/month',
+      'Priority backtesting',
+      'API access',
+      'Share strategies',
+      'Early access to beta features',
+      'Dedicated support',
+      'Premium support',
     ],
   },
 ]
@@ -48,7 +69,7 @@ const plans = [
 export default function PricingSection() {
   return (
     <section id="pricing" className="relative py-32 px-4">
-      <div className="mx-auto max-w-[960px]">
+      <div className="mx-auto max-w-[1080px]">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -65,14 +86,14 @@ export default function PricingSection() {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {plans.map((plan, i) => (
             <motion.div
               key={plan.name}
               initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.6, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.6, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
               className={`relative rounded-2xl border p-6 flex flex-col ${
                 plan.recommended
                   ? 'border-foreground/[0.12] bg-foreground/[0.03]'
@@ -93,7 +114,7 @@ export default function PricingSection() {
                   <span className="text-[36px] font-bold text-foreground tracking-[-0.04em]">${plan.price}</span>
                   <span className="text-[13px] text-foreground/30 font-medium">/mo</span>
                 </div>
-                <p className="text-[12px] text-foreground/30 font-medium mt-1">{plan.credits} credits/month</p>
+                <p className="text-[11px] text-foreground/25 font-medium mt-1">{plan.usage}</p>
               </div>
 
               <ul className="space-y-2.5 mb-6 flex-1">
