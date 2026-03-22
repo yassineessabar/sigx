@@ -154,12 +154,18 @@ export async function POST(request: NextRequest) {
                 }
 
                 const role = m.role as 'user' | 'assistant'
+                // Re-attach MQL5 code to assistant messages so Claude can see
+                // the current code when asked to optimize
+                let content = m.content
+                if (role === 'assistant' && meta?.mql5_code) {
+                  content += '\n\n---MQL5_CODE_START---\n' + (meta.mql5_code as string) + '\n---MQL5_CODE_END---'
+                }
                 // Merge consecutive same-role messages
                 const last = chatMessages[chatMessages.length - 1]
                 if (last && last.role === role) {
-                  last.content = (last.content as string) + '\n\n' + m.content
+                  last.content = (last.content as string) + '\n\n' + content
                 } else {
-                  chatMessages.push({ role, content: m.content })
+                  chatMessages.push({ role, content })
                 }
               }
 
