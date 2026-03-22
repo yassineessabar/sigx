@@ -21,6 +21,7 @@ interface ChatThreadProps {
   onSend?: (message: string) => void
   onRetry?: () => void
   onRunBacktest?: () => void
+  onFocusPrompt?: (placeholder?: string) => void
 }
 
 function OptimizeSuggestions({ backtest, onSend }: {
@@ -116,7 +117,7 @@ function cleanStreamingDisplay(text: string): string {
   return clean.replace(/\n{3,}/g, '\n\n').trim()
 }
 
-export function ChatThread({ messages, isGenerating, streamingContent, pipelineStatus, backtestData, pipelineError, hasCode, needsBacktest, isBacktesting, onEditMessage, onRegenerateMessage, onSend, onRetry, onRunBacktest }: ChatThreadProps) {
+export function ChatThread({ messages, isGenerating, streamingContent, pipelineStatus, backtestData, pipelineError, hasCode, needsBacktest, isBacktesting, onEditMessage, onRegenerateMessage, onSend, onRetry, onRunBacktest, onFocusPrompt }: ChatThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const [hasHadMessages, setHasHadMessages] = useState(false)
@@ -288,9 +289,9 @@ export function ChatThread({ messages, isGenerating, streamingContent, pipelineS
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                   Run Backtest
                 </button>
-                {onSend && (
+                {onFocusPrompt && (
                   <button
-                    onClick={() => onSend('Change the EMA periods to 8 and 21 for faster signals')}
+                    onClick={() => onFocusPrompt('e.g. Change SL to 300 points, add RSI filter...')}
                     className="rounded-full border border-foreground/[0.10] bg-foreground/[0.03] px-4 py-2 text-[12px] font-medium text-foreground/50 hover:bg-foreground/[0.06] transition-colors"
                   >
                     Adjust parameters

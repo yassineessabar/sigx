@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
 import { ChevronsLeft } from 'lucide-react'
 import { ChatThread } from './chat-thread'
-import { PromptInput } from './prompt-input'
+import { PromptInput, type PromptInputHandle } from './prompt-input'
 import { ChatTopBar } from './chat-top-bar'
 import { RightPanel } from './right-panel'
 import { useStrategy } from '@/lib/use-strategy'
@@ -88,6 +88,7 @@ export function SplitLayout({
   const [backtestJustFinished, setBacktestJustFinished] = useState(false)
   const backtestAbortRef = useRef<AbortController | null>(null)
   const backtestTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const promptInputRef = useRef<PromptInputHandle>(null)
 
   // Optimize state
   const optimizeAbortRef = useRef<AbortController | null>(null)
@@ -503,8 +504,9 @@ export function SplitLayout({
                 onSend(lastUserMsg.content)
               }
             }}
+            onFocusPrompt={(hint) => promptInputRef.current?.focus(hint)}
           />
-          <PromptInput onSend={onSend} isGenerating={isGenerating} onStop={onStop} />
+          <PromptInput ref={promptInputRef} onSend={onSend} isGenerating={isGenerating} onStop={onStop} />
         </div>
 
         {/* Right: Results panel */}

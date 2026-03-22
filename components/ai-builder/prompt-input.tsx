@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react'
 import { ArrowUp, Square, StopCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -13,9 +13,22 @@ interface PromptInputProps {
   variant?: 'default' | 'hero'
 }
 
-export function PromptInput({ onSend, isGenerating, onStop, placeholder, variant = 'default' }: PromptInputProps) {
+export interface PromptInputHandle {
+  focus: (placeholder?: string) => void
+}
+
+export const PromptInput = forwardRef<PromptInputHandle, PromptInputProps>(function PromptInput({ onSend, isGenerating, onStop, placeholder, variant = 'default' }, ref) {
   const [input, setInput] = useState('')
+  const [dynamicPlaceholder, setDynamicPlaceholder] = useState<string | undefined>(undefined)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useImperativeHandle(ref, () => ({
+    focus: (hint?: string) => {
+      if (hint) setDynamicPlaceholder(hint)
+      textareaRef.current?.focus()
+      textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    },
+  }))
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -28,6 +41,7 @@ export function PromptInput({ onSend, isGenerating, onStop, placeholder, variant
     if (!input.trim() || isGenerating) return
     onSend(input.trim())
     setInput('')
+    setDynamicPlaceholder(undefined)
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
     }
@@ -58,7 +72,7 @@ export function PromptInput({ onSend, isGenerating, onStop, placeholder, variant
             ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={placeholder || 'Describe a trading strategy...'}
+            placeholder={dynamicPlaceholder || placeholder || 'Describe a trading strategy...'}
             rows={isHero ? 3 : 1}
             spellCheck={false}
             className={cn(
@@ -121,4 +135,4 @@ export function PromptInput({ onSend, isGenerating, onStop, placeholder, variant
       </div>
     </div>
   )
-}
+})
