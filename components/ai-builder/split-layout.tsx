@@ -521,6 +521,7 @@ export function SplitLayout({
             isOpen={panelOpen}
             onToggle={() => setPanelOpen((prev) => !prev)}
             onOptimize={handleOptimize}
+            onSendPrompt={onSend}
             versions={versionHistory.versions}
             activeVersion={versionHistory.activeVersion}
             onRestoreVersion={(version) => {

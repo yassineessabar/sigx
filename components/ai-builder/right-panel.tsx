@@ -18,6 +18,7 @@ interface RightPanelProps {
   isOpen: boolean
   onToggle: () => void
   onOptimize?: () => void
+  onSendPrompt?: (prompt: string) => void
   onStopOptimize?: () => void
   isOptimizing?: boolean
   optimizeProgress?: { iteration: number; total: number }
@@ -40,6 +41,7 @@ export function RightPanel({
   isOpen,
   onToggle,
   onOptimize,
+  onSendPrompt,
   onStopOptimize,
   isOptimizing,
   optimizeProgress,
@@ -150,21 +152,35 @@ export function RightPanel({
                     <BacktestPreview backtest={backtestSnapshot} />
                   )}
                   {backtestSnapshot && (
-                    <StrategyScore backtest={backtestSnapshot} />
+                    <StrategyScore backtest={backtestSnapshot} onAction={onSendPrompt} />
                   )}
                   {strategySnapshot && (
                     <StrategyCard strategy={strategySnapshot} />
                   )}
 
-                  {/* Version history */}
+                  {/* Version history with progress tracking */}
                   {versions && versions.length > 0 && (
                     <div className="rounded-2xl border border-foreground/[0.08] bg-secondary overflow-hidden">
-                      <div className="border-b border-foreground/[0.06] px-4 py-2.5">
+                      <div className="border-b border-foreground/[0.06] px-4 py-2.5 flex items-center justify-between">
                         <span className="font-medium text-[13px] text-foreground/70">Version History</span>
+                        {versions.length >= 2 && (() => {
+                          const first = versions[0]?.metrics?.profit_factor ?? 0
+                          const last = versions[versions.length - 1]?.metrics?.profit_factor ?? 0
+                          const improved = last > first
+                          return (
+                            <span className={cn('text-[10px] font-semibold', improved ? 'text-emerald-400' : 'text-red-400')}>
+                              {improved ? '↑' : '↓'} PF {first.toFixed(2)} → {last.toFixed(2)}
+                            </span>
+                          )
+                        })()}
                       </div>
                       <div className="divide-y divide-foreground/[0.04]">
-                        {[...versions].reverse().map((v) => {
+                        {[...versions].reverse().map((v, idx) => {
                           const isActive = v.version === activeVersion
+                          const prevVersion = versions.find(pv => pv.version === v.version - 1)
+                          const pfDelta = prevVersion?.metrics && v.metrics
+                            ? v.metrics.profit_factor - prevVersion.metrics.profit_factor
+                            : null
                           return (
                             <div
                               key={v.id}
@@ -180,16 +196,24 @@ export function RightPanel({
                                 )}>
                                   v{v.version}
                                 </span>
-                                <div>
+                                <div className="flex items-center gap-1.5">
                                   <span className="text-[12px] text-foreground/60 font-medium">
                                     {v.metrics ? `PF ${v.metrics.profit_factor.toFixed(2)} · ${v.metrics.total_trades} trades` : 'No backtest'}
                                   </span>
                                   {v.metrics?.net_profit !== undefined && (
                                     <span className={cn(
-                                      'text-[11px] ml-2 font-semibold',
+                                      'text-[11px] font-semibold',
                                       (v.metrics.net_profit ?? 0) >= 0 ? 'text-emerald-400/70' : 'text-red-400/70'
                                     )}>
                                       {(v.metrics.net_profit ?? 0) >= 0 ? '+' : ''}${(v.metrics.net_profit ?? 0).toFixed(0)}
+                                    </span>
+                                  )}
+                                  {pfDelta !== null && pfDelta !== 0 && (
+                                    <span className={cn(
+                                      'text-[9px] font-bold px-1 py-0.5 rounded',
+                                      pfDelta > 0 ? 'text-emerald-400 bg-emerald-500/10' : 'text-red-400 bg-red-500/10'
+                                    )}>
+                                      {pfDelta > 0 ? '↑' : '↓'}{Math.abs(pfDelta).toFixed(2)}
                                     </span>
                                   )}
                                 </div>
