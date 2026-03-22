@@ -29,6 +29,7 @@ import {
   Moon,
   Gift,
   Plug,
+  CreditCard,
 } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { InviteModal } from './invite-modal'
@@ -344,16 +345,39 @@ export function Sidebar({ chats = [], onNewChat, onDeleteChat }: SidebarProps) {
           onMouseEnter={() => setUpgradeHover(true)}
           onMouseLeave={() => setUpgradeHover(false)}
         >
-          <Link
-            href="/upgrade"
-            className="flex items-center justify-between rounded-xl border border-foreground/[0.06] bg-foreground/[0.02] px-4 py-3 transition-colors hover:bg-foreground/[0.04]"
-          >
-            <div>
-              <p className="text-[13px] font-semibold text-foreground/80">Upgrade your plan</p>
-              <p className="text-[11px] text-foreground/35 font-medium mt-0.5">Get more credits & features</p>
+          {userPlan !== 'free' ? (
+            <div className="flex items-center justify-between rounded-xl border border-foreground/[0.06] bg-foreground/[0.02] px-4 py-3">
+              <div className="flex items-center gap-2.5">
+                <span className={cn(
+                  'text-[10px] font-bold uppercase tracking-wider rounded-md px-2 py-1',
+                  userPlan === 'elite' ? 'bg-violet-500/15 text-violet-400' :
+                  userPlan === 'pro' ? 'bg-blue-500/15 text-blue-400' :
+                  userPlan === 'builder' ? 'bg-emerald-500/15 text-emerald-400' :
+                  'bg-amber-500/15 text-amber-400'
+                )}>
+                  {userPlan}
+                </span>
+                <div>
+                  <p className="text-[12px] font-semibold text-foreground/70 tabular-nums">{userCredits ?? '...'} credits</p>
+                  <p className="text-[10px] text-foreground/30 font-medium">of {maxCredits}/mo</p>
+                </div>
+              </div>
+              <Link href="/upgrade" className="text-[11px] text-foreground/40 hover:text-foreground/70 font-medium transition-colors">
+                Manage
+              </Link>
             </div>
-            <Gem size={18} className="text-foreground/25 shrink-0" />
-          </Link>
+          ) : (
+            <Link
+              href="/upgrade"
+              className="flex items-center justify-between rounded-xl border border-foreground/[0.06] bg-foreground/[0.02] px-4 py-3 transition-colors hover:bg-foreground/[0.04]"
+            >
+              <div>
+                <p className="text-[13px] font-semibold text-foreground/80">Upgrade your plan</p>
+                <p className="text-[11px] text-foreground/35 font-medium mt-0.5">Get more credits & features</p>
+              </div>
+              <Gem size={18} className="text-foreground/25 shrink-0" />
+            </Link>
+          )}
 
           {/* Hover tooltip — credit usage */}
           {upgradeHover && (
@@ -393,6 +417,17 @@ export function Sidebar({ chats = [], onNewChat, onDeleteChat }: SidebarProps) {
                   profile?.full_name?.charAt(0)?.toUpperCase() || 'U'
                 )}
               </div>
+              {userPlan !== 'free' && (
+                <span className={cn(
+                  'text-[9px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5',
+                  userPlan === 'elite' ? 'bg-violet-500/15 text-violet-400' :
+                  userPlan === 'pro' ? 'bg-blue-500/15 text-blue-400' :
+                  userPlan === 'builder' ? 'bg-emerald-500/15 text-emerald-400' :
+                  'bg-amber-500/15 text-amber-400'
+                )}>
+                  {userPlan}
+                </span>
+              )}
             </button>
 
             {/* Profile menu popover */}
@@ -415,6 +450,34 @@ export function Sidebar({ chats = [], onNewChat, onDeleteChat }: SidebarProps) {
                     <User size={14} />
                     Profile
                   </Link>
+                  {userPlan !== 'free' ? (
+                    <button
+                      onClick={async () => {
+                        setProfileMenuOpen(false)
+                        try {
+                          const res = await fetch('/api/billing/portal', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+                          })
+                          const data = await res.json()
+                          if (data.url) window.location.href = data.url
+                        } catch { /* silent */ }
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-foreground/60 hover:bg-foreground/[0.04] transition-colors font-medium"
+                    >
+                      <CreditCard size={14} />
+                      Manage Subscription
+                    </button>
+                  ) : (
+                    <Link
+                      href="/upgrade"
+                      onClick={() => setProfileMenuOpen(false)}
+                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-foreground/60 hover:bg-foreground/[0.04] transition-colors font-medium"
+                    >
+                      <CreditCard size={14} />
+                      Upgrade Plan
+                    </Link>
+                  )}
                   <Link
                     href="/help"
                     onClick={() => setProfileMenuOpen(false)}
