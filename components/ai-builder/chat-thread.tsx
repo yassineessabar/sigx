@@ -162,9 +162,10 @@ export function ChatThread({ messages, isGenerating, streamingContent, pipelineS
   }
 
   const displayedStreaming = streamingContent ? cleanStreamingDisplay(streamingContent) : ''
-  // Show thinking when generating but no visible content yet
-  // Also account for when streamingContent has raw markers but displayedStreaming is empty
+  // Detect different streaming states
   const hasRawStream = !!streamingContent && streamingContent.length > 0
+  const isStreamingCode = hasRawStream && streamingContent.includes('---MQL5_CODE_START---') && !streamingContent.includes('---MQL5_CODE_END---')
+  const isStreamingStrategy = hasRawStream && streamingContent.includes('---STRATEGY_JSON_START---') && !streamingContent.includes('---STRATEGY_JSON_END---')
   const showThinking = isGenerating && !displayedStreaming && !hasRawStream
 
   return (
@@ -201,8 +202,35 @@ export function ChatThread({ messages, isGenerating, streamingContent, pipelineS
           <ThinkingBubble />
         )}
 
-        {/* Processing indicator — stream has raw data (markers) but nothing visible to show */}
-        {isGenerating && !displayedStreaming && hasRawStream && !pipelineStatus && (
+        {/* Code generation indicator — shows when Claude is writing MQL5 code (hidden markers) */}
+        {isGenerating && hasRawStream && (isStreamingCode || isStreamingStrategy) && (
+          <div className="flex gap-3">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-white">
+              <span className="text-[8px] font-black text-black tracking-[-0.06em]">SX</span>
+            </div>
+            <div className="rounded-[14px] border border-foreground/[0.04] bg-foreground/[0.012] px-4 py-3">
+              <div className="flex items-center gap-3">
+                <Loader2 className="h-4 w-4 animate-spin text-foreground/50" />
+                <span className="text-[13px] text-foreground/50 font-medium">
+                  {isStreamingCode ? 'Writing MQL5 code...' : 'Building strategy...'}
+                </span>
+              </div>
+              {isStreamingCode && (
+                <div className="mt-2 flex items-center gap-2">
+                  <div className="h-1 flex-1 rounded-full bg-foreground/[0.06] overflow-hidden">
+                    <div className="h-full rounded-full bg-foreground/20 animate-pulse" style={{ width: '60%' }} />
+                  </div>
+                  <span className="text-[10px] text-foreground/25 tabular-nums">
+                    {Math.round((streamingContent.length - streamingContent.indexOf('MQL5_CODE_START')) / 80)} lines
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Processing indicator — stream has raw data but not code markers */}
+        {isGenerating && !displayedStreaming && hasRawStream && !isStreamingCode && !isStreamingStrategy && !pipelineStatus && (
           <ThinkingBubble />
         )}
 
