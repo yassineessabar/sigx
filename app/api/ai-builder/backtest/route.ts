@@ -174,7 +174,7 @@ async function tryCompileAndBacktest(
     const data = await res.json()
 
     if (data.success && data.metrics) {
-      const metrics = normalizeMetrics(data.metrics)
+      const metrics = normalizeMetrics(data.metrics, data.report_b64)
       const equity_curve = parseEquityCurve(data.report_b64, metrics)
       return {
         supported: true,
@@ -333,23 +333,85 @@ function extractCompileErrors(log: unknown): string[] {
 function parseNum(val: unknown, fallback = 0): number {
   if (typeof val === 'number') return val
   if (typeof val === 'string') {
-    // Handle strings like "45.20 (0.05%)" or "52.3%" — extract first number
-    const match = val.match(/-?[\d.]+/)
-    return match ? parseFloat(match[0]) : fallback
+    const match = val.match(/-?[\d,.]+/)
+    return match ? parseFloat(match[0].replace(/,/g, '').replace(/ /g, '')) : fallback
   }
   return fallback
 }
 
-function normalizeMetrics(raw: Record<string, unknown>) {
+/**
+ * Parse the MT5 HTML report to extract metrics the VPS parser misses.
+ * MT5 reports use colspan layouts that BeautifulSoup's simple key/value extraction misses.
+ */
+function parseReportMetrics(reportB64: string | undefined): Record<string, number> {
+  if (!reportB64) return {}
+  try {
+    const buf = Buffer.from(reportB64, 'base64')
+    const html = (buf[0] === 0xff && buf[1] === 0xfe) ? buf.toString('utf16le') : buf.toString('utf-8')
+    const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')
+
+    const result: Record<string, number> = {}
+
+    // Sharpe Ratio: -1.93
+    const sharpe = text.match(/Sharpe Ratio:\s*(-?[\d.]+)/)
+    if (sharpe) result.sharpe = parseFloat(sharpe[1])
+
+    // Balance Drawdown Maximal: 2 606.48 (2.58%)
+    const ddMax = text.match(/(?:Balance|Equity) Drawdown Maximal:\s*[\d\s,.]+\(([\d.]+)%\)/)
+    if (ddMax) result.max_drawdown = parseFloat(ddMax[1])
+
+    // Profit Trades (% of total): 191 (37.75%)
+    const winRate = text.match(/Profit Trades \(% of total\):\s*\d+\s*\(([\d.]+)%\)/)
+    if (winRate) result.win_rate = parseFloat(winRate[1])
+
+    // Initial Deposit: 100 000.00
+    const deposit = text.match(/Initial Deposit:\s*([\d\s,.]+)/)
+    if (deposit) result.initial_deposit = parseFloat(deposit[1].replace(/[\s,]/g, ''))
+
+    // Total Net Profit: -1 595.78
+    const netProfit = text.match(/Total Net Profit:\s*(-?[\d\s,.]+)/)
+    if (netProfit) result.net_profit = parseFloat(netProfit[1].replace(/[\s,]/g, ''))
+
+    // Profit Factor: 0.90
+    const pf = text.match(/Profit Factor:\s*([\d.]+)/)
+    if (pf) result.profit_factor = parseFloat(pf[1])
+
+    // Recovery Factor: -0.60
+    const rf = text.match(/Recovery Factor:\s*(-?[\d.]+)/)
+    if (rf) result.recovery_factor = parseFloat(rf[1])
+
+    // Total Trades: 506
+    const trades = text.match(/Total Trades:\s*(\d+)/)
+    if (trades) result.total_trades = parseInt(trades[1])
+
+    // Expected Payoff: -3.15
+    const ep = text.match(/Expected Payoff:\s*(-?[\d.]+)/)
+    if (ep) result.expected_payoff = parseFloat(ep[1])
+
+    return result
+  } catch {
+    return {}
+  }
+}
+
+function normalizeMetrics(raw: Record<string, unknown>, reportB64?: string) {
+  // Parse the HTML report for metrics the VPS parser misses
+  const fromReport = parseReportMetrics(reportB64)
+
+  const netProfit = parseNum(raw.net_profit ?? fromReport.net_profit)
+  const initialDeposit = fromReport.initial_deposit || 100000
+  const totalReturn = initialDeposit > 0 ? (netProfit / initialDeposit) * 100 : 0
+
   return {
-    sharpe: parseNum(raw.sharpe ?? raw.sharpe_ratio),
-    max_drawdown: Math.abs(parseNum(raw.max_drawdown ?? raw.max_dd ?? raw.drawdown)),
-    win_rate: parseNum(raw.win_rate ?? raw.win_pct),
-    total_return: parseNum(raw.total_return ?? raw.net_profit),
-    profit_factor: parseNum(raw.profit_factor),
-    total_trades: parseNum(raw.total_trades),
-    net_profit: parseNum(raw.net_profit),
-    recovery_factor: parseNum(raw.recovery_factor),
+    sharpe: parseNum(raw.sharpe ?? raw.sharpe_ratio ?? fromReport.sharpe),
+    max_drawdown: Math.abs(parseNum(raw.max_drawdown ?? raw.max_dd ?? fromReport.max_drawdown)),
+    win_rate: parseNum(raw.win_rate ?? raw.win_pct ?? fromReport.win_rate),
+    total_return: totalReturn,
+    profit_factor: parseNum(raw.profit_factor ?? fromReport.profit_factor),
+    total_trades: parseNum(raw.total_trades ?? fromReport.total_trades),
+    net_profit: netProfit,
+    recovery_factor: parseNum(raw.recovery_factor ?? fromReport.recovery_factor),
+    initial_deposit: initialDeposit,
   }
 }
 

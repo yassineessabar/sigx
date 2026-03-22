@@ -43,11 +43,25 @@ export function BacktestPreview({ backtest }: BacktestPreviewProps) {
 
       {/* Key metrics — large display */}
       {backtest.net_profit !== undefined && (
-        <div className="px-4 py-3 border-b border-foreground/[0.06] flex items-center justify-between">
-          <span className="text-[12px] text-foreground/40 font-medium">Net Profit</span>
-          <span className={`text-[20px] font-bold tabular-nums ${(backtest.net_profit ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-            {(backtest.net_profit ?? 0) >= 0 ? '+' : ''}{(backtest.net_profit ?? 0).toFixed(2)}
-          </span>
+        <div className="px-4 py-3 border-b border-foreground/[0.06]">
+          <div className="flex items-center justify-between">
+            <span className="text-[12px] text-foreground/40 font-medium">Net Profit</span>
+            <div className="flex items-center gap-2">
+              <span className={`text-[20px] font-bold tabular-nums ${(backtest.net_profit ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                {(backtest.net_profit ?? 0) >= 0 ? '+' : ''}{(backtest.net_profit ?? 0).toFixed(2)}
+              </span>
+              {backtest.total_return !== undefined && backtest.total_return !== 0 && (
+                <span className={`text-[12px] font-semibold px-1.5 py-0.5 rounded ${backtest.total_return >= 0 ? 'text-emerald-400 bg-emerald-500/10' : 'text-red-400 bg-red-500/10'}`}>
+                  {backtest.total_return >= 0 ? '+' : ''}{backtest.total_return.toFixed(2)}%
+                </span>
+              )}
+            </div>
+          </div>
+          {!!(backtest as Record<string, unknown>).initial_deposit && (
+            <p className="text-[10px] text-foreground/20 mt-1">
+              Initial deposit: ${Number((backtest as Record<string, unknown>).initial_deposit).toLocaleString()}
+            </p>
+          )}
         </div>
       )}
 
