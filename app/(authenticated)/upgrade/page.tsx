@@ -203,9 +203,22 @@ export default function UpgradePage() {
                 {/* CTA */}
                 <div className="mb-4">
                   {isCurrent ? (
-                    <div className="w-full h-10 rounded-lg text-[14px] font-medium flex items-center justify-center bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                      Current Plan
-                    </div>
+                    <button
+                      onClick={async () => {
+                        if (currentPlan === 'free') return
+                        try {
+                          const res = await fetch('/api/billing/portal', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+                          })
+                          const data = await res.json()
+                          if (data.url) window.location.href = data.url
+                        } catch { /* silent */ }
+                      }}
+                      className="w-full h-10 rounded-lg text-[14px] font-medium flex items-center justify-center gap-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors cursor-pointer"
+                    >
+                      Current Plan · Manage
+                    </button>
                   ) : (
                   <button
                     onClick={() => router.push(`/billing?plan=${plan.id}`)}
