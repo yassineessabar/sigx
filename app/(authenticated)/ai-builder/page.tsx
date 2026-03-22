@@ -382,52 +382,60 @@ export default function AIBuilderPage() {
       ;(async () => {
         try {
           // 1. Create strategy
-          const stratRes = await fetch('/api/strategies', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ name, market: clientTemplate.market, status: 'backtested',
-              sharpe_ratio: clientTemplate.backtestResults.sharpe,
-              max_drawdown: clientTemplate.backtestResults.max_drawdown,
-              win_rate: clientTemplate.backtestResults.win_rate,
-              total_return: clientTemplate.backtestResults.total_return,
-              strategy_summary: clientTemplate.strategySnapshot,
-              mql5_code: clientTemplate.mql5Code,
-            }),
-          })
-          if (!stratRes.ok) { console.error('Failed to save strategy'); return }
-          const stratData = await stratRes.json()
-          const strategyId = stratData.strategy?.id
-          const savedName = stratData.strategy?.name || name
-          if (!strategyId) return
+          let strategyId: string | null = null
+          let savedName = name
+          try {
+            const stratRes = await fetch('/api/strategies', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ name, market: clientTemplate.market || 'XAUUSD', status: 'backtested',
+                sharpe_ratio: clientTemplate.backtestResults?.sharpe ?? null,
+                max_drawdown: clientTemplate.backtestResults?.max_drawdown ?? null,
+                win_rate: clientTemplate.backtestResults?.win_rate ?? null,
+                total_return: clientTemplate.backtestResults?.total_return ?? null,
+                strategy_summary: clientTemplate.strategySnapshot ?? null,
+                mql5_code: clientTemplate.mql5Code ?? null,
+              }),
+            })
+            if (stratRes.ok) {
+              const stratData = await stratRes.json()
+              strategyId = stratData.strategy?.id || null
+              savedName = stratData.strategy?.name || name
+            } else {
+              console.error('Failed to save strategy:', stratRes.status)
+            }
+          } catch (e) { console.error('Strategy save error:', e) }
 
-          // 2. Create chat with the deduplicated name
-          const chatRes = await fetch('/api/chats', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ title: savedName, strategy_id: strategyId }),
-          })
-          if (!chatRes.ok) { console.error('Failed to create chat'); return }
-          const chatData = await chatRes.json()
-          const newChatId = chatData.chat?.id
-          if (!newChatId) return
+          // 2. Create chat
+          try {
+            const chatRes = await fetch('/api/chats', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ title: savedName, ...(strategyId ? { strategy_id: strategyId } : {}) }),
+            })
+            if (chatRes.ok) {
+              const chatData = await chatRes.json()
+              const newChatId = chatData.chat?.id
+              if (newChatId) {
+                setCurrentChatId(newChatId)
 
-          setCurrentChatId(newChatId)
-
-          // 3. Save messages using supabase admin directly via the messages API
-          const msgRes = await fetch(`/api/chat/${newChatId}/messages`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ messages: [
-              { role: 'user', content: prompt },
-              { role: 'assistant', content: explanation, metadata: {
-                type: 'strategy',
-                strategy_snapshot: clientTemplate.strategySnapshot,
-                backtest_snapshot: clientTemplate.backtestResults,
-                mql5_code: clientTemplate.mql5Code,
-              }},
-            ]}),
-          })
-          if (!msgRes.ok) console.error('Failed to save messages:', await msgRes.text())
+                // 3. Save messages
+                await fetch(`/api/chat/${newChatId}/messages`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                  body: JSON.stringify({ messages: [
+                    { role: 'user', content: prompt },
+                    { role: 'assistant', content: explanation, metadata: {
+                      type: 'strategy',
+                      strategy_snapshot: clientTemplate.strategySnapshot,
+                      backtest_snapshot: clientTemplate.backtestResults,
+                      mql5_code: clientTemplate.mql5Code,
+                    }},
+                  ]}),
+                }).catch((e) => console.error('Failed to save messages:', e))
+              }
+            }
+          } catch (e) { console.error('Chat create error:', e) }
         } catch (err) {
           console.error('Template save error:', err)
         }
