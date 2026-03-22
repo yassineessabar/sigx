@@ -10,6 +10,57 @@ import { useStrategy } from '@/lib/use-strategy'
 import { useVersions, type StrategyVersion } from '@/lib/use-versions'
 import type { ChatMessage as ChatMessageType } from '@/lib/types'
 
+/**
+ * Read backtest response — handles both regular JSON and NDJSON streaming (queue).
+ * Calls onStatus for queue/status updates, returns the final result data.
+ */
+async function readBacktestResponse(
+  res: Response,
+  onStatus: (msg: string) => void
+): Promise<Record<string, unknown>> {
+  const contentType = res.headers.get('content-type') || ''
+
+  // Regular JSON response (no queue)
+  if (!contentType.includes('ndjson')) {
+    return res.json()
+  }
+
+  // NDJSON stream — read line by line
+  const reader = res.body?.getReader()
+  if (!reader) return { success: false, error: 'No response body' }
+
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let result: Record<string, unknown> = { success: false, error: 'Stream ended unexpectedly' }
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+
+    const lines = buffer.split('\n')
+    buffer = lines.pop() || '' // keep incomplete line in buffer
+
+    for (const line of lines) {
+      if (!line.trim()) continue
+      try {
+        const msg = JSON.parse(line)
+        if (msg.type === 'queue') {
+          onStatus(`Queued · Position ${msg.position} · ${msg.busy}/${msg.total} slots busy`)
+        } else if (msg.type === 'queue_done') {
+          onStatus('Slot acquired · Compiling and backtesting...')
+        } else if (msg.type === 'status') {
+          onStatus(msg.message || 'Processing...')
+        } else if (msg.type === 'result') {
+          result = msg.data || msg
+        }
+      } catch { /* skip malformed lines */ }
+    }
+  }
+
+  return result
+}
+
 interface SplitLayoutProps {
   title: string
   chatId?: string | null
@@ -447,7 +498,7 @@ export function SplitLayout({
                   return
                 }
 
-                const data = await res.json()
+                const data: any = await readBacktestResponse(res, (msg) => setPipelineStatus(msg))
 
                 if (!data.success) {
                   // Show error popup — offer AI help for compile/backtest failures
@@ -625,7 +676,7 @@ export function SplitLayout({
                   return
                 }
 
-                const data = await res.json()
+                const data: any = await readBacktestResponse(res, (msg) => setPipelineStatus(msg))
 
                 if (!data.success) {
                   const errorMsg = data.error || 'Backtest failed'

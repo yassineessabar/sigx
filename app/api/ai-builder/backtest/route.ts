@@ -41,6 +41,35 @@ async function findFreeSlot(workerUrl: string): Promise<string | null> {
   }
 }
 
+async function getQueueInfo(workerUrl: string): Promise<{ total: number; busy: number; available: number }> {
+  try {
+    const res = await fetch(`${workerUrl}/status`, { headers: workerHeaders() })
+    if (!res.ok) return { total: 1, busy: 1, available: 0 }
+    const data = await res.json()
+    return {
+      total: data.total_slots || 1,
+      busy: data.busy_slots || 0,
+      available: data.available_slots || 0,
+    }
+  } catch {
+    return { total: 1, busy: 1, available: 0 }
+  }
+}
+
+const MAX_QUEUE_WAIT_MS = 180_000 // 3 minutes max wait in queue
+const QUEUE_POLL_INTERVAL = 5_000 // check every 5 seconds
+
+async function waitForSlot(workerUrl: string, signal?: AbortSignal): Promise<string | null> {
+  const deadline = Date.now() + MAX_QUEUE_WAIT_MS
+  while (Date.now() < deadline) {
+    if (signal?.aborted) return null
+    const slot = await findFreeSlot(workerUrl)
+    if (slot) return slot
+    await new Promise(resolve => setTimeout(resolve, QUEUE_POLL_INTERVAL))
+  }
+  return null
+}
+
 /**
  * POST /api/ai-builder/backtest
  * Compiles on VPS then runs backtest. Auto-fixes compile errors.
@@ -84,26 +113,93 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Check if any slot is free
-    const slotId = await findFreeSlot(workerUrl)
+    // Check if any slot is free — if not, stream queue updates
+    let slotId = await findFreeSlot(workerUrl)
+
     if (!slotId) {
-      return NextResponse.json({
-        success: false,
-        error: 'All MT5 slots are busy. Try again in a minute.',
+      // All slots busy — stream queue position updates via NDJSON
+      const encoder = new TextEncoder()
+      const stream = new ReadableStream({
+        async start(controller) {
+          const send = (data: Record<string, unknown>) => {
+            controller.enqueue(encoder.encode(JSON.stringify(data) + '\n'))
+          }
+
+          // Poll for a free slot, streaming position updates
+          const deadline = Date.now() + MAX_QUEUE_WAIT_MS
+          let position = 1
+          while (Date.now() < deadline) {
+            const info = await getQueueInfo(workerUrl)
+            position = info.busy - info.available + 1
+            if (position < 1) position = 1
+            send({ type: 'queue', position, busy: info.busy, total: info.total })
+
+            // Try to get a slot
+            const slot = await findFreeSlot(workerUrl)
+            if (slot) {
+              slotId = slot
+              send({ type: 'queue_done' })
+              break
+            }
+            await new Promise(resolve => setTimeout(resolve, QUEUE_POLL_INTERVAL))
+          }
+
+          if (!slotId) {
+            send({ type: 'result', data: { success: false, error: 'Queue timeout — all MT5 slots are busy. Please try again shortly.' } })
+            controller.close()
+            return
+          }
+
+          // Slot acquired — run the backtest
+          send({ type: 'status', message: 'Compiling and backtesting...' })
+          let currentCode = mq5_code
+          let lastResult = await tryCompileAndBacktest(workerUrl, ea_name, currentCode, sym, per, start, end)
+
+          if (lastResult.supported) {
+            if (!lastResult.success && lastResult.compileError && getAnthropic()) {
+              for (let i = 0; i < MAX_FIX_RETRIES; i++) {
+                send({ type: 'status', message: `Auto-fixing compile errors (attempt ${i + 1})...` })
+                const errorLines = extractCompileErrors(lastResult.compileError)
+                const fixed = await autoFixCode(currentCode, errorLines)
+                if (!fixed) break
+                currentCode = fixed
+                lastResult = await tryCompileAndBacktest(workerUrl, ea_name, currentCode, sym, per, start, end)
+                if (lastResult.success || !lastResult.compileError) break
+              }
+            }
+
+            if (lastResult.success) {
+              send({ type: 'result', data: lastResult.data })
+            } else {
+              const cleanError = lastResult.compileError
+                ? 'Compilation failed: ' + extractCompileErrors(lastResult.compileError).join('; ')
+                : (lastResult.data?.error || 'Compile + backtest failed')
+              send({ type: 'result', data: { success: false, error: cleanError.slice(0, 200) } })
+            }
+          } else {
+            // Fallback to separate calls — run synchronously and return result
+            const fbRes = await runSeparateCalls(workerUrl, ea_name, currentCode, sym, per, slotId!, start, end)
+            send({ type: 'result', data: fbRes })
+          }
+
+          controller.close()
+        },
+      })
+
+      return new Response(stream, {
+        headers: { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-cache' },
       })
     }
 
-    // Try /compile-and-backtest first (single call, more reliable)
+    // Slot available immediately — standard JSON response (no queue)
     let currentCode = mq5_code
     let lastResult = await tryCompileAndBacktest(workerUrl, ea_name, currentCode, sym, per, start, end)
 
     if (lastResult.supported) {
-      // Endpoint exists — use its result (with auto-fix retries)
       if (lastResult.success) {
         return NextResponse.json(lastResult.data)
       }
 
-      // Compile failed — try auto-fix
       if (lastResult.compileError && getAnthropic()) {
         for (let i = 0; i < MAX_FIX_RETRIES; i++) {
           console.log(`Auto-fix attempt ${i + 1}/${MAX_FIX_RETRIES}...`)
@@ -117,7 +213,6 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Return a clean error message, not the raw compile log
       const cleanError = lastResult.compileError
         ? 'Compilation failed: ' + extractCompileErrors(lastResult.compileError).join('; ')
         : (lastResult.data?.error || 'Compile + backtest failed')
@@ -205,6 +300,62 @@ async function tryCompileAndBacktest(
       return { supported: true, success: false, data: { success: false, error: 'Timed out (4 min)' } }
     }
     return { supported: true, success: false, data: { success: false, error: (err as Error).message } }
+  }
+}
+
+/**
+ * Fallback separate calls that return plain data (for use inside streams).
+ */
+async function runSeparateCalls(
+  workerUrl: string, eaName: string, code: string, symbol: string, period: string, slotId: string,
+  start?: string, end?: string
+): Promise<Record<string, unknown>> {
+  let currentCode = code
+
+  for (let attempt = 0; attempt <= MAX_FIX_RETRIES; attempt++) {
+    try {
+      const res = await fetch(`${workerUrl}/compile`, {
+        method: 'POST',
+        headers: workerHeaders(),
+        body: JSON.stringify({ ea_name: eaName, mq5_code: currentCode, slot_id: slotId }),
+      })
+      if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        if (attempt === MAX_FIX_RETRIES) return { success: false, error: `VPS compile error: ${text.slice(0, 150)}` }
+        continue
+      }
+      const data = await res.json()
+      if (data.success) break
+      const errors = typeof data.errors === 'string' ? [data.errors] : (data.errors || ['Unknown error'])
+      if (attempt < MAX_FIX_RETRIES && getAnthropic()) {
+        const fixed = await autoFixCode(currentCode, errors)
+        if (fixed) { currentCode = fixed; continue }
+      }
+      return { success: false, error: `Compilation failed: ${errors.slice(0, 3).join('; ').slice(0, 200)}` }
+    } catch (err) {
+      if (attempt === MAX_FIX_RETRIES) return { success: false, error: `Compile error: ${(err as Error).message}` }
+    }
+  }
+
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 240_000)
+    const res = await fetch(`${workerUrl}/backtest`, {
+      method: 'POST',
+      headers: workerHeaders(),
+      body: JSON.stringify({ ea_name: eaName, symbol, period, slot_id: slotId, ...(start ? { start } : {}), ...(end ? { end } : {}) }),
+      signal: controller.signal,
+    })
+    clearTimeout(timeout)
+    if (!res.ok) return { success: false, error: `Backtest failed (${res.status})` }
+    const data = await res.json()
+    if (!data.success) return { success: false, error: data.error || 'Backtest returned no results' }
+    const metrics = normalizeMetrics(data.metrics)
+    const equity_curve = parseEquityCurve(data.report_b64, metrics)
+    return { success: true, metrics, equity_curve, report_b64: data.report_b64 || null }
+  } catch (err) {
+    if ((err as Error).name === 'AbortError') return { success: false, error: 'Backtest timed out (4 min)' }
+    return { success: false, error: `Backtest error: ${(err as Error).message}` }
   }
 }
 
