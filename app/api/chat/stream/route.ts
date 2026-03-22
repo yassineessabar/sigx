@@ -132,13 +132,27 @@ export async function POST(request: NextRequest) {
                 .order('created_at', { ascending: true })
                 .limit(20)
 
-              // Filter out backtest_result messages and ensure alternating roles
+              // Build chat history for Claude — include backtest results as context
               // (Claude API requires strict user/assistant alternation)
               const chatMessages: Anthropic.MessageParam[] = []
               for (const m of (history || [])) {
-                // Skip backtest_result system messages
                 const meta = m.metadata as Record<string, unknown> | null
-                if (meta?.type === 'backtest_result') continue
+
+                // Convert backtest_result messages into a user message with results
+                // so Claude knows the performance and can optimize accordingly
+                if (meta?.type === 'backtest_result') {
+                  const bt = meta.backtest_snapshot as Record<string, unknown> | undefined
+                  if (bt) {
+                    const summary = `[Backtest results: ${bt.total_trades} trades, PF ${bt.profit_factor}, net profit $${bt.net_profit}, max DD ${bt.max_drawdown}%, win rate ${bt.win_rate}%, sharpe ${bt.sharpe}]`
+                    // Append to the last assistant message as context
+                    const last = chatMessages[chatMessages.length - 1]
+                    if (last && last.role === 'assistant') {
+                      last.content = (last.content as string) + '\n\n' + summary
+                    }
+                  }
+                  continue
+                }
+
                 const role = m.role as 'user' | 'assistant'
                 // Merge consecutive same-role messages
                 const last = chatMessages[chatMessages.length - 1]
