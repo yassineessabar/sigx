@@ -40,6 +40,7 @@ export interface Strategy {
   max_drawdown: number | null
   win_rate: number | null
   total_return: number | null
+  equity_curve: { date: string; equity: number }[] | null
   created_at: string
   updated_at: string
 }

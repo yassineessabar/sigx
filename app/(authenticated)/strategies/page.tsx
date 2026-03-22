@@ -381,18 +381,24 @@ export default function StrategiesPage() {
               <div className="aspect-[16/10] rounded-xl border border-foreground/[0.06] bg-secondary relative overflow-hidden hover:border-foreground/[0.12] transition-colors">
                 {/* Equity curve or placeholder */}
                 {(() => {
+                  // Use real equity curve from backtest if available
+                  const realCurve = (s as any).equity_curve as { date: string; equity: number }[] | null
                   const tpl = findClientTemplate(s.name)
                   const hasMetrics = s.sharpe_ratio != null || s.total_return != null
-                  if (!hasMetrics && !tpl) {
-                    // No data — show SX placeholder
+
+                  if (!hasMetrics && !tpl && !realCurve?.length) {
                     return (
                       <div className="absolute inset-0 flex items-center justify-center">
                         <span className="text-[24px] font-bold tracking-[-0.06em] text-foreground/[0.06] select-none">SX</span>
                       </div>
                     )
                   }
-                  const curveData = tpl?.backtestResults.equity_curve?.map(p => p.equity)
-                    || generateCurve(s.name.charCodeAt(0), Number(s.total_return || 0))
+
+                  const curveData = realCurve?.length
+                    ? realCurve.map(p => p.equity)
+                    : tpl?.backtestResults.equity_curve?.map(p => p.equity)
+                      || generateCurve(s.name.charCodeAt(0), Number(s.total_return || 0))
+
                   return (
                     <div className="absolute inset-x-0 bottom-0 h-[65%] px-2">
                       <EquitySVG data={curveData} id={s.id} />

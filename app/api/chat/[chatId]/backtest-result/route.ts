@@ -67,6 +67,7 @@ export async function POST(
         max_drawdown: metrics.max_drawdown ?? null,
         win_rate: metrics.win_rate ?? null,
         total_return: metrics.total_return ?? null,
+        equity_curve: metrics.equity_curve ?? null,
         status: 'backtested',
         updated_at: new Date().toISOString(),
       }
