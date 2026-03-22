@@ -273,6 +273,11 @@ export default function AIBuilderPage() {
             if (data.type === 'chat_created' && data.chatId) {
               setCurrentChatId(data.chatId)
               newChatIdRef.current = data.chatId
+              // Set title from the user's message if not already named
+              if (!projectName) {
+                const title = message.slice(0, 60) + (message.length > 60 ? '...' : '')
+                setProjectName(title)
+              }
             } else if (data.type === 'delta') {
               setStreamingContent((prev) => { const next = prev + data.text; streamingRef.current = next; return next })
               setPipelineStatus(null)
@@ -290,6 +295,11 @@ export default function AIBuilderPage() {
               setStreamingContent('')
               setPipelineStatus(null)
               setMessages((prev) => [...prev, data.message])
+              // Update title from strategy name if available
+              const stratName = data.message?.metadata?.strategy_snapshot?.name
+              if (stratName && typeof stratName === 'string') {
+                setProjectName(stratName)
+              }
             }
           } catch { /* skip malformed SSE lines */ }
         }
