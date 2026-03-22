@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/auth-context'
 import { Check, ChevronDown, Puzzle, Users, Headphones, ShieldCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PageTransition } from '@/components/ui/page-transition'
@@ -101,7 +102,23 @@ const faqs = [
 
 export default function UpgradePage() {
   const router = useRouter()
+  const { session } = useAuth()
   const [openFaq, setOpenFaq] = useState<number | null>(null)
+  const [currentPlan, setCurrentPlan] = useState<string>('free')
+  const [currentCredits, setCurrentCredits] = useState<number | null>(null)
+
+  const planMaxCredits: Record<string, number> = { free: 50, starter: 1000, builder: 3000, pro: 8000, elite: 20000 }
+
+  useEffect(() => {
+    if (!session?.access_token) return
+    fetch('/api/credits', { headers: { Authorization: `Bearer ${session.access_token}` } })
+      .then(r => r.json())
+      .then(d => {
+        if (d.plan) setCurrentPlan(d.plan)
+        if (typeof d.credits === 'number') setCurrentCredits(d.credits)
+      })
+      .catch(() => {})
+  }, [session?.access_token])
 
   return (
     <PageTransition className="h-full overflow-auto bg-muted/50">
@@ -113,21 +130,51 @@ export default function UpgradePage() {
           </h1>
         </div>
 
+        {/* Current plan banner */}
+        <div className="mb-4 rounded-2xl border border-foreground/[0.06] bg-card px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className={cn(
+              'text-[10px] font-bold uppercase tracking-wider rounded-md px-2.5 py-1',
+              currentPlan === 'elite' ? 'bg-violet-500/15 text-violet-400' :
+              currentPlan === 'pro' ? 'bg-blue-500/15 text-blue-400' :
+              currentPlan === 'builder' ? 'bg-emerald-500/15 text-emerald-400' :
+              currentPlan === 'starter' ? 'bg-amber-500/15 text-amber-400' :
+              'bg-foreground/[0.06] text-foreground/50'
+            )}>
+              {currentPlan}
+            </span>
+            <span className="text-[14px] text-foreground/60 font-medium">Your current plan</span>
+          </div>
+          <div className="text-right">
+            <span className="text-[14px] font-bold text-foreground/80 tabular-nums">{currentCredits ?? '...'}</span>
+            <span className="text-[13px] text-foreground/30 font-medium"> / {planMaxCredits[currentPlan] || 50} credits</span>
+          </div>
+        </div>
+
         {/* Plan cards grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
-          {plans.map((plan) => (
+          {plans.map((plan) => {
+            const isCurrent = plan.id === currentPlan
+            return (
             <div key={plan.id} className="flex flex-col">
-              <div className="flex flex-col flex-1 rounded-[20px] bg-card p-6 transition-all duration-300">
+              <div className={cn(
+                'flex flex-col flex-1 rounded-[20px] bg-card p-6 transition-all duration-300',
+                isCurrent && 'ring-2 ring-emerald-500/30'
+              )}>
                 {/* Plan name + badge */}
                 <div className="mb-5">
                   <div className="flex items-center justify-between mt-2 mb-5">
                     <div className="flex items-center gap-2">
                       <span className="text-[24px] font-normal text-foreground">{plan.name}</span>
-                      {plan.recommended && (
+                      {isCurrent ? (
+                        <span className="text-[12px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">
+                          Current
+                        </span>
+                      ) : plan.recommended ? (
                         <span className="text-[14px] font-light px-2 py-1 rounded-full bg-gradient-to-r from-[#FFA67C] to-[#FF8047]">
                           Recommended
                         </span>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                   <div className="flex items-end mb-2">
@@ -155,8 +202,13 @@ export default function UpgradePage() {
 
                 {/* CTA */}
                 <div className="mb-4">
+                  {isCurrent ? (
+                    <div className="w-full h-10 rounded-lg text-[14px] font-medium flex items-center justify-center bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      Current Plan
+                    </div>
+                  ) : (
                   <button
-                    onClick={() => router.push('/billing')}
+                    onClick={() => router.push(`/billing?plan=${plan.id}`)}
                     className={cn(
                       'w-full h-10 rounded-lg text-[16px] font-medium transition-all duration-200 flex items-center justify-center cursor-pointer',
                       plan.recommended
@@ -166,6 +218,7 @@ export default function UpgradePage() {
                   >
                     {plan.cta}
                   </button>
+                  )}
                 </div>
 
                 {/* Divider */}
@@ -185,7 +238,8 @@ export default function UpgradePage() {
                 </div>
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
 
         {/* Enterprise banner */}
