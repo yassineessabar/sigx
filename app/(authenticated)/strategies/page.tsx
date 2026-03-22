@@ -557,20 +557,8 @@ export default function StrategiesPage() {
             </DialogTitle>
           </DialogHeader>
 
-          {/* 3 option cards */}
-          <div className="grid grid-cols-3 gap-3 mt-2">
-            <button
-              onClick={() => openNameModal('blank')}
-              className="flex flex-col items-center justify-center gap-3 rounded-xl border border-foreground/[0.08] bg-transparent p-6 hover:border-foreground/[0.16] hover:bg-foreground/[0.02] transition-all group"
-            >
-              <div className="h-10 w-10 rounded-full border-2 border-dashed border-foreground/20 flex items-center justify-center group-hover:border-foreground/40 transition-colors">
-                <Plus size={20} className="text-foreground/40 group-hover:text-foreground/60" />
-              </div>
-              <span className="text-[13px] font-medium text-foreground/70">
-                Blank Strategy
-              </span>
-            </button>
-
+          {/* 2 option cards */}
+          <div className="grid grid-cols-2 gap-3 mt-2">
             <button
               onClick={() => openNameModal('ai')}
               className="flex flex-col items-center justify-center gap-3 rounded-xl border border-foreground/[0.08] bg-transparent p-6 hover:border-foreground/[0.16] hover:bg-foreground/[0.02] transition-all group"
@@ -639,7 +627,7 @@ export default function StrategiesPage() {
         <DialogContent showCloseButton={false} className="bg-card border-foreground/[0.08] sm:max-w-[480px]">
           <DialogHeader>
             <DialogTitle className="text-[20px] font-bold text-foreground">
-              {nameModalType === 'blank' ? 'Create Blank Strategy' : 'Create Strategy'}
+              Create Strategy
             </DialogTitle>
           </DialogHeader>
 
