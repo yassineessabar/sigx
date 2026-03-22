@@ -153,10 +153,20 @@ async function tryCompileAndBacktest(
 
     if (!res.ok) {
       const text = await res.text().catch(() => '')
+      // Parse FastAPI error detail
+      let errorMsg = `VPS error (${res.status})`
+      try {
+        const errJson = JSON.parse(text)
+        errorMsg = errJson.detail || errJson.error || errorMsg
+      } catch {
+        if (text) errorMsg += ': ' + text.slice(0, 150)
+      }
+      // On 500, the VPS crashed — likely the EA code caused an issue. Retry is possible.
       return {
         supported: true,
         success: false,
-        data: { success: false, error: `VPS error (${res.status}): ${text.slice(0, 150)}` },
+        compileError: res.status === 500 ? errorMsg : undefined,
+        data: { success: false, error: errorMsg },
       }
     }
 
