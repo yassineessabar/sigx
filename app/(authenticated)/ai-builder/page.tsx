@@ -327,7 +327,7 @@ export default function AIBuilderPage() {
   const openCreateModal = useCallback((templatePrompt: string) => {
     setPendingTemplatePrompt(templatePrompt)
     const tpl = findClientTemplate(templatePrompt)
-    setProjectName(tpl ? `${tpl.name} ${tpl.market} ${tpl.timeframe}` : '')
+    setProjectName(tpl ? `${tpl.name} ${tpl.market} ${tpl.timeframe}` : templatePrompt.slice(0, 50))
     setShowNameModal(true)
   }, [])
 
@@ -577,11 +577,7 @@ export default function AIBuilderPage() {
             {/* Main prompt input */}
             <div className="mt-8 w-full max-w-[680px]">
               <PromptInput
-                onSend={(msg) => {
-                  // Send directly — stream route auto-creates chat if chatId is null
-                  setSidebarOpen(false)
-                  handleSend(msg)
-                }}
+                onSend={(msg) => openCreateModal(msg)}
                 isGenerating={isGenerating}
                 onStop={handleStop}
                 variant="hero"
@@ -593,7 +589,7 @@ export default function AIBuilderPage() {
               {EXAMPLE_PROMPTS.map((prompt) => (
                 <button
                   key={prompt.text}
-                  onClick={() => { setSidebarOpen(false); handleSend((prompt as any).template || prompt.text) }}
+                  onClick={() => openCreateModal((prompt as any).template || prompt.text)}
                   className="flex items-start gap-3 rounded-[14px] border border-foreground/[0.08] bg-foreground/[0.03] px-4 py-3.5 text-left transition-all duration-200 hover:border-foreground/[0.15] hover:bg-foreground/[0.06] group"
                 >
                   <prompt.icon className="h-4 w-4 shrink-0 mt-0.5 text-foreground/40 group-hover:text-foreground/60 transition-colors" />
@@ -613,7 +609,7 @@ export default function AIBuilderPage() {
               {SUGGESTION_PILLS.map((pill) => (
                 <button
                   key={pill}
-                  onClick={() => { setSidebarOpen(false); handleSend(`Build a ${pill} strategy`) }}
+                  onClick={() => openCreateModal(`Build a ${pill} strategy`)}
                   className="bg-foreground/[0.04] rounded-full px-3.5 py-1.5 text-[12px] text-foreground/50 hover:bg-foreground/[0.08] hover:text-foreground/70 transition-colors"
                 >
                   {pill}
@@ -666,7 +662,7 @@ export default function AIBuilderPage() {
                     return (
                       <button
                         key={template.name}
-                        onClick={() => { setSidebarOpen(false); handleSend(`Build a ${template.name} strategy`) }}
+                        onClick={() => openCreateModal(`Build a ${template.name} strategy`)}
                         className="group flex items-start gap-3.5 rounded-[14px] border border-foreground/[0.04] bg-foreground/[0.01] p-4 text-left hover:border-foreground/[0.08] hover:bg-foreground/[0.025] transition-all duration-300"
                       >
                         <div
