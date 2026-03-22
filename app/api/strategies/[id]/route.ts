@@ -35,6 +35,23 @@ export async function GET(
       .limit(1)
       .maybeSingle()
 
+    // If no equity_curve in DB, try to get it from chat backtest messages
+    if (!strategy.equity_curve?.length && chat?.id) {
+      const { data: btMessages } = await supabaseAdmin
+        .from('chat_messages')
+        .select('metadata')
+        .eq('chat_id', chat.id)
+        .eq('role', 'assistant')
+        .order('created_at', { ascending: false })
+
+      const btMsg = btMessages?.find(
+        (m: any) => m.metadata?.type === 'backtest_result' && m.metadata?.backtest_snapshot?.equity_curve?.length
+      )
+      if (btMsg) {
+        strategy.equity_curve = (btMsg.metadata as any).backtest_snapshot.equity_curve
+      }
+    }
+
     return NextResponse.json({ strategy: { ...strategy, chat_id: chat?.id || null } })
   } catch (error) {
     console.error('Strategy GET error:', error)

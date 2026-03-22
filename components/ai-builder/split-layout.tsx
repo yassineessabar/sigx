@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
-import { ChevronsLeft } from 'lucide-react'
+import { ChevronsLeft, AlertTriangle, Wrench, X } from 'lucide-react'
 import { ChatThread } from './chat-thread'
 import { PromptInput, type PromptInputHandle } from './prompt-input'
 import { ChatTopBar } from './chat-top-bar'
@@ -45,7 +45,7 @@ export function SplitLayout({
   credits,
   onUpgradeClick,
 }: SplitLayoutProps) {
-  const { latestStrategy, latestBacktest, latestCode, latestStrategyId, codeHasBacktest } = useMemo(() => {
+  const { latestStrategy, latestBacktest, latestCode, latestStrategyId, codeHasBacktest, codeFromUpload } = useMemo(() => {
     let strategy = null as ChatMessageType['metadata']['strategy_snapshot'] | null
     let backtest = null as ChatMessageType['metadata']['backtest_snapshot'] | null
     let code = null as string | null
@@ -53,8 +53,10 @@ export function SplitLayout({
     // Track if the most recent code has an associated backtest
     let codeFound = false
     let btForCode = false
+    let codeFromUpload = false
     for (let i = messages.length - 1; i >= 0; i--) {
-      const meta = messages[i].metadata
+      const msg = messages[i]
+      const meta = msg.metadata
       if (!strategy && meta?.strategy_snapshot) strategy = meta.strategy_snapshot
       if (!backtest && meta?.backtest_snapshot) backtest = meta.backtest_snapshot
       if (!code && meta?.mql5_code) {
@@ -62,6 +64,15 @@ export function SplitLayout({
         codeFound = true
         // Check if THIS message also has backtest results
         btForCode = !!meta?.backtest_snapshot
+      }
+      // Also extract code from user messages (uploaded .mq5 files)
+      if (!code && msg.role === 'user' && msg.content) {
+        const codeMatch = msg.content.match(/---MQL5_CODE_START---\s*([\s\S]*?)\s*---MQL5_CODE_END---/)
+        if (codeMatch) {
+          code = codeMatch[1].trim()
+          codeFound = true
+          codeFromUpload = true
+        }
       }
       if (!sid && meta?.strategy_id) sid = meta.strategy_id as string
     }
@@ -76,7 +87,7 @@ export function SplitLayout({
         }
       }
     }
-    return { latestStrategy: strategy, latestBacktest: backtest, latestCode: code, latestStrategyId: sid, codeHasBacktest: btForCode }
+    return { latestStrategy: strategy, latestBacktest: backtest, latestCode: code, latestStrategyId: sid, codeHasBacktest: btForCode, codeFromUpload }
   }, [messages])
 
   const resolvedStrategyId = propStrategyId || latestStrategyId
@@ -100,6 +111,9 @@ export function SplitLayout({
   const [optimizedCode, setOptimizedCode] = useState<string | null>(null)
   const [optimizedBacktest, setOptimizedBacktest] = useState<ChatMessageType['metadata']['backtest_snapshot'] | null>(null)
   const [reportHtmlB64, setReportHtmlB64] = useState<string | null>(null)
+
+  // Compile/backtest error popup state
+  const [compileErrorPopup, setCompileErrorPopup] = useState<{ error: string } | null>(null)
 
   // ── Hybrid Manager integration ──
   const strategy = useStrategy(accessToken)
@@ -330,7 +344,7 @@ export function SplitLayout({
               : null}
             pipelineError={strategy.status === 'error' ? strategy.error : null}
             hasCode={!!displayCode}
-            needsBacktest={!!displayCode && !codeHasBacktest && !optimizedBacktest && !isGenerating && !isBacktesting && !backtestJustFinished}
+            needsBacktest={!!displayCode && !codeHasBacktest && !optimizedBacktest && (!isGenerating || codeFromUpload) && !isBacktesting && !backtestJustFinished}
             isBacktesting={isBacktesting}
             onEditMessage={onEditMessage}
             onRegenerateMessage={onRegenerateMessage}
@@ -428,13 +442,19 @@ export function SplitLayout({
                     if (parsed) return
                   }
                   const errText = await res.text().catch(() => 'Unknown error')
-                  setPipelineStatus(`Backtest failed: ${errText.slice(0, 100)}`)
+                  setPipelineStatus(`✗ ${errText.slice(0, 100)}`)
+                  setCompileErrorPopup({ error: errText.slice(0, 300) })
                   return
                 }
 
                 const data = await res.json()
 
-                if (data.success && data.metrics) {
+                if (!data.success) {
+                  // Show error popup — offer AI help for compile/backtest failures
+                  const errorMsg = data.error || 'Backtest failed'
+                  setPipelineStatus(`✗ ${errorMsg.slice(0, 100)}`)
+                  setCompileErrorPopup({ error: errorMsg })
+                } else if (data.success && data.metrics) {
                   const btSnapshot = {
                     sharpe: data.metrics.sharpe ?? 0,
                     max_drawdown: data.metrics.max_drawdown ?? 0,
@@ -493,8 +513,6 @@ export function SplitLayout({
                   const profitSign = btSnapshot.net_profit >= 0 ? '+' : ''
                   setPipelineStatus(`✓ Backtest complete · ${symbol} H1 · ${btSnapshot.total_trades} trades · PF ${btSnapshot.profit_factor.toFixed(2)} · ${profitSign}$${btSnapshot.net_profit.toFixed(0)}`)
                   setPanelOpen(true)
-                } else {
-                  setPipelineStatus(`✗ Backtest failed · ${symbol} H1 · ${data.error || 'Try adjusting the strategy'}`)
                 }
               } catch (err) {
                 if (controller.signal.aborted || (err as Error).name === 'AbortError') {
@@ -536,7 +554,123 @@ export function SplitLayout({
             } : undefined}
             onFocusPrompt={(hint) => promptInputRef.current?.focus(hint)}
           />
-          <PromptInput ref={promptInputRef} onSend={onSend} isGenerating={isGenerating} onStop={onStop} />
+          <PromptInput
+            ref={promptInputRef}
+            onSend={onSend}
+            isGenerating={isGenerating}
+            onStop={onStop}
+            isBacktesting={isBacktesting}
+            onBacktestFile={async (code, fileName) => {
+              if (isBacktesting) return
+
+              const eaName = fileName.replace(/\.(mq5|mq4)$/i, '').replace(/[^a-zA-Z0-9_]/g, '_') || 'UploadedEA'
+              const symbol = 'XAUUSD'
+
+              setIsBacktesting(true)
+              setBacktestJustFinished(false)
+              setPipelineStatus(`Compiling and backtesting ${fileName} on MT5... · ${symbol} · H1`)
+
+              // Store the uploaded code so it shows in the right panel
+              setOptimizedCode(code)
+              setPanelOpen(true)
+
+              if (backtestTimeoutRef.current) clearTimeout(backtestTimeoutRef.current)
+              backtestAbortRef.current?.abort('cleanup')
+
+              const controller = new AbortController()
+              backtestAbortRef.current = controller
+              backtestTimeoutRef.current = setTimeout(() => controller.abort(), 300000)
+
+              try {
+                let token = accessToken
+                if (!token) {
+                  try {
+                    const { supabase } = await import('@/lib/supabase')
+                    const { data: { session: refreshed } } = await supabase.auth.refreshSession()
+                    token = refreshed?.access_token || null
+                  } catch { /* no token */ }
+                }
+
+                if (!token) {
+                  setPipelineStatus('Session expired — please refresh the page')
+                  return
+                }
+
+                const res = await fetch('/api/ai-builder/backtest', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                  },
+                  body: JSON.stringify({ ea_name: eaName, mq5_code: code, symbol, period: 'H1' }),
+                  signal: controller.signal,
+                })
+
+                if (res.status === 402) {
+                  try {
+                    const errData = await res.json()
+                    if (errData.code === 'NO_CREDITS') {
+                      setPipelineStatus(null)
+                      setBacktestJustFinished(false)
+                      onUpgradeClick()
+                      return
+                    }
+                  } catch { /* fall through */ }
+                }
+
+                if (!res.ok) {
+                  const errText = await res.text().catch(() => 'Unknown error')
+                  setPipelineStatus(`✗ ${errText.slice(0, 100)}`)
+                  setCompileErrorPopup({ error: errText.slice(0, 300) })
+                  return
+                }
+
+                const data = await res.json()
+
+                if (!data.success) {
+                  const errorMsg = data.error || 'Backtest failed'
+                  setPipelineStatus(`✗ ${errorMsg.slice(0, 100)}`)
+                  setCompileErrorPopup({ error: errorMsg })
+                } else if (data.success && data.metrics) {
+                  const btSnapshot = {
+                    sharpe: data.metrics.sharpe ?? 0,
+                    max_drawdown: data.metrics.max_drawdown ?? 0,
+                    win_rate: data.metrics.win_rate ?? 0,
+                    total_return: data.metrics.total_return ?? 0,
+                    profit_factor: data.metrics.profit_factor ?? 0,
+                    total_trades: data.metrics.total_trades ?? 0,
+                    net_profit: data.metrics.net_profit ?? 0,
+                    equity_curve: data.equity_curve || [],
+                  }
+                  setOptimizedBacktest(btSnapshot)
+                  if (data.report_b64) setReportHtmlB64(data.report_b64)
+
+                  const profitSign = btSnapshot.net_profit >= 0 ? '+' : ''
+                  setPipelineStatus(`✓ Backtest complete · ${symbol} H1 · ${btSnapshot.total_trades} trades · PF ${btSnapshot.profit_factor.toFixed(2)} · ${profitSign}$${btSnapshot.net_profit.toFixed(0)}`)
+                  setPanelOpen(true)
+                }
+              } catch (err) {
+                if (controller.signal.aborted || (err as Error).name === 'AbortError') {
+                  setPipelineStatus(`✗ Backtest timed out · Try again`)
+                } else {
+                  console.error('File backtest error:', err)
+                  setPipelineStatus(`✗ Backtest error · ${(err instanceof Error ? err.message : String(err)).slice(0, 80)}`)
+                }
+              } finally {
+                if (backtestTimeoutRef.current) {
+                  clearTimeout(backtestTimeoutRef.current)
+                  backtestTimeoutRef.current = null
+                }
+                backtestAbortRef.current = null
+                setIsBacktesting(false)
+                setBacktestJustFinished(true)
+                setTimeout(() => {
+                  setPipelineStatus(null)
+                  setBacktestJustFinished(false)
+                }, 8000)
+              }
+            }}
+          />
         </div>
 
         {/* Right: Results panel */}
@@ -580,6 +714,71 @@ export function SplitLayout({
           </button>
         )}
       </div>
+
+      {/* Compile/Backtest Error Popup */}
+      {compileErrorPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="relative mx-4 w-full max-w-md rounded-2xl border border-foreground/[0.08] bg-card shadow-2xl">
+            {/* Close button */}
+            <button
+              onClick={() => setCompileErrorPopup(null)}
+              className="absolute right-3 top-3 rounded-lg p-1.5 text-foreground/30 hover:text-foreground/60 hover:bg-foreground/[0.06] transition-colors"
+            >
+              <X size={16} />
+            </button>
+
+            <div className="p-6">
+              {/* Icon + Title */}
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-500/10">
+                  <AlertTriangle size={20} className="text-red-400" />
+                </div>
+                <div>
+                  <h3 className="text-[15px] font-semibold text-foreground/90">
+                    {compileErrorPopup.error.toLowerCase().includes('compil') ? 'Compilation Failed' : 'Backtest Failed'}
+                  </h3>
+                  <p className="text-[12px] text-foreground/40 mt-0.5">The code could not be processed</p>
+                </div>
+              </div>
+
+              {/* Error details */}
+              <div className="rounded-xl border border-red-500/10 bg-red-500/[0.03] p-3 mb-5">
+                <p className="text-[12px] text-red-400/80 font-mono leading-relaxed break-words">
+                  {compileErrorPopup.error.slice(0, 300)}
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    const errorDetail = compileErrorPopup.error
+                    setCompileErrorPopup(null)
+                    setPipelineStatus(null)
+                    setBacktestJustFinished(false)
+                    const codeContext = displayCode ? `\n\n---MQL5_CODE_START---\n${displayCode}\n---MQL5_CODE_END---` : ''
+                    onSend(`Fix the compilation errors in this EA code. Here are the errors:\n\n${errorDetail}\n\nPlease fix all the issues and return the corrected complete MQL5 code.${codeContext}`)
+                  }}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-[13px] font-semibold text-black hover:bg-white/90 transition-colors"
+                >
+                  <Wrench size={14} />
+                  Help me fix it
+                </button>
+                <button
+                  onClick={() => {
+                    setCompileErrorPopup(null)
+                    setPipelineStatus(null)
+                    setBacktestJustFinished(false)
+                  }}
+                  className="rounded-xl border border-foreground/[0.10] bg-foreground/[0.03] px-4 py-2.5 text-[13px] font-medium text-foreground/50 hover:bg-foreground/[0.06] transition-colors"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
     </div>
   )

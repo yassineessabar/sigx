@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react'
-import { ArrowUp, Square, StopCircle, Upload, FileCode, X } from 'lucide-react'
+import { ArrowUp, Square, StopCircle, Upload, FileCode, X, Play } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import Link from 'next/link'
@@ -12,13 +12,15 @@ interface PromptInputProps {
   onStop?: () => void
   placeholder?: string
   variant?: 'default' | 'hero'
+  onBacktestFile?: (code: string, fileName: string) => void
+  isBacktesting?: boolean
 }
 
 export interface PromptInputHandle {
   focus: (placeholder?: string) => void
 }
 
-export const PromptInput = forwardRef<PromptInputHandle, PromptInputProps>(function PromptInput({ onSend, isGenerating, onStop, placeholder, variant = 'default' }, ref) {
+export const PromptInput = forwardRef<PromptInputHandle, PromptInputProps>(function PromptInput({ onSend, isGenerating, onStop, placeholder, variant = 'default', onBacktestFile, isBacktesting }, ref) {
   const [input, setInput] = useState('')
   const [dynamicPlaceholder, setDynamicPlaceholder] = useState<string | undefined>(undefined)
   const [uploadedFile, setUploadedFile] = useState<{ name: string; code: string } | null>(null)
@@ -108,9 +110,9 @@ export const PromptInput = forwardRef<PromptInputHandle, PromptInputProps>(funct
         />
 
         <div className="relative rounded-2xl border border-foreground/[0.08] bg-surface transition-all duration-200 focus-within:border-foreground/[0.14]">
-          {/* Uploaded file badge */}
+          {/* Uploaded file badge + Run Backtest */}
           {uploadedFile && (
-            <div className="px-4 pt-3 pb-0">
+            <div className="px-4 pt-3 pb-0 flex items-center gap-2 flex-wrap">
               <div className="inline-flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-500/[0.06] px-3 py-1.5">
                 <FileCode size={14} className="text-blue-400 shrink-0" />
                 <span className="text-[12px] font-medium text-blue-400/80 truncate max-w-[200px]">{uploadedFile.name}</span>
@@ -121,6 +123,19 @@ export const PromptInput = forwardRef<PromptInputHandle, PromptInputProps>(funct
                   <X size={12} />
                 </button>
               </div>
+              {onBacktestFile && (
+                <button
+                  onClick={() => {
+                    onBacktestFile(uploadedFile.code, uploadedFile.name)
+                    setUploadedFile(null)
+                  }}
+                  disabled={isBacktesting}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-[12px] font-semibold text-black hover:bg-white/90 transition-colors disabled:opacity-40"
+                >
+                  <Play size={12} fill="currentColor" />
+                  Run Backtest
+                </button>
+              )}
             </div>
           )}
 

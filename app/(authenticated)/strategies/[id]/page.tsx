@@ -246,7 +246,7 @@ export default function StrategyDetailPage() {
                           profit_factor: tpl?.backtestResults.profit_factor ?? 0,
                           total_trades: tpl?.backtestResults.total_trades ?? 0,
                           net_profit: tpl?.backtestResults.net_profit ?? 0,
-                          equity_curve: tpl?.backtestResults.equity_curve ?? [],
+                          equity_curve: strategy.equity_curve || tpl?.backtestResults.equity_curve || [],
                         } : undefined)
 
                         const explanation = tpl
@@ -286,7 +286,7 @@ export default function StrategyDetailPage() {
                         profit_factor: tpl?.backtestResults.profit_factor ?? 0,
                         total_trades: tpl?.backtestResults.total_trades ?? 0,
                         net_profit: tpl?.backtestResults.net_profit ?? 0,
-                        equity_curve: tpl?.backtestResults.equity_curve ?? [],
+                        equity_curve: strategy.equity_curve || tpl?.backtestResults.equity_curve || [],
                       } : undefined)
 
                       const explanation = tpl
@@ -544,8 +544,9 @@ function MetricCell({ label, value, positive }: { label: string; value: string; 
 function StrategyCurveSVG({ strategy }: { strategy: Strategy }) {
   const tpl = findClientTemplate(strategy.name)
 
-  // Get equity data from template or generate from return
-  const data = tpl?.backtestResults.equity_curve?.map(p => p.equity)
+  // Use real equity curve from DB first, then template, then generate placeholder
+  const data = (strategy.equity_curve?.length ? strategy.equity_curve.map(p => p.equity) : null)
+    || tpl?.backtestResults.equity_curve?.map(p => p.equity)
     || generateCurveData(strategy.name.charCodeAt(0), Number(strategy.total_return || 0))
 
   const w = 400, h = 120, p = 4
