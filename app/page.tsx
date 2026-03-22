@@ -10,6 +10,7 @@ import StrategiesSection from '@/components/landing/strategies-section'
 import FeaturesSection from '@/components/landing/features-section'
 import MarketplaceSection from '@/components/landing/marketplace-section'
 import LeaderboardTable from '@/components/landing/leaderboard-table'
+import PricingSection from '@/components/landing/pricing-section'
 import EnterpriseSection from '@/components/landing/enterprise-section'
 import CTASection from '@/components/landing/cta-section'
 import FAQSection from '@/components/landing/faq-section'
@@ -38,6 +39,7 @@ export default function LandingPage() {
           <FeaturesSection />
           <MarketplaceSection />
           <LeaderboardTable />
+          <PricingSection />
           <EnterpriseSection />
           <FAQSection />
           <CTASection />
