@@ -294,22 +294,28 @@ async function fallbackSeparateCalls(
  */
 function extractCompileErrors(log: unknown): string[] {
   if (typeof log !== 'string') return [String(log)]
-  // VPS may return errors as one blob — split on path prefixes
-  const normalized = log.replace(/(?=C:\\)/g, '\n')
-  const lines = normalized.split('\n')
+  // Split on \r\n or \n, and also on path prefixes (VPS sometimes returns one blob)
+  const lines = log.split(/\r?\n|(?=C:\\)/)
   const errors: string[] = []
   for (const line of lines) {
-    if (line.includes(' error ') || line.includes(' warning ')) {
-      // Extract just the filename + error part, not the full path
-      const match = line.match(/([^\\\/]+\.mq5\([^)]+\)\s*:\s*error.+?)(?:\s*C:\\|$)/)
-      errors.push(match ? match[1].trim() : line.trim().slice(0, 150))
+    if (line.includes(' error ') && !line.includes('information:')) {
+      // Extract: "filename.mq5(line,col) : error XXX: message"
+      const match = line.match(/([^\\/]+\.mq5\(\d+,\d+\)\s*:\s*error\s+\d+:\s*.+)/)
+      if (match) {
+        errors.push(match[1].trim())
+      } else {
+        // Fallback: strip the path prefix
+        const stripped = line.replace(/^.*\\([^\\]+\.mq5)/, '$1').trim()
+        errors.push(stripped.slice(0, 150))
+      }
     }
   }
-  if (errors.length === 0 && log.includes('Result:')) {
+  // If no errors extracted, grab the Result line
+  if (errors.length === 0) {
     const resultMatch = log.match(/Result:\s*(.+)/)
     if (resultMatch) errors.push(resultMatch[1].trim())
   }
-  return errors.length > 0 ? errors : [log.slice(0, 200)]
+  return errors.length > 0 ? errors : ['Compilation failed (see logs)']
 }
 
 function parseNum(val: unknown, fallback = 0): number {
