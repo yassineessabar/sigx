@@ -12,6 +12,7 @@ import MarketplaceSection from '@/components/landing/marketplace-section'
 import LeaderboardTable from '@/components/landing/leaderboard-table'
 import EnterpriseSection from '@/components/landing/enterprise-section'
 import CTASection from '@/components/landing/cta-section'
+import FAQSection from '@/components/landing/faq-section'
 import Footer from '@/components/landing/footer'
 
 export default function LandingPage() {
@@ -38,6 +39,7 @@ export default function LandingPage() {
           <MarketplaceSection />
           <LeaderboardTable />
           <EnterpriseSection />
+          <FAQSection />
           <CTASection />
         </main>
         <Footer />

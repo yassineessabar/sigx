@@ -1,16 +1,29 @@
 import Link from "next/link";
 
-const links = {
-  Product: ["Home", "Strategies", "Marketplace", "Leaderboard", "Pricing", "Enterprise"],
-  Resources: ["Docs", "API", "FAQs", "Blog"],
-  Company: ["About", "Careers", "Contact"],
-  Legal: ["Privacy", "Terms", "Disclaimer"],
-};
-
-const legalRoutes: Record<string, string> = {
-  Privacy: "/privacy",
-  Terms: "/terms",
-  Disclaimer: "/disclaimer",
+const links: Record<string, { label: string; href: string }[]> = {
+  Product: [
+    { label: "Home", href: "/" },
+    { label: "Strategies", href: "/#strategies" },
+    { label: "Marketplace", href: "/#marketplace" },
+    { label: "Leaderboard", href: "/#leaderboard" },
+    { label: "Pricing", href: "/#pricing" },
+    { label: "Enterprise", href: "/#enterprise" },
+  ],
+  Resources: [
+    { label: "Docs", href: "/docs" },
+    { label: "FAQs", href: "/#faq" },
+    { label: "Blog", href: "/blog" },
+  ],
+  Company: [
+    { label: "About", href: "/about" },
+    { label: "Contact", href: "/contact" },
+  ],
+  Legal: [
+    { label: "Privacy", href: "/privacy" },
+    { label: "Terms", href: "/terms" },
+    { label: "Security", href: "/security" },
+    { label: "Disclaimer", href: "/disclaimer" },
+  ],
 };
 
 export default function Footer() {
@@ -46,22 +59,13 @@ export default function Footer() {
                 {title}
               </h4>
               <ul className="space-y-2.5">
-                {items.map((item) => {
-                  const route = legalRoutes[item];
-                  return (
-                    <li key={item}>
-                      {route ? (
-                        <Link href={route} className="text-[12px] text-foreground/35 hover:text-foreground/60 transition-colors duration-300 font-medium">
-                          {item}
-                        </Link>
-                      ) : (
-                        <a href="#" className="text-[12px] text-foreground/35 hover:text-foreground/60 transition-colors duration-300 font-medium">
-                          {item}
-                        </a>
-                      )}
-                    </li>
-                  );
-                })}
+                {items.map((item) => (
+                  <li key={item.label}>
+                    <Link href={item.href} className="text-[12px] text-foreground/35 hover:text-foreground/60 transition-colors duration-300 font-medium">
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </div>
           ))}
