@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
+import type { ChatMessage as ChatMessageType } from '@/lib/types'
 
 export interface StrategyVersion {
   id: string
@@ -21,9 +22,52 @@ export interface StrategyVersion {
   timestamp: string
 }
 
-export function useVersions() {
+export function useVersions(messages?: ChatMessageType[]) {
   const [versions, setVersions] = useState<StrategyVersion[]>([])
   const [activeVersion, setActiveVersion] = useState<number | null>(null)
+  const lastMsgSignatureRef = useRef('')
+
+  // Rebuild version history from messages — only include versions WITH backtest results
+  useEffect(() => {
+    if (!messages || messages.length === 0) return
+    const lastMsg = messages[messages.length - 1]
+    const signature = `${messages.length}:${lastMsg?.id || ''}`
+    if (signature === lastMsgSignatureRef.current) return
+    lastMsgSignatureRef.current = signature
+
+    const rebuilt: StrategyVersion[] = []
+    let versionNum = 0
+
+    for (const msg of messages) {
+      const meta = msg.metadata
+      if (!meta) continue
+
+      const hasBt = !!meta.backtest_snapshot
+      const hasCode = !!meta.mql5_code
+
+      // Only create a version when BOTH code and backtest exist
+      if (hasBt && hasCode) {
+        versionNum++
+        rebuilt.push({
+          id: msg.id,
+          version: versionNum,
+          code: meta.mql5_code as string,
+          metrics: meta.backtest_snapshot as StrategyVersion['metrics'],
+          strategySnapshot: (meta.strategy_snapshot as Record<string, unknown>) || null,
+          prompt: msg.content?.slice(0, 100) || `Version ${versionNum}`,
+          timestamp: msg.created_at,
+        })
+      }
+    }
+
+    if (rebuilt.length > 0) {
+      setVersions(rebuilt)
+      setActiveVersion(rebuilt[rebuilt.length - 1].version)
+    } else {
+      setVersions([])
+      setActiveVersion(null)
+    }
+  }, [messages])
 
   const addVersion = useCallback((
     code: string,
@@ -31,7 +75,21 @@ export function useVersions() {
     strategySnapshot: Record<string, unknown> | null,
     prompt: string,
   ) => {
+    // Only add if there are actual metrics
+    if (!metrics) return
+
     setVersions(prev => {
+      // Don't add duplicate
+      const existing = prev.find(v =>
+        v.code === code &&
+        v.metrics?.profit_factor === metrics.profit_factor &&
+        v.metrics?.total_trades === metrics.total_trades
+      )
+      if (existing) {
+        setActiveVersion(existing.version)
+        return prev
+      }
+
       const version = prev.length + 1
       const newVersion: StrategyVersion = {
         id: crypto.randomUUID(),
@@ -67,6 +125,6 @@ export function useVersions() {
     bestVersion,
     addVersion,
     restoreVersion,
-    reset: () => { setVersions([]); setActiveVersion(null) },
+    reset: () => { setVersions([]); setActiveVersion(null); lastMsgSignatureRef.current = '' },
   }
 }

@@ -23,6 +23,7 @@ interface SplitLayoutProps {
   onStop: () => void
   onEditMessage?: (messageId: string, newContent: string) => void
   onRegenerateMessage?: (messageId: string) => void
+  onAddMessage?: (message: ChatMessageType) => void
   credits: number | null
   onUpgradeClick: () => void
 }
@@ -40,28 +41,53 @@ export function SplitLayout({
   onStop,
   onEditMessage,
   onRegenerateMessage,
+  onAddMessage,
   credits,
   onUpgradeClick,
 }: SplitLayoutProps) {
-  const { latestStrategy, latestBacktest, latestCode, latestStrategyId } = useMemo(() => {
+  const { latestStrategy, latestBacktest, latestCode, latestStrategyId, codeHasBacktest } = useMemo(() => {
     let strategy = null as ChatMessageType['metadata']['strategy_snapshot'] | null
     let backtest = null as ChatMessageType['metadata']['backtest_snapshot'] | null
     let code = null as string | null
     let sid = null as string | null
+    // Track if the most recent code has an associated backtest
+    let codeFound = false
+    let btForCode = false
     for (let i = messages.length - 1; i >= 0; i--) {
       const meta = messages[i].metadata
       if (!strategy && meta?.strategy_snapshot) strategy = meta.strategy_snapshot
       if (!backtest && meta?.backtest_snapshot) backtest = meta.backtest_snapshot
-      if (!code && meta?.mql5_code) code = meta.mql5_code as string
+      if (!code && meta?.mql5_code) {
+        code = meta.mql5_code as string
+        codeFound = true
+        // Check if THIS message also has backtest results
+        btForCode = !!meta?.backtest_snapshot
+      }
       if (!sid && meta?.strategy_id) sid = meta.strategy_id as string
     }
-    return { latestStrategy: strategy, latestBacktest: backtest, latestCode: code, latestStrategyId: sid }
+    // Also check: is there ANY backtest_result message with matching code?
+    if (codeFound && !btForCode && code) {
+      for (let i = 0; i < messages.length; i++) {
+        const meta = messages[i].metadata
+        if (meta?.type === 'backtest_result' && meta?.backtest_snapshot && meta?.mql5_code === code) {
+          btForCode = true
+          backtest = meta.backtest_snapshot
+          break
+        }
+      }
+    }
+    return { latestStrategy: strategy, latestBacktest: backtest, latestCode: code, latestStrategyId: sid, codeHasBacktest: btForCode }
   }, [messages])
 
   const resolvedStrategyId = propStrategyId || latestStrategyId
 
   const hasResults = !!(latestStrategy || latestBacktest || latestCode)
   const [panelOpen, setPanelOpen] = useState(false)
+  const [isBacktesting, setIsBacktesting] = useState(false)
+  // Keeps the Run Backtest button hidden after backtest completes/fails until status clears
+  const [backtestJustFinished, setBacktestJustFinished] = useState(false)
+  const backtestAbortRef = useRef<AbortController | null>(null)
+  const backtestTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Optimize state
   const optimizeAbortRef = useRef<AbortController | null>(null)
@@ -76,8 +102,8 @@ export function SplitLayout({
   // ── Hybrid Manager integration ──
   const strategy = useStrategy(accessToken)
 
-  // ── Version history ──
-  const versionHistory = useVersions()
+  // ── Version history — rebuilt from messages on page load ──
+  const versionHistory = useVersions(messages)
 
   // Listen for job_started events from the chat stream
   // The parent component passes chatPipelineStatus which may contain job info
@@ -138,19 +164,23 @@ export function SplitLayout({
     if (hasResults) setPanelOpen(true)
   }, [hasResults])
 
-  // Clear pipeline status after a delay
+  // Clear pipeline status after a delay — but NOT while backtesting or optimizing
   useEffect(() => {
-    if (pipelineStatus && !isOptimizing && strategy.status !== 'running') {
+    if (pipelineStatus && !isOptimizing && !isBacktesting && strategy.status !== 'running') {
       const timer = setTimeout(() => setPipelineStatus(null), 5000)
       return () => clearTimeout(timer)
     }
-  }, [pipelineStatus, isOptimizing, strategy.status])
+  }, [pipelineStatus, isOptimizing, isBacktesting, strategy.status])
 
-  // Reset optimized results when new messages come in
+  // Reset optimized results only when NEW code is generated (not on every message)
+  const prevLatestCodeRef = useRef<string | null>(null)
   useEffect(() => {
-    setOptimizedCode(null)
-    setOptimizedBacktest(null)
-  }, [messages.length])
+    if (latestCode && latestCode !== prevLatestCodeRef.current) {
+      prevLatestCodeRef.current = latestCode
+      setOptimizedCode(null)
+      setOptimizedBacktest(null)
+    }
+  }, [latestCode])
 
   const handleStopOptimize = useCallback(() => {
     optimizeAbortRef.current?.abort()
@@ -294,25 +324,91 @@ export function SplitLayout({
             backtestData={displayBacktest}
             pipelineError={strategy.status === 'error' ? strategy.error : null}
             hasCode={!!displayCode}
+            needsBacktest={!!displayCode && !codeHasBacktest && !optimizedBacktest && !isGenerating && !isBacktesting && !backtestJustFinished}
+            isBacktesting={isBacktesting}
             onEditMessage={onEditMessage}
             onRegenerateMessage={onRegenerateMessage}
             onSend={onSend}
             onRunBacktest={displayCode ? async () => {
+              // Prevent double-click
+              if (isBacktesting) return
+
               const strat = latestStrategy as { name?: string; market?: string } | undefined
               const eaName = (strat?.name || 'SigxEA').replace(/[^a-zA-Z0-9_]/g, '_')
               const symbol = strat?.market || 'XAUUSD'
 
-              setPipelineStatus('Compiling and backtesting on MT5...')
+              setIsBacktesting(true)
+              setBacktestJustFinished(false)
+              setPipelineStatus(`Compiling and backtesting on MT5... · ${symbol} · H1 · Jan 2023–Jan 2025`)
+
+              // Clean up previous abort controller/timeout
+              if (backtestTimeoutRef.current) clearTimeout(backtestTimeoutRef.current)
+              backtestAbortRef.current?.abort('cleanup')
+
+              const controller = new AbortController()
+              backtestAbortRef.current = controller
+              // 5 min timeout — compile auto-fix + backtest can take 2-4 min
+              backtestTimeoutRef.current = setTimeout(() => {
+                controller.abort()
+              }, 300000)
 
               try {
-                const res = await fetch('/api/ai-builder/backtest', {
+                // Get a valid token — refresh if needed
+                let token = accessToken
+                if (!token) {
+                  try {
+                    const { supabase } = await import('@/lib/supabase')
+                    const { data: { session: refreshed } } = await supabase.auth.refreshSession()
+                    token = refreshed?.access_token || null
+                  } catch { /* no token */ }
+                }
+
+                if (!token) {
+                  setPipelineStatus('Session expired — please refresh the page')
+                  return
+                }
+
+                let res = await fetch('/api/ai-builder/backtest', {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
-                    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+                    Authorization: `Bearer ${token}`,
                   },
                   body: JSON.stringify({ ea_name: eaName, mq5_code: displayCode, symbol, period: 'H1' }),
+                  signal: controller.signal,
                 })
+
+                // Refresh token on 401 and retry once
+                if (res.status === 401) {
+                  try {
+                    const { supabase } = await import('@/lib/supabase')
+                    const { data: { session: refreshed } } = await supabase.auth.refreshSession()
+                    if (refreshed?.access_token) {
+                      token = refreshed.access_token
+                      res = await fetch('/api/ai-builder/backtest', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          Authorization: `Bearer ${token}`,
+                        },
+                        body: JSON.stringify({ ea_name: eaName, mq5_code: displayCode, symbol, period: 'H1' }),
+                        signal: controller.signal,
+                      })
+                    }
+                  } catch { /* refresh failed */ }
+                }
+
+                if (res.status === 401) {
+                  setPipelineStatus('Session expired — please refresh the page')
+                  return
+                }
+
+                if (!res.ok) {
+                  const errText = await res.text().catch(() => 'Unknown error')
+                  setPipelineStatus(`Backtest failed: ${errText.slice(0, 100)}`)
+                  return
+                }
+
                 const data = await res.json()
 
                 if (data.success && data.metrics) {
@@ -337,16 +433,67 @@ export function SplitLayout({
                     lastUserMsg?.content || 'Backtest',
                   )
 
-                  setPipelineStatus(`Backtest done — ${data.metrics.total_trades} trades (v${versionHistory.versions.length + 1})`)
+                  // Add backtest result to messages array so codeHasBacktest stays true
+                  const btMessage: ChatMessageType = {
+                    id: crypto.randomUUID(),
+                    chat_id: chatId || '',
+                    user_id: '',
+                    role: 'assistant',
+                    content: `Backtest completed — ${btSnapshot.total_trades} trades, PF ${btSnapshot.profit_factor.toFixed(2)}, Sharpe ${btSnapshot.sharpe.toFixed(2)}`,
+                    metadata: {
+                      type: 'backtest_result',
+                      backtest_snapshot: btSnapshot,
+                      mql5_code: displayCode,
+                      strategy_snapshot: latestStrategy || undefined,
+                    },
+                    created_at: new Date().toISOString(),
+                  }
+                  onAddMessage?.(btMessage)
+
+                  // Persist to DB so results survive page reload
+                  if (chatId && token) {
+                    fetch(`/api/chat/${chatId}/backtest-result`, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                      },
+                      body: JSON.stringify({
+                        metrics: btSnapshot,
+                        mql5_code: displayCode,
+                        strategy_snapshot: latestStrategy,
+                      }),
+                    }).catch(() => {})
+                  }
+
+                  const profitSign = btSnapshot.net_profit >= 0 ? '+' : ''
+                  setPipelineStatus(`✓ Backtest complete · ${symbol} H1 · ${btSnapshot.total_trades} trades · PF ${btSnapshot.profit_factor.toFixed(2)} · ${profitSign}$${btSnapshot.net_profit.toFixed(0)}`)
                   setPanelOpen(true)
                 } else {
-                  setPipelineStatus(data.error || 'Backtest failed')
+                  setPipelineStatus(`✗ Backtest failed · ${symbol} H1 · ${data.error || 'Try adjusting the strategy'}`)
                 }
               } catch (err) {
-                setPipelineStatus('Backtest request failed')
+                if (controller.signal.aborted || (err as Error).name === 'AbortError') {
+                  setPipelineStatus(`✗ Backtest timed out · ${symbol} H1 · Try again`)
+                } else {
+                  console.error('Backtest error:', err)
+                  setPipelineStatus(`✗ Backtest error · ${(err instanceof Error ? err.message : String(err)).slice(0, 80)}`)
+                }
+              } finally {
+                // Clean up
+                if (backtestTimeoutRef.current) {
+                  clearTimeout(backtestTimeoutRef.current)
+                  backtestTimeoutRef.current = null
+                }
+                backtestAbortRef.current = null
+                setIsBacktesting(false)
+                // Keep the button hidden while status message is visible
+                setBacktestJustFinished(true)
+                setTimeout(() => {
+                  setPipelineStatus(null)
+                  setBacktestJustFinished(false)
+                }, 8000)
               }
-
-              setTimeout(() => setPipelineStatus(null), 5000)
             } : undefined}
             onRetry={() => {
               // Retry: resend the last user message

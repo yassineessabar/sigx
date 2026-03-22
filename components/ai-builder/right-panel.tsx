@@ -157,7 +157,7 @@ export function RightPanel({
                   )}
 
                   {/* Version history */}
-                  {versions.length > 1 && (
+                  {versions && versions.length > 0 && (
                     <div className="rounded-2xl border border-foreground/[0.08] bg-secondary overflow-hidden">
                       <div className="border-b border-foreground/[0.06] px-4 py-2.5">
                         <span className="font-medium text-[13px] text-foreground/70">Version History</span>

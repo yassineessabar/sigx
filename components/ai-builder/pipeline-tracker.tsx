@@ -1,7 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import { Brain, Code2, BarChart3, CheckCircle, Loader2, Circle } from 'lucide-react'
+import { Brain, Code2, BarChart3, CheckCircle, Loader2, Circle, XCircle } from 'lucide-react'
 
 const STAGES = [
   { id: 'thinking', label: 'Thinking', icon: Brain },
@@ -13,16 +13,20 @@ const STAGES = [
 
 type StageId = typeof STAGES[number]['id']
 
-function resolveStage(status: string | null): StageId | null {
-  if (!status) return null
+function resolveStage(status: string | null): { stage: StageId | null; isError: boolean; isSuccess: boolean } {
+  if (!status) return { stage: null, isError: false, isSuccess: false }
   const s = status.toLowerCase()
-  if (s === '') return null
-  if (s.includes('complete') || s.includes('results ready') || s.includes('done')) return 'complete'
-  if (s.includes('backtest')) return 'backtesting'
-  if (s.includes('compil') || s.includes('auto-fix')) return 'compiling'
-  if (s.includes('generating') || s.includes('response')) return 'generating'
-  if (s.includes('thinking')) return 'thinking'
-  return 'thinking'
+  if (s === '') return { stage: null, isError: false, isSuccess: false }
+
+  const isError = s.startsWith('✗') || s.includes('failed') || s.includes('error') || s.includes('timed out')
+  const isSuccess = s.startsWith('✓') || (s.includes('complete') && !isError)
+
+  if (isSuccess || isError) return { stage: 'complete', isError, isSuccess: !isError }
+  if (s.includes('backtest')) return { stage: 'backtesting', isError: false, isSuccess: false }
+  if (s.includes('compil') || s.includes('auto-fix')) return { stage: 'compiling', isError: false, isSuccess: false }
+  if (s.includes('generating') || s.includes('response')) return { stage: 'generating', isError: false, isSuccess: false }
+  if (s.includes('thinking')) return { stage: 'thinking', isError: false, isSuccess: false }
+  return { stage: 'thinking', isError: false, isSuccess: false }
 }
 
 interface PipelineTrackerProps {
@@ -31,18 +35,33 @@ interface PipelineTrackerProps {
 }
 
 export function PipelineTracker({ status, statusMessage }: PipelineTrackerProps) {
-  const currentStage = resolveStage(status)
+  const { stage: currentStage, isError, isSuccess } = resolveStage(status)
   if (!currentStage) return null
 
   const stageIdx = STAGES.findIndex((s) => s.id === currentStage)
 
+  // Extract the display message (remove ✓/✗ prefix for cleaner display)
+  const cleanMessage = statusMessage?.replace(/^[✓✗]\s*/, '').trim()
+
   return (
     <div className="flex gap-3 mb-2">
-      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-white">
-        <span className="text-[8px] font-black text-black tracking-[-0.06em]">SX</span>
+      <div className={cn(
+        'flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px]',
+        isError ? 'bg-red-500/20' : 'bg-white'
+      )}>
+        {isError ? (
+          <span className="text-[8px] font-black text-red-400 tracking-[-0.06em]">!</span>
+        ) : (
+          <span className="text-[8px] font-black text-black tracking-[-0.06em]">SX</span>
+        )}
       </div>
       <div className="flex-1 max-w-[85%]">
-        <div className="rounded-[14px] border border-foreground/[0.06] bg-foreground/[0.02] px-4 py-3 space-y-2.5">
+        <div className={cn(
+          'rounded-[14px] border px-4 py-3 space-y-2.5',
+          isError ? 'border-red-500/20 bg-red-500/[0.03]' :
+          isSuccess ? 'border-emerald-500/20 bg-emerald-500/[0.03]' :
+          'border-foreground/[0.06] bg-foreground/[0.02]'
+        )}>
           {/* Stage pills */}
           <div className="flex items-center gap-1 flex-wrap">
             {STAGES.map((stage, idx) => {
@@ -55,19 +74,32 @@ export function PipelineTracker({ status, statusMessage }: PipelineTrackerProps)
                   {idx > 0 && (
                     <div className={cn(
                       'w-4 h-px mx-0.5',
-                      isDone ? 'bg-emerald-400/40' : 'bg-foreground/[0.06]'
+                      isDone ? (isError ? 'bg-red-400/40' : 'bg-emerald-400/40') : 'bg-foreground/[0.06]'
                     )} />
                   )}
                   <div className={cn(
                     'flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-all',
-                    isActive && 'bg-foreground/[0.06] text-foreground/70',
-                    isDone && 'text-emerald-400/60',
+                    isActive && !isError && !isSuccess && 'bg-foreground/[0.06] text-foreground/70',
+                    isActive && isSuccess && 'bg-emerald-500/10 text-emerald-400',
+                    isActive && isError && 'bg-red-500/10 text-red-400',
+                    isDone && !isError && 'text-emerald-400/60',
+                    isDone && isError && 'text-red-400/60',
                     isPending && 'text-foreground/15'
                   )}>
                     {isDone ? (
-                      <CheckCircle size={10} className="text-emerald-400/60" />
+                      isError ? (
+                        <XCircle size={10} className="text-red-400/60" />
+                      ) : (
+                        <CheckCircle size={10} className="text-emerald-400/60" />
+                      )
                     ) : isActive ? (
-                      <Loader2 size={10} className="animate-spin" />
+                      isSuccess ? (
+                        <CheckCircle size={10} className="text-emerald-400" />
+                      ) : isError ? (
+                        <XCircle size={10} className="text-red-400" />
+                      ) : (
+                        <Loader2 size={10} className="animate-spin" />
+                      )
                     ) : (
                       <Circle size={10} />
                     )}
@@ -78,15 +110,24 @@ export function PipelineTracker({ status, statusMessage }: PipelineTrackerProps)
             })}
           </div>
 
-          {/* Log message */}
-          {statusMessage && statusMessage.length > 0 && (
+          {/* Status message */}
+          {cleanMessage && cleanMessage.length > 0 && (
             <div className="flex items-center gap-1.5">
-              {currentStage !== 'complete' ? (
-                <Loader2 size={10} className="animate-spin text-foreground/30 shrink-0" />
+              {isSuccess ? (
+                <CheckCircle size={10} className="text-emerald-400 shrink-0" />
+              ) : isError ? (
+                <XCircle size={10} className="text-red-400 shrink-0" />
               ) : (
-                <CheckCircle size={10} className="text-emerald-400/60 shrink-0" />
+                <Loader2 size={10} className="animate-spin text-foreground/30 shrink-0" />
               )}
-              <p className="text-[11px] text-foreground/35 font-medium">{statusMessage}</p>
+              <p className={cn(
+                'text-[11px] font-medium',
+                isSuccess ? 'text-emerald-400/70' :
+                isError ? 'text-red-400/70' :
+                'text-foreground/35'
+              )}>
+                {cleanMessage}
+              </p>
             </div>
           )}
         </div>

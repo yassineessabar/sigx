@@ -1,35 +1,25 @@
 import { NextRequest } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getUserFromToken } from '@/lib/api-auth'
-import { compileEA, backtestEA, isWorkerConfigured } from '@/lib/mt5-worker'
+// mt5-worker removed — backtest now handled by /api/ai-builder/backtest route
 import { getTemplateByName } from '@/lib/templates'
 import Anthropic from '@anthropic-ai/sdk'
 
 // ── System prompt ──────────────────────────────────────────────────
-const SYSTEM_PROMPT = `You are SIGX, an AI assistant that builds MetaTrader 5 trading strategies.
+const SYSTEM_PROMPT = `You are SIGX, an AI that builds MetaTrader 5 trading strategies. Always respond.
 
-You are friendly, helpful, and interactive. Always respond — even to random or unclear messages.
+When asked to BUILD a strategy:
+1. Brief explanation (2-3 sentences max)
+2. Parameters the user can adjust (keep short)
+3. Strategy JSON between ---STRATEGY_JSON_START--- and ---STRATEGY_JSON_END---:
+   {"name":"Name","market":"XAUUSD","timeframe":"H1","entry_rules":["Rule 1","Rule 2"],"exit_rules":["Exit 1"],"risk_logic":"Description"}
+4. COMPLETE MQL5 EA code between ---MQL5_CODE_START--- and ---MQL5_CODE_END---
 
-IF the user asks to BUILD/CREATE a strategy with enough detail (symbol + strategy type + timeframe):
-1. Brief explanation (2-3 sentences)
-2. Key parameters summary so the user knows what they can change. Example:
-   "**Parameters you can adjust:**
-   - Fast EMA: 12 | Slow EMA: 26
-   - Stop Loss: 500 points | Take Profit: 800 points
-   - Lot Size: 0.1 | Max Positions: 1
+CRITICAL: The MQL5 code MUST be complete and compilable. Include all required functions: OnInit, OnDeinit, OnTick. Use #include <Trade\\Trade.mqh> and CTrade. The code block is the most important part — never truncate it.
 
-   Tell me if you want to change any of these before backtesting."
-3. Strategy metadata between ---STRATEGY_JSON_START--- and ---STRATEGY_JSON_END---
-4. Complete MQL5 EA code between ---MQL5_CODE_START--- and ---MQL5_CODE_END---
-
-IF the user's message is unclear, random, or missing details:
-- Respond friendly: "I didn't quite understand that. I can help you build MT5 trading strategies! Try something like: Build a XAUUSD EMA crossover strategy on H1"
-- Ask what they want to build
-
-IF the user asks a QUESTION: answer conversationally, no code.
-IF the user asks to OPTIMIZE: generate improved code with the same markers.
-
-Code MUST be complete compilable MQL5 with trade.Buy/trade.Sell in OnTick.`
+When asked a QUESTION: answer conversationally, no code.
+When asked to OPTIMIZE: generate improved code with the same markers.
+When message is unclear: ask what they want to build.`
 
 // ── Helpers ────────────────────────────────────────────────────────
 function getAnthropic(): Anthropic | null {
@@ -64,19 +54,6 @@ function parseResponse(content: string) {
   return { display, metadata }
 }
 
-async function autoFixCode(code: string, errors: string[]): Promise<string | null> {
-  const client = getAnthropic()
-  if (!client) return null
-  try {
-    const res = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 8192,
-      system: 'Fix MQL5 compile errors. Keep all trading logic. Output ONLY the fixed code.',
-      messages: [{ role: 'user', content: `Errors:\n${errors.join('\n')}\n\nCode:\n${code}` }],
-    })
-    return res.content[0].type === 'text' ? res.content[0].text.trim() : null
-  } catch { return null }
-}
 
 // ── Main route ─────────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
@@ -150,28 +127,51 @@ export async function POST(request: NextRequest) {
             } else {
               const { data: history } = await supabaseAdmin
                 .from('chat_messages')
-                .select('role, content')
+                .select('role, content, metadata')
                 .eq('chat_id', currentChatId)
                 .order('created_at', { ascending: true })
                 .limit(20)
 
-              const chatMessages: Anthropic.MessageParam[] = (history || []).map((m) => ({
-                role: m.role as 'user' | 'assistant',
-                content: m.content,
-              }))
-
-              const messageStream = anthropic.messages.stream({
-                model: 'claude-sonnet-4-20250514',
-                max_tokens: 8192,
-                system: SYSTEM_PROMPT,
-                messages: chatMessages,
-              })
-
-              for await (const event of messageStream) {
-                if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-                  fullContent += event.delta.text
-                  send({ type: 'delta', text: event.delta.text })
+              // Filter out backtest_result messages and ensure alternating roles
+              // (Claude API requires strict user/assistant alternation)
+              const chatMessages: Anthropic.MessageParam[] = []
+              for (const m of (history || [])) {
+                // Skip backtest_result system messages
+                const meta = m.metadata as Record<string, unknown> | null
+                if (meta?.type === 'backtest_result') continue
+                const role = m.role as 'user' | 'assistant'
+                // Merge consecutive same-role messages
+                const last = chatMessages[chatMessages.length - 1]
+                if (last && last.role === role) {
+                  last.content = (last.content as string) + '\n\n' + m.content
+                } else {
+                  chatMessages.push({ role, content: m.content })
                 }
+              }
+
+              // Ensure first message is from user (Claude API requirement)
+              if (chatMessages.length === 0 || chatMessages[0].role !== 'user') {
+                chatMessages.unshift({ role: 'user', content: message })
+              }
+
+              try {
+                const messageStream = anthropic.messages.stream({
+                  model: 'claude-sonnet-4-20250514',
+                  max_tokens: 16384,
+                  system: SYSTEM_PROMPT,
+                  messages: chatMessages,
+                })
+
+                for await (const event of messageStream) {
+                  if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+                    fullContent += event.delta.text
+                    send({ type: 'delta', text: event.delta.text })
+                  }
+                }
+              } catch (claudeErr) {
+                console.error('Claude API error:', claudeErr)
+                fullContent = `I encountered an error generating the response. Please try again.\n\nError: ${claudeErr instanceof Error ? claudeErr.message : String(claudeErr)}`
+                send({ type: 'delta', text: fullContent })
               }
             }
           }
@@ -179,87 +179,59 @@ export async function POST(request: NextRequest) {
           // Parse response
           const { display, metadata } = parseResponse(fullContent)
 
-          // ── DON'T auto-backtest — let user review code first ──
-          // The client will show a "Run Backtest" button
-          if (false && isWorkerConfigured() && metadata.mql5_code) {
-            const strat = metadata.strategy_snapshot as { name?: string; market?: string } | undefined
-            const eaName = (strat?.name || 'SigxEA').replace(/[^a-zA-Z0-9_]/g, '_')
-            const symbol = strat?.market || 'XAUUSD'
-
-            send({ type: 'status', message: 'Compiling on MT5...' })
-            let code = metadata.mql5_code as string
-            let compiled = false
-
-            for (let i = 0; i < 3; i++) {
-              const result = await compileEA(eaName, code)
-              if (result.success) { compiled = true; metadata.mql5_code = code; send({ type: 'status', message: 'Compiled' }); break }
-              if (i < 2 && result.errors?.length) {
-                send({ type: 'status', message: `Fixing compile errors (${i + 2}/3)...` })
-                const fixed = await autoFixCode(code, result.errors || [])
-                if (fixed) { code = fixed as string; continue }
-              }
-              send({ type: 'status', message: 'Compile failed' })
-              break
-            }
-
-            if (compiled) {
-              send({ type: 'status', message: 'Running backtest (30-120s)...' })
-              const bt = await backtestEA(eaName, symbol, 'H1')
-              if (bt.success && bt.metrics) {
-                metadata.backtest_snapshot = { ...bt.metrics, equity_curve: bt.equity_curve || [] }
-                send({ type: 'status', message: `Backtest done — ${bt.metrics?.total_trades ?? 0} trades` })
-              } else {
-                send({ type: 'status', message: bt.error || 'Backtest failed' })
-              }
-            }
-          }
-
-          // Save assistant message
-          await supabaseAdmin.from('chat_messages').insert({
-            chat_id: currentChatId, user_id: user.id, role: 'assistant',
-            content: display, metadata,
-          })
-
-          // Save strategy if code was generated
-          if (metadata.mql5_code) {
-            const strat = (metadata.strategy_snapshot as { name: string; market: string }) || {}
-            const bt = metadata.backtest_snapshot as Record<string, number> | undefined
-            let name = strat.name || message.slice(0, 50) || 'Strategy'
-
-            // Deduplicate name
-            const { data: existing } = await supabaseAdmin.from('strategies').select('name').eq('user_id', user.id)
-            if (existing) {
-              const names = existing.map(s => s.name)
-              const base = name; let c = 1
-              while (names.includes(name)) { c++; name = `${base} (${c})` }
-            }
-
-            const { data: strategy } = await supabaseAdmin.from('strategies').insert({
-              user_id: user.id, name, market: strat.market || 'XAUUSD',
-              strategy_summary: metadata.strategy_snapshot || null,
-              mql5_code: (metadata.mql5_code as string) || null,
-              status: bt ? 'backtested' : 'draft',
-              sharpe_ratio: bt?.sharpe || null, max_drawdown: bt?.max_drawdown || null,
-              win_rate: bt?.win_rate || null, total_return: bt?.total_return ?? bt?.net_profit ?? null,
-            }).select().single()
-
-            if (strategy) {
-              await supabaseAdmin.from('chats').update({ strategy_id: strategy.id }).eq('id', currentChatId)
-              metadata.strategy_id = strategy.id
-            }
-          }
-
-          // Update chat timestamp
-          await supabaseAdmin.from('chats').update({ updated_at: new Date().toISOString() }).eq('id', currentChatId)
-
-          // Send final message
+          // Send done event FIRST so the client gets the response immediately
+          const messageId = crypto.randomUUID()
           send({
             type: 'done',
             message: {
-              id: crypto.randomUUID(), chat_id: currentChatId, user_id: user.id,
+              id: messageId, chat_id: currentChatId, user_id: user.id,
               role: 'assistant', content: display, metadata, created_at: new Date().toISOString(),
             },
           })
+
+          // Save to DB in background — don't block the stream
+          ;(async () => {
+            try {
+              // Save assistant message
+              await supabaseAdmin.from('chat_messages').insert({
+                chat_id: currentChatId, user_id: user.id, role: 'assistant',
+                content: display, metadata,
+              })
+
+              // Save strategy if code was generated
+              if (metadata.mql5_code) {
+                const strat = (metadata.strategy_snapshot as { name: string; market: string }) || {}
+                const bt = metadata.backtest_snapshot as Record<string, number> | undefined
+                let name = strat.name || message.slice(0, 50) || 'Strategy'
+
+                // Deduplicate name
+                const { data: existing } = await supabaseAdmin.from('strategies').select('name').eq('user_id', user.id)
+                if (existing) {
+                  const names = existing.map(s => s.name)
+                  const base = name; let c = 1
+                  while (names.includes(name)) { c++; name = `${base} (${c})` }
+                }
+
+                const { data: strategy } = await supabaseAdmin.from('strategies').insert({
+                  user_id: user.id, name, market: strat.market || 'XAUUSD',
+                  strategy_summary: metadata.strategy_snapshot || null,
+                  mql5_code: (metadata.mql5_code as string) || null,
+                  status: bt ? 'backtested' : 'draft',
+                  sharpe_ratio: bt?.sharpe || null, max_drawdown: bt?.max_drawdown || null,
+                  win_rate: bt?.win_rate || null, total_return: bt?.total_return ?? bt?.net_profit ?? null,
+                }).select().single()
+
+                if (strategy) {
+                  await supabaseAdmin.from('chats').update({ strategy_id: strategy.id }).eq('id', currentChatId)
+                }
+              }
+
+              // Update chat timestamp
+              await supabaseAdmin.from('chats').update({ updated_at: new Date().toISOString() }).eq('id', currentChatId)
+            } catch (err) {
+              console.error('Background save error:', err)
+            }
+          })()
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err)
           console.error('Stream error:', msg)

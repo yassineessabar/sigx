@@ -72,7 +72,7 @@ export interface ChatMessage {
 export interface ChatMessageMetadata {
   strategy_id?: string
   backtest_id?: string
-  type?: 'strategy' | 'backtest' | 'code'
+  type?: 'strategy' | 'backtest' | 'code' | 'backtest_result'
   strategy_snapshot?: {
     name: string
     market: string

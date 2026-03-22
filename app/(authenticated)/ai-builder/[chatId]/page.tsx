@@ -33,6 +33,7 @@ export default function ChatPage() {
   const [credits, setCredits] = useState<number | null>(null)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
+  const streamingRef = useRef('')
 
   // Load messages and chat title
   const loadMessages = useCallback(async () => {
@@ -101,15 +102,14 @@ export default function ChatPage() {
     abortRef.current = controller
 
     try {
-      const { data: { session: freshSession } } = await supabase.auth.getSession()
-      const token = freshSession?.access_token || session?.access_token
+      let token = session?.access_token
       if (!token) {
         toast.error('Session expired. Please sign in again.')
         setMessages((prev) => prev.filter((m) => m.id !== userMsg.id))
         return
       }
 
-      const res = await fetch('/api/chat/stream', {
+      let res = await fetch('/api/chat/stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -118,6 +118,25 @@ export default function ChatPage() {
         body: JSON.stringify({ chatId, message }),
         signal: controller.signal,
       })
+
+      // If 401, refresh token once and retry
+      if (res.status === 401) {
+        try {
+          const { data: { session: refreshed } } = await supabase.auth.refreshSession()
+          if (refreshed?.access_token) {
+            token = refreshed.access_token
+            res = await fetch('/api/chat/stream', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ chatId, message }),
+              signal: controller.signal,
+            })
+          }
+        } catch { /* refresh failed */ }
+      }
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({ error: 'Request failed' }))
@@ -159,7 +178,7 @@ export default function ChatPage() {
             const data = JSON.parse(line.slice(6))
 
             if (data.type === 'delta') {
-              setStreamingContent((prev) => prev + data.text)
+              setStreamingContent((prev) => { const next = prev + data.text; streamingRef.current = next; return next })
               setPipelineStatus(null)
             } else if (data.type === 'status') {
               setPipelineStatus(data.message || null)
@@ -182,7 +201,7 @@ export default function ChatPage() {
     } catch (error) {
       if ((error as Error).name === 'AbortError') {
         // Keep whatever was streamed so far as a message
-        const partial = streamingContent ? streamingContent.replace(/---\w+_START---[\s\S]*/g, '').trim() : ''
+        const partial = streamingRef.current ? streamingRef.current.replace(/---\w+_START---[\s\S]*/g, '').trim() : ''
         if (partial) {
           setMessages((prev) => [...prev, {
             id: crypto.randomUUID(),
@@ -202,10 +221,12 @@ export default function ChatPage() {
     } finally {
       setIsGenerating(false)
       setStreamingContent('')
+      streamingRef.current = ''
       setPipelineStatus(null)
       abortRef.current = null
     }
-  }, [chatId, session?.access_token, user, streamingContent])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatId, session?.access_token, user])
 
   const handleStop = useCallback(() => {
     abortRef.current?.abort()
@@ -277,6 +298,7 @@ export default function ChatPage() {
         onStop={handleStop}
         onEditMessage={handleEditMessage}
         onRegenerateMessage={handleRegenerateMessage}
+        onAddMessage={(msg) => setMessages((prev) => [...prev, msg])}
         credits={credits}
         onUpgradeClick={() => setShowUpgradeModal(true)}
       />

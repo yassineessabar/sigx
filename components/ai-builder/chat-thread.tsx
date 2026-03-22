@@ -3,7 +3,7 @@
 import { ChatMessage as ChatMessageType } from '@/lib/types'
 import { ChatMessage } from './chat-message'
 import { PipelineTracker } from './pipeline-tracker'
-import { useEffect, useRef, useState, useMemo } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 
 interface ChatThreadProps {
@@ -14,6 +14,8 @@ interface ChatThreadProps {
   backtestData?: { sharpe: number; max_drawdown: number; win_rate: number; total_return: number; profit_factor: number; total_trades: number } | null
   pipelineError?: string | null
   hasCode?: boolean
+  needsBacktest?: boolean
+  isBacktesting?: boolean
   onEditMessage?: (messageId: string, newContent: string) => void
   onRegenerateMessage?: (messageId: string) => void
   onSend?: (message: string) => void
@@ -114,7 +116,7 @@ function cleanStreamingDisplay(text: string): string {
   return clean.replace(/\n{3,}/g, '\n\n').trim()
 }
 
-export function ChatThread({ messages, isGenerating, streamingContent, pipelineStatus, backtestData, pipelineError, hasCode, onEditMessage, onRegenerateMessage, onSend, onRetry, onRunBacktest }: ChatThreadProps) {
+export function ChatThread({ messages, isGenerating, streamingContent, pipelineStatus, backtestData, pipelineError, hasCode, needsBacktest, isBacktesting, onEditMessage, onRegenerateMessage, onSend, onRetry, onRunBacktest }: ChatThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const [hasHadMessages, setHasHadMessages] = useState(false)
@@ -160,12 +162,17 @@ export function ChatThread({ messages, isGenerating, streamingContent, pipelineS
   }
 
   const displayedStreaming = streamingContent ? cleanStreamingDisplay(streamingContent) : ''
-  const showThinking = isGenerating && !displayedStreaming
+  // Show thinking when generating but no visible content yet
+  // Also account for when streamingContent has raw markers but displayedStreaming is empty
+  const hasRawStream = !!streamingContent && streamingContent.length > 0
+  const showThinking = isGenerating && !displayedStreaming && !hasRawStream
 
   return (
     <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto p-4">
       <div className="mx-auto max-w-3xl space-y-6 pb-4">
-        {messages.map((msg) => (
+        {messages
+          .filter((msg) => msg.metadata?.type !== 'backtest_result')
+          .map((msg) => (
           <ChatMessage
             key={msg.id}
             message={msg}
@@ -189,8 +196,13 @@ export function ChatThread({ messages, isGenerating, streamingContent, pipelineS
           </div>
         )}
 
-        {/* Thinking indicator — shows when generating but no content yet */}
+        {/* Thinking dots — shows when generating but no visible content yet */}
         {showThinking && !pipelineStatus && (
+          <ThinkingBubble />
+        )}
+
+        {/* Processing indicator — stream has raw data (markers) but nothing visible to show */}
+        {isGenerating && !displayedStreaming && hasRawStream && !pipelineStatus && (
           <ThinkingBubble />
         )}
 
@@ -232,8 +244,8 @@ export function ChatThread({ messages, isGenerating, streamingContent, pipelineS
           </div>
         )}
 
-        {/* Run Backtest button — show when code exists but no backtest yet */}
-        {hasCode && !backtestData && !isGenerating && !pipelineStatus && !pipelineError && onRunBacktest && (
+        {/* Run Backtest button — shows when code exists but hasn't been backtested yet */}
+        {needsBacktest && !isBacktesting && !isGenerating && !pipelineError && onRunBacktest && (
           <div className="flex gap-3">
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-white">
               <span className="text-[8px] font-black text-black tracking-[-0.06em]">SX</span>
@@ -261,8 +273,23 @@ export function ChatThread({ messages, isGenerating, streamingContent, pipelineS
           </div>
         )}
 
+        {/* Backtesting in progress indicator */}
+        {isBacktesting && (
+          <div className="flex gap-3">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-white">
+              <span className="text-[8px] font-black text-black tracking-[-0.06em]">SX</span>
+            </div>
+            <div className="rounded-[14px] border border-foreground/[0.04] bg-foreground/[0.012] px-4 py-3">
+              <div className="flex items-center gap-3">
+                <Loader2 className="h-4 w-4 animate-spin text-foreground/50" />
+                <span className="text-[13px] text-foreground/50 font-medium">{pipelineStatus || 'Running backtest...'}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Optimize suggestions — based on actual backtest recommendations */}
-        {backtestData && !isGenerating && !pipelineStatus && !pipelineError && onSend && (
+        {backtestData && !isGenerating && !isBacktesting && !needsBacktest && !pipelineError && onSend && (
           <OptimizeSuggestions backtest={backtestData} onSend={onSend} />
         )}
 

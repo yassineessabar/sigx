@@ -93,6 +93,7 @@ export default function AIBuilderPage() {
   const [pendingTemplatePrompt, setPendingTemplatePrompt] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const newChatIdRef = useRef<string | null>(null)
+  const streamingRef = useRef('')
   const router = useRouter()
   const pathname = usePathname()
   const { setOpen: setSidebarOpen } = useSidebar()
@@ -190,18 +191,8 @@ export default function AIBuilderPage() {
     }, 180000)
 
     try {
-      // Get token — use existing, try refresh with timeout
+      // Use token from auth context (fast, no network call)
       let token = session?.access_token
-      try {
-        const refreshPromise = supabase.auth.getSession()
-        const timeout = new Promise<null>((r) => setTimeout(() => r(null), 3000))
-        const result = await Promise.race([refreshPromise, timeout])
-        if (result && 'data' in result && result.data.session?.access_token) {
-          token = result.data.session.access_token
-        }
-      } catch { /* use existing token */ }
-
-      console.log('[SIGX] handleSend: token=' + (token ? 'yes' : 'NO'), 'chatId=' + currentChatId)
 
       if (!token) {
         toast.error('Session expired. Please sign in again.')
@@ -210,8 +201,8 @@ export default function AIBuilderPage() {
         return
       }
 
-      console.log('[SIGX] Fetching /api/chat/stream...')
-      const res = await fetch('/api/chat/stream', {
+      // Try the API call
+      let res = await fetch('/api/chat/stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -221,7 +212,24 @@ export default function AIBuilderPage() {
         signal: controller.signal,
       })
 
-      console.log('[SIGX] Response status:', res.status)
+      // If 401, try refreshing the token once and retry
+      if (res.status === 401) {
+        try {
+          const { data: { session: refreshed } } = await supabase.auth.refreshSession()
+          if (refreshed?.access_token) {
+            token = refreshed.access_token
+            res = await fetch('/api/chat/stream', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ chatId: currentChatId, message }),
+              signal: controller.signal,
+            })
+          }
+        } catch { /* refresh failed */ }
+      }
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({ error: 'Request failed' }))
@@ -266,7 +274,7 @@ export default function AIBuilderPage() {
               setCurrentChatId(data.chatId)
               newChatIdRef.current = data.chatId
             } else if (data.type === 'delta') {
-              setStreamingContent((prev) => prev + data.text)
+              setStreamingContent((prev) => { const next = prev + data.text; streamingRef.current = next; return next })
               setPipelineStatus(null)
             } else if (data.type === 'status') {
               setPipelineStatus(data.message || null)
@@ -288,7 +296,7 @@ export default function AIBuilderPage() {
       }
     } catch (error) {
       if ((error as Error).name === 'AbortError') {
-        const partial = streamingContent ? streamingContent.replace(/---\w+_START---[\s\S]*/g, '').trim() : ''
+        const partial = streamingRef.current ? streamingRef.current.replace(/---\w+_START---[\s\S]*/g, '').trim() : ''
         if (partial) {
           setMessages((prev) => [...prev, {
             id: crypto.randomUUID(),
@@ -309,6 +317,7 @@ export default function AIBuilderPage() {
       clearTimeout(safetyTimeout)
       setIsGenerating(false)
       setStreamingContent('')
+      streamingRef.current = ''
       setPipelineStatus(null)
       abortRef.current = null
       newChatIdRef.current = null
@@ -427,7 +436,7 @@ export default function AIBuilderPage() {
       return
     }
 
-    // Non-template: create strategy + chat, then send prompt via API
+    // Non-template: create strategy + chat, then navigate to chat page with prompt
     try {
       const stratRes = await fetch('/api/strategies', {
         method: 'POST',
@@ -448,10 +457,11 @@ export default function AIBuilderPage() {
       const chatData = await chatRes.json()
 
       if (chatData.chat?.id) {
-        setCurrentChatId(chatData.chat.id)
-        handleSend(prompt)
+        // Navigate to the chat page with prompt — avoids stale currentChatId in closure
+        router.push(`/ai-builder/${chatData.chat.id}?prompt=${encodeURIComponent(prompt)}`)
       }
     } catch {
+      // Fallback: send directly (stream route will create a new chat)
       handleSend(prompt)
     }
   }, [projectName, pendingTemplatePrompt, session?.access_token, user, router, handleSend, setSidebarOpen])
@@ -568,10 +578,9 @@ export default function AIBuilderPage() {
             <div className="mt-8 w-full max-w-[680px]">
               <PromptInput
                 onSend={(msg) => {
-                  setPendingTemplatePrompt(msg)
-                  const tpl = findClientTemplate(msg)
-                  setProjectName(tpl ? `${tpl.name} ${tpl.market} ${tpl.timeframe}` : msg.slice(0, 40))
-                  setShowNameModal(true)
+                  // Send directly — stream route auto-creates chat if chatId is null
+                  setSidebarOpen(false)
+                  handleSend(msg)
                 }}
                 isGenerating={isGenerating}
                 onStop={handleStop}
@@ -584,7 +593,7 @@ export default function AIBuilderPage() {
               {EXAMPLE_PROMPTS.map((prompt) => (
                 <button
                   key={prompt.text}
-                  onClick={() => openCreateModal((prompt as any).template || prompt.text)}
+                  onClick={() => { setSidebarOpen(false); handleSend((prompt as any).template || prompt.text) }}
                   className="flex items-start gap-3 rounded-[14px] border border-foreground/[0.08] bg-foreground/[0.03] px-4 py-3.5 text-left transition-all duration-200 hover:border-foreground/[0.15] hover:bg-foreground/[0.06] group"
                 >
                   <prompt.icon className="h-4 w-4 shrink-0 mt-0.5 text-foreground/40 group-hover:text-foreground/60 transition-colors" />
@@ -604,7 +613,7 @@ export default function AIBuilderPage() {
               {SUGGESTION_PILLS.map((pill) => (
                 <button
                   key={pill}
-                  onClick={() => openCreateModal(`Build a ${pill} strategy`)}
+                  onClick={() => { setSidebarOpen(false); handleSend(`Build a ${pill} strategy`) }}
                   className="bg-foreground/[0.04] rounded-full px-3.5 py-1.5 text-[12px] text-foreground/50 hover:bg-foreground/[0.08] hover:text-foreground/70 transition-colors"
                 >
                   {pill}
@@ -657,7 +666,7 @@ export default function AIBuilderPage() {
                     return (
                       <button
                         key={template.name}
-                        onClick={() => openCreateModal(`Build a ${template.name} strategy`)}
+                        onClick={() => { setSidebarOpen(false); handleSend(`Build a ${template.name} strategy`) }}
                         className="group flex items-start gap-3.5 rounded-[14px] border border-foreground/[0.04] bg-foreground/[0.01] p-4 text-left hover:border-foreground/[0.08] hover:bg-foreground/[0.025] transition-all duration-300"
                       >
                         <div
@@ -755,6 +764,7 @@ export default function AIBuilderPage() {
         onStop={handleStop}
         onEditMessage={handleEditMessage}
         onRegenerateMessage={handleRegenerateMessage}
+        onAddMessage={(msg) => setMessages((prev) => [...prev, msg])}
         credits={credits}
         onUpgradeClick={() => setShowUpgradeModal(true)}
       />
