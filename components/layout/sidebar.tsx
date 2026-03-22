@@ -69,9 +69,9 @@ export function Sidebar({ chats = [], onNewChat, onDeleteChat }: SidebarProps) {
   const [userCredits, setUserCredits] = useState<number | null>(null)
   const [userPlan, setUserPlan] = useState<string>('free')
 
-  // Max credits per plan for progress bar
-  const planMaxCredits: Record<string, number> = { free: 5, starter: 100, builder: 250, pro: 500, elite: 1200 }
-  const maxCredits = planMaxCredits[userPlan] || 5
+  // Max credits per plan for progress bar — matches lib/credit-costs.ts PLANS
+  const planMaxCredits: Record<string, number> = { free: 50, starter: 1000, builder: 3000, pro: 8000, elite: 20000 }
+  const maxCredits = planMaxCredits[userPlan] || 50
   const creditPercent = userCredits !== null ? Math.min(Math.max((userCredits / maxCredits) * 100, 0), 100) : 0
   const { theme, setTheme } = useTheme()
   const searchInputRef = useRef<HTMLInputElement>(null)

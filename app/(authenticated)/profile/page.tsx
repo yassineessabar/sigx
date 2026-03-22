@@ -491,60 +491,92 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {activeTab === 'plan' && (
-        <div className="space-y-6 max-w-xl">
-          {/* Current plan */}
-          <div className="rounded-[18px] border border-foreground/[0.04] bg-card p-6 space-y-5">
-            <h2 className="text-[15px] font-semibold text-foreground/80 flex items-center gap-2">
-              <CreditCard size={16} className="text-foreground/30" />
-              Current Plan
-            </h2>
+      {activeTab === 'plan' && (() => {
+        const planMaxCredits: Record<string, number> = { free: 50, starter: 1000, builder: 3000, pro: 8000, elite: 20000 }
+        const planPrices: Record<string, string> = { free: 'Free', starter: '$19/mo', builder: '$49/mo', pro: '$99/mo', elite: '$199/mo' }
+        const currentPlan = profile?.plan || 'free'
+        const maxCr = planMaxCredits[currentPlan] || 50
+        const balance = profile?.credits_balance ?? 0
+        const pct = Math.min((balance / maxCr) * 100, 100)
 
-            <div className="flex items-center justify-between p-4 rounded-xl bg-foreground/[0.03] border border-foreground/[0.04]">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-foreground/[0.06] flex items-center justify-center">
-                  <Gem size={18} className="text-foreground/40" />
+        return (
+          <div className="space-y-6 max-w-xl">
+            {/* Current plan */}
+            <div className="rounded-[18px] border border-foreground/[0.04] bg-card p-6 space-y-5">
+              <h2 className="text-[15px] font-semibold text-foreground/80 flex items-center gap-2">
+                <CreditCard size={16} className="text-foreground/30" />
+                Current Plan
+              </h2>
+
+              <div className="flex items-center justify-between p-4 rounded-xl bg-foreground/[0.03] border border-foreground/[0.04]">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-foreground/[0.06] flex items-center justify-center">
+                    <Gem size={18} className="text-foreground/40" />
+                  </div>
+                  <div>
+                    <p className="text-[15px] text-foreground font-semibold capitalize">{currentPlan} Plan</p>
+                    <p className="text-[12px] text-foreground/30 mt-0.5">{planPrices[currentPlan]} &middot; {maxCr.toLocaleString()} credits/month</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[15px] text-foreground font-semibold capitalize">{profile?.plan || 'Free'} Plan</p>
-                  <p className="text-[12px] text-foreground/30 mt-0.5">$5 of usage credit per month</p>
+                <Link
+                  href="/upgrade"
+                  className="rounded-xl bg-white px-4 py-2 text-[13px] font-semibold text-black hover:bg-white/90 transition-colors"
+                >
+                  {currentPlan === 'free' ? 'Upgrade' : 'Change Plan'}
+                </Link>
+              </div>
+
+              {/* Credits usage */}
+              <div className="space-y-4">
+                <h3 className="text-[13px] font-medium text-foreground/40">Credit Usage</h3>
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[13px] text-foreground/50">Credits Balance</span>
+                      <span className="text-[13px] text-foreground/70 font-bold tabular-nums">{balance.toLocaleString()} / {maxCr.toLocaleString()}</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-foreground/[0.06] overflow-hidden">
+                      <div className={cn('h-full rounded-full', pct <= 20 ? 'bg-gradient-to-r from-red-400 to-orange-400' : 'bg-gradient-to-r from-orange-400 to-amber-400')} style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
                 </div>
               </div>
-              <Link
-                href="/upgrade"
-                className="rounded-xl bg-white px-4 py-2 text-[13px] font-semibold text-black hover:bg-white/90 transition-colors"
-              >
-                Upgrade
-              </Link>
             </div>
 
-            {/* Credits usage */}
-            <div className="space-y-4">
-              <h3 className="text-[13px] font-medium text-foreground/40">Credit Usage</h3>
-              <div className="space-y-3">
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[13px] text-foreground/50">Credits Balance</span>
-                    <span className="text-[13px] text-foreground/70 font-bold tabular-nums">{profile?.credits_balance ?? 0}</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-foreground/[0.06] overflow-hidden">
-                    <div className="h-full rounded-full bg-gradient-to-r from-orange-400 to-amber-400" style={{ width: `${Math.min(((profile?.credits_balance ?? 0) / 10) * 100, 100)}%` }} />
-                  </div>
-                </div>
+            {/* Manage subscription */}
+            {currentPlan !== 'free' && (
+              <div className="rounded-[18px] border border-foreground/[0.04] bg-card p-6 space-y-4">
+                <h2 className="text-[15px] font-semibold text-foreground/80">Manage Subscription</h2>
+                <p className="text-[13px] text-foreground/40">View invoices, update payment method, or cancel your subscription.</p>
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await fetch('/api/billing/portal', {
+                        method: 'POST',
+                        headers: { Authorization: `Bearer ${session?.access_token}` },
+                      })
+                      const data = await res.json()
+                      if (data.url) window.location.href = data.url
+                    } catch {}
+                  }}
+                  className="rounded-xl border border-foreground/[0.08] bg-foreground/[0.03] px-5 py-2.5 text-[13px] font-semibold text-foreground/60 hover:bg-foreground/[0.06] transition-colors"
+                >
+                  Open Billing Portal
+                </button>
+              </div>
+            )}
+
+            {/* Billing history */}
+            <div className="rounded-[18px] border border-foreground/[0.04] bg-card p-6 space-y-4">
+              <h2 className="text-[15px] font-semibold text-foreground/80">Billing History</h2>
+              <div className="rounded-xl border border-dashed border-foreground/[0.06] bg-foreground/[0.02] py-8 flex flex-col items-center text-center">
+                <CreditCard size={24} className="text-foreground/15 mb-2" />
+                <p className="text-[13px] text-foreground/30">No billing history</p>
               </div>
             </div>
           </div>
-
-          {/* Billing history */}
-          <div className="rounded-[18px] border border-foreground/[0.04] bg-card p-6 space-y-4">
-            <h2 className="text-[15px] font-semibold text-foreground/80">Billing History</h2>
-            <div className="rounded-xl border border-dashed border-foreground/[0.06] bg-foreground/[0.02] py-8 flex flex-col items-center text-center">
-              <CreditCard size={24} className="text-foreground/15 mb-2" />
-              <p className="text-[13px] text-foreground/30">No billing history</p>
-            </div>
-          </div>
-        </div>
-      )}
+        )
+      })()}
     </PageTransition>
   )
 }

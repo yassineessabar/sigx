@@ -40,6 +40,17 @@ export async function POST(request: NextRequest) {
               .eq('code', giftCode)
               .eq('status', 'pending')
           }
+        } else if (metaType === 'topup') {
+          // One-time credit top-up
+          const userId = session.metadata?.user_id
+          const credits = parseInt(session.metadata?.credits || '0', 10)
+          if (userId && credits > 0) {
+            const { data: prof } = await supabaseAdmin.from('profiles').select('credits_balance').eq('id', userId).single()
+            await supabaseAdmin.from('profiles').update({
+              credits_balance: (prof?.credits_balance ?? 0) + credits,
+              updated_at: new Date().toISOString(),
+            }).eq('id', userId)
+          }
         } else {
           // Subscription checkout
           const userId = session.metadata?.user_id
