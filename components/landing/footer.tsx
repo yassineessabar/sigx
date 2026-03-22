@@ -10,7 +10,7 @@ const links: Record<string, { label: string; href: string }[]> = {
     { label: "Enterprise", href: "/#enterprise" },
   ],
   Resources: [
-    { label: "Docs", href: "/docs" },
+    { label: "Docs", href: "/signup" },
     { label: "FAQs", href: "/#faq" },
     { label: "Blog", href: "/blog" },
   ],
