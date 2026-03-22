@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react'
 import { EquityCurve } from '@/components/charts/equity-curve'
-import { TrendingUp, TrendingDown, BarChart3, Target, Download } from 'lucide-react'
+import { TrendingUp, TrendingDown, BarChart3, Target, Download, DollarSign } from 'lucide-react'
 
 interface BacktestPreviewProps {
   backtest: {
@@ -14,6 +14,7 @@ interface BacktestPreviewProps {
     total_trades: number
     net_profit?: number
     recovery_factor?: number
+    initial_deposit?: number
     equity_curve?: { date: string; equity: number }[]
     _estimated?: boolean
   }
@@ -87,7 +88,14 @@ export function BacktestPreview({ backtest, reportHtmlB64 }: BacktestPreviewProp
       {backtest.net_profit !== undefined && (
         <div className="px-4 py-3 border-b border-foreground/[0.06]">
           <div className="flex items-center justify-between">
-            <span className="text-[12px] text-foreground/40 font-medium">Net Profit</span>
+            <div>
+              <span className="text-[12px] text-foreground/40 font-medium">Net Profit</span>
+              {backtest.initial_deposit ? (
+                <span className="text-[10px] text-foreground/20 ml-2">
+                  on ${backtest.initial_deposit.toLocaleString()} capital
+                </span>
+              ) : null}
+            </div>
             <div className="flex items-center gap-2">
               <span className={`text-[20px] font-bold tabular-nums ${(backtest.net_profit ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                 {(backtest.net_profit ?? 0) >= 0 ? '+' : ''}{(backtest.net_profit ?? 0).toFixed(2)}
@@ -99,11 +107,6 @@ export function BacktestPreview({ backtest, reportHtmlB64 }: BacktestPreviewProp
               )}
             </div>
           </div>
-          {!!(backtest as Record<string, unknown>).initial_deposit && (
-            <p className="text-[10px] text-foreground/20 mt-1">
-              Initial deposit: ${Number((backtest as Record<string, unknown>).initial_deposit).toLocaleString()}
-            </p>
-          )}
         </div>
       )}
 
@@ -147,6 +150,12 @@ export function BacktestPreview({ backtest, reportHtmlB64 }: BacktestPreviewProp
             positive={backtest.recovery_factor > 1}
           />
         )}
+        <MetricCell
+          label="Initial Capital"
+          value={`$${(backtest.initial_deposit || 10000).toLocaleString()}`}
+          icon={<DollarSign className="h-3 w-3" />}
+          positive={true}
+        />
       </div>
 
       {/* Equity curve */}
