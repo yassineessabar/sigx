@@ -309,14 +309,14 @@ export function ChatTopBar({
         <div className="flex items-center gap-1.5 shrink-0">
           {credits !== null && credits !== undefined && (
             <button
-              onClick={() => credits <= 0 ? onUpgradeClick?.() : undefined}
+              onClick={() => onUpgradeClick?.()}
               className={cn(
-                'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors mr-1',
+                'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors mr-1 cursor-pointer',
                 credits <= 0
-                  ? 'bg-red-500/10 text-red-400 border border-red-500/20 cursor-pointer hover:bg-red-500/20'
+                  ? 'bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20'
                   : credits <= 5
-                    ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                    : 'bg-foreground/[0.04] text-foreground/40 border border-foreground/[0.06]'
+                    ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/15'
+                    : 'bg-foreground/[0.04] text-foreground/40 border border-foreground/[0.06] hover:bg-foreground/[0.08]'
               )}
             >
               <Zap size={12} />
