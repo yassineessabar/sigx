@@ -15,10 +15,10 @@ const designs = [
 ] as const
 
 const amounts = [
-  { value: 25, credits: 125 },
-  { value: 50, credits: 250 },
-  { value: 100, credits: 500 },
-  { value: 200, credits: 1000 },
+  { value: 25, credits: 1250 },
+  { value: 50, credits: 2500 },
+  { value: 100, credits: 5000 },
+  { value: 200, credits: 10000 },
 ] as const
 
 type DesignId = (typeof designs)[number]['id']
