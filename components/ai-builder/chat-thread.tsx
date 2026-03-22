@@ -6,12 +6,17 @@ import { PipelineTracker } from './pipeline-tracker'
 import { useEffect, useRef, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 
+interface BacktestMetrics {
+  sharpe: number; max_drawdown: number; win_rate: number; total_return: number; profit_factor: number; total_trades: number; net_profit?: number
+}
+
 interface ChatThreadProps {
   messages: ChatMessageType[]
   isGenerating: boolean
   streamingContent?: string
   pipelineStatus?: string | null
-  backtestData?: { sharpe: number; max_drawdown: number; win_rate: number; total_return: number; profit_factor: number; total_trades: number } | null
+  backtestData?: BacktestMetrics | null
+  previousBacktest?: BacktestMetrics | null
   pipelineError?: string | null
   hasCode?: boolean
   needsBacktest?: boolean
@@ -24,26 +29,76 @@ interface ChatThreadProps {
   onFocusPrompt?: (placeholder?: string) => void
 }
 
-function OptimizeSuggestions({ backtest, onSend }: {
-  backtest: { sharpe: number; max_drawdown: number; win_rate: number; total_return: number; profit_factor: number; total_trades: number }
+function MetricDelta({ label, current, previous, unit = '', higherIsBetter = true }: {
+  label: string; current: number; previous?: number; unit?: string; higherIsBetter?: boolean
+}) {
+  const delta = previous !== undefined ? current - previous : undefined
+  const improved = delta !== undefined && (higherIsBetter ? delta > 0 : delta < 0)
+  return (
+    <div className="flex items-center justify-between text-[12px]">
+      <span className="text-foreground/40">{label}</span>
+      <div className="flex items-center gap-1.5">
+        <span className="text-foreground/70 font-semibold tabular-nums">{current.toFixed(2)}{unit}</span>
+        {delta !== undefined && delta !== 0 && (
+          <span className={`text-[10px] font-semibold tabular-nums ${improved ? 'text-emerald-400' : 'text-red-400'}`}>
+            {delta > 0 ? '+' : ''}{delta.toFixed(2)}{unit}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function OptimizeSuggestions({ backtest, previousBacktest, onSend }: {
+  backtest: BacktestMetrics
+  previousBacktest?: BacktestMetrics | null
   onSend: (msg: string) => void
 }) {
   const [customInput, setCustomInput] = useState('')
+  const prev = previousBacktest
 
-  // Generate recommendations based on actual metrics
-  const suggestions: { label: string; prompt: string; priority: boolean }[] = []
+  // Identify the #1 problem and build a specific fix prompt
+  const issues: { label: string; prompt: string; severity: 'critical' | 'warning' | 'tip' }[] = []
 
-  if (backtest.sharpe < 1.0) suggestions.push({ label: 'Improve Sharpe Ratio', prompt: `The current Sharpe ratio is ${backtest.sharpe.toFixed(2)} which is below 1.0. Optimize this strategy to improve risk-adjusted returns. Tighten entry conditions and improve the reward-to-risk ratio.`, priority: true })
-  if (backtest.max_drawdown > 15) suggestions.push({ label: 'Reduce Drawdown', prompt: `The max drawdown is ${backtest.max_drawdown.toFixed(1)}% which is too high. Reduce it below 10% by adding tighter stop losses, position size limits, or daily loss caps.`, priority: true })
-  if (backtest.win_rate < 45) suggestions.push({ label: 'Improve Win Rate', prompt: `The win rate is ${backtest.win_rate.toFixed(1)}% which is low. Add confirmation filters (RSI, volume, trend direction) to improve entry accuracy.`, priority: true })
-  if (backtest.total_trades < 20) suggestions.push({ label: 'Generate More Trades', prompt: `Only ${backtest.total_trades} trades were generated. Loosen entry conditions — use shorter indicator periods, remove one filter, or allow more concurrent positions.`, priority: true })
-  if (backtest.profit_factor < 1.2 && backtest.profit_factor > 0) suggestions.push({ label: 'Increase Profit Factor', prompt: `Profit factor is ${backtest.profit_factor.toFixed(2)} — barely profitable. Widen TP or tighten SL to improve the reward-to-risk ratio.`, priority: true })
-  if (backtest.total_return < 0) suggestions.push({ label: 'Make It Profitable', prompt: `The strategy is losing money (${backtest.total_return.toFixed(1)}% return). Fundamentally rethink the entry/exit logic. Try a different indicator combination or reverse the signal direction.`, priority: true })
+  if (backtest.total_trades === 0) {
+    issues.push({ severity: 'critical', label: 'Zero trades — simplify entry logic', prompt: `CRITICAL: The strategy produced 0 trades. This means the entry conditions are too restrictive. DRASTICALLY simplify: remove all filters except the core signal, widen SL to at least 300 points for XAUUSD, and remove any volume/spread checks (backtester doesn't have real volume data). Keep only ONE entry condition.` })
+  } else if (backtest.total_trades < 10) {
+    issues.push({ severity: 'critical', label: `Only ${backtest.total_trades} trades — loosen filters`, prompt: `Only ${backtest.total_trades} trades in 2 years is too few for reliable results. Remove at least one entry filter, shorten indicator periods, or widen the trading window. Target at least 50+ trades.` })
+  }
 
-  // Add general suggestions if fewer than 3 specific ones
-  if (suggestions.length < 2) suggestions.push({ label: 'Maximize Return', prompt: 'Optimize this strategy to maximize total return while keeping drawdown reasonable.', priority: false })
-  if (suggestions.length < 3) suggestions.push({ label: 'Add Trailing Stop', prompt: 'Add an ATR-based trailing stop to lock in profits and let winners run longer.', priority: false })
-  if (suggestions.length < 4) suggestions.push({ label: 'Add Time Filter', prompt: 'Add a session time filter — only trade during London/NY overlap (13:00-17:00 GMT) for better liquidity.', priority: false })
+  if (backtest.total_trades > 0 && (backtest.net_profit ?? backtest.total_return) < 0) {
+    const loss = Math.abs(backtest.net_profit ?? backtest.total_return)
+    if (backtest.profit_factor < 0.8) {
+      issues.push({ severity: 'critical', label: `Losing $${loss.toFixed(0)} — reverse or rethink`, prompt: `The strategy lost $${loss.toFixed(0)} with PF ${backtest.profit_factor.toFixed(2)}. This is fundamentally unprofitable. Either: (1) reverse the signal direction (buy→sell, sell→buy), (2) widen take profit to at least 2x the stop loss, or (3) add a trend filter to avoid counter-trend trades. The R:R ratio needs to be at least 1.5:1.` })
+    } else {
+      issues.push({ severity: 'warning', label: `Losing $${loss.toFixed(0)} — adjust R:R ratio`, prompt: `Net loss of $${loss.toFixed(0)} but PF is ${backtest.profit_factor.toFixed(2)} — close to breakeven. Increase the take profit by 50% while keeping the stop loss the same. This should flip the strategy to profitable.` })
+    }
+  }
+
+  if (backtest.profit_factor > 0 && backtest.profit_factor < 1.2 && backtest.total_trades > 10) {
+    issues.push({ severity: 'warning', label: 'Low profit factor — improve R:R', prompt: `PF is ${backtest.profit_factor.toFixed(2)} — barely breaking even. Widen TP by 30-50% or tighten SL by 20%. Target PF > 1.5. Also consider adding a trailing stop to let winners run.` })
+  }
+
+  if (backtest.win_rate > 0 && backtest.win_rate < 40 && backtest.total_trades > 20) {
+    issues.push({ severity: 'warning', label: `Win rate ${backtest.win_rate.toFixed(0)}% — add trend filter`, prompt: `Win rate is only ${backtest.win_rate.toFixed(0)}%. Add a trend confirmation filter: only take longs above the 50-period EMA and shorts below it. This filters out counter-trend trades that usually lose.` })
+  }
+
+  if (backtest.max_drawdown > 20) {
+    issues.push({ severity: 'warning', label: `${backtest.max_drawdown.toFixed(0)}% drawdown — reduce risk`, prompt: `Max drawdown is ${backtest.max_drawdown.toFixed(0)}% which is dangerously high. Reduce position size by 50%, add a maximum daily loss limit, or tighten the stop loss. Target max DD < 15%.` })
+  }
+
+  // Good results — suggest fine-tuning
+  if (backtest.profit_factor >= 1.5 && backtest.total_trades >= 20) {
+    issues.push({ severity: 'tip', label: 'Looking good — fine-tune', prompt: `Good results (PF ${backtest.profit_factor.toFixed(2)}, ${backtest.total_trades} trades). Fine-tune by: adding a trailing stop to maximize winning trades, or adding a session filter to only trade during high-liquidity hours.` })
+  }
+  if (backtest.profit_factor >= 1.2 && backtest.total_trades >= 50) {
+    issues.push({ severity: 'tip', label: 'Add trailing stop', prompt: 'Add an ATR-based trailing stop to lock in profits on winning trades. Use 1.5x ATR as the trailing distance.' })
+  }
+
+  // Comparison with previous version
+  const hasPrev = prev && prev.total_trades > 0
+  const gotWorse = hasPrev && backtest.profit_factor < (prev?.profit_factor ?? 0) && backtest.total_trades > 0
+  const gotBetter = hasPrev && backtest.profit_factor > (prev?.profit_factor ?? 0) && backtest.total_trades > 0
 
   return (
     <div className="flex gap-3">
@@ -51,15 +106,38 @@ function OptimizeSuggestions({ backtest, onSend }: {
         <span className="text-[8px] font-black text-black tracking-[-0.06em]">SX</span>
       </div>
       <div className="flex-1 max-w-[85%] space-y-3">
-        <p className="text-[13px] text-foreground/50 font-medium">Based on the results, here are my recommendations:</p>
+        {/* Comparison with previous version */}
+        {hasPrev && (
+          <div className={`rounded-xl border px-3.5 py-2.5 space-y-1.5 ${gotBetter ? 'border-emerald-500/20 bg-emerald-500/[0.03]' : gotWorse ? 'border-red-500/20 bg-red-500/[0.03]' : 'border-foreground/[0.06] bg-foreground/[0.02]'}`}>
+            <p className={`text-[11px] font-semibold uppercase tracking-wider ${gotBetter ? 'text-emerald-400' : gotWorse ? 'text-red-400' : 'text-foreground/40'}`}>
+              {gotBetter ? 'Improved vs previous' : gotWorse ? 'Regressed vs previous' : 'Same as previous'}
+            </p>
+            <MetricDelta label="Profit Factor" current={backtest.profit_factor} previous={prev?.profit_factor} />
+            <MetricDelta label="Net Profit" current={backtest.net_profit ?? 0} previous={prev?.net_profit ?? prev?.total_return} unit="$" />
+            <MetricDelta label="Total Trades" current={backtest.total_trades} previous={prev?.total_trades} />
+            {backtest.win_rate > 0 && <MetricDelta label="Win Rate" current={backtest.win_rate} previous={prev?.win_rate} unit="%" />}
+            {backtest.max_drawdown > 0 && <MetricDelta label="Max Drawdown" current={backtest.max_drawdown} previous={prev?.max_drawdown} unit="%" higherIsBetter={false} />}
+          </div>
+        )}
+
+        {/* Analysis */}
+        <p className="text-[13px] text-foreground/50 font-medium">
+          {issues[0]?.severity === 'critical' ? 'Issues found — here\'s what to fix:' :
+           issues[0]?.severity === 'warning' ? 'Room for improvement:' :
+           'Results look solid. Optional improvements:'}
+        </p>
+
+        {/* Actionable buttons */}
         <div className="flex flex-wrap gap-2">
-          {suggestions.map((s) => (
+          {issues.map((s) => (
             <button
               key={s.label}
               onClick={() => onSend(s.prompt)}
               className={`rounded-full border px-3.5 py-1.5 text-[12px] font-medium transition-all ${
-                s.priority
-                  ? 'border-violet-500/20 bg-violet-500/[0.06] text-violet-400 hover:bg-violet-500/[0.12]'
+                s.severity === 'critical'
+                  ? 'border-red-500/20 bg-red-500/[0.06] text-red-400 hover:bg-red-500/[0.12]'
+                  : s.severity === 'warning'
+                  ? 'border-amber-500/20 bg-amber-500/[0.06] text-amber-400 hover:bg-amber-500/[0.12]'
                   : 'border-foreground/[0.08] bg-foreground/[0.02] text-foreground/50 hover:bg-foreground/[0.06] hover:text-foreground/70'
               }`}
             >
@@ -67,14 +145,15 @@ function OptimizeSuggestions({ backtest, onSend }: {
             </button>
           ))}
         </div>
-        {/* Custom optimization input */}
+
+        {/* Custom input */}
         <div className="flex gap-2">
           <input
             type="text"
             value={customInput}
             onChange={(e) => setCustomInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && customInput.trim()) { onSend(customInput.trim()); setCustomInput('') } }}
-            placeholder="Or type your own optimization request..."
+            placeholder="Or describe what to change..."
             className="flex-1 rounded-full border border-foreground/[0.08] bg-foreground/[0.02] px-4 py-1.5 text-[12px] text-foreground/70 placeholder:text-foreground/25 focus:outline-none focus:border-foreground/[0.15]"
           />
           {customInput.trim() && (
@@ -117,7 +196,7 @@ function cleanStreamingDisplay(text: string): string {
   return clean.replace(/\n{3,}/g, '\n\n').trim()
 }
 
-export function ChatThread({ messages, isGenerating, streamingContent, pipelineStatus, backtestData, pipelineError, hasCode, needsBacktest, isBacktesting, onEditMessage, onRegenerateMessage, onSend, onRetry, onRunBacktest, onFocusPrompt }: ChatThreadProps) {
+export function ChatThread({ messages, isGenerating, streamingContent, pipelineStatus, backtestData, previousBacktest, pipelineError, hasCode, needsBacktest, isBacktesting, onEditMessage, onRegenerateMessage, onSend, onRetry, onRunBacktest, onFocusPrompt }: ChatThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const [hasHadMessages, setHasHadMessages] = useState(false)
@@ -319,7 +398,7 @@ export function ChatThread({ messages, isGenerating, streamingContent, pipelineS
 
         {/* Optimize suggestions — based on actual backtest recommendations */}
         {backtestData && !isGenerating && !isBacktesting && !needsBacktest && !pipelineError && onSend && (
-          <OptimizeSuggestions backtest={backtestData} onSend={onSend} />
+          <OptimizeSuggestions backtest={backtestData} previousBacktest={previousBacktest} onSend={onSend} />
         )}
 
         <div ref={bottomRef} />

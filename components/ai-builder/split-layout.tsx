@@ -323,6 +323,9 @@ export function SplitLayout({
             streamingContent={streamingContent}
             pipelineStatus={chatPipelineStatus || pipelineStatus}
             backtestData={displayBacktest}
+            previousBacktest={versionHistory.versions.length >= 2
+              ? versionHistory.versions[versionHistory.versions.length - 2]?.metrics
+              : null}
             pipelineError={strategy.status === 'error' ? strategy.error : null}
             hasCode={!!displayCode}
             needsBacktest={!!displayCode && !codeHasBacktest && !optimizedBacktest && !isGenerating && !isBacktesting && !backtestJustFinished}
