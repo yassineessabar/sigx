@@ -19,6 +19,46 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch strategies' }, { status: 500 })
     }
 
+    // Enrich strategies with equity curves from their linked chats
+    const strategyIds = (strategies || []).map((s: any) => s.id).filter(Boolean)
+    if (strategyIds.length > 0) {
+      // Get chats linked to these strategies
+      const { data: chats } = await supabaseAdmin
+        .from('chats')
+        .select('id, strategy_id')
+        .in('strategy_id', strategyIds)
+
+      if (chats?.length) {
+        const chatIds = chats.map((c: any) => c.id)
+        // Get the latest backtest_result message for each chat
+        const { data: btMessages } = await supabaseAdmin
+          .from('chat_messages')
+          .select('chat_id, metadata')
+          .in('chat_id', chatIds)
+          .eq('role', 'assistant')
+          .order('created_at', { ascending: false })
+
+        // Build a map: strategy_id -> equity_curve
+        const curveMap: Record<string, unknown[]> = {}
+        for (const chat of chats) {
+          if (curveMap[chat.strategy_id]) continue
+          const msg = btMessages?.find(
+            (m: any) => m.chat_id === chat.id && m.metadata?.type === 'backtest_result' && m.metadata?.backtest_snapshot?.equity_curve?.length
+          )
+          if (msg) {
+            curveMap[chat.strategy_id] = (msg.metadata as any).backtest_snapshot.equity_curve
+          }
+        }
+
+        // Merge into strategies
+        for (const s of (strategies || []) as any[]) {
+          if (!s.equity_curve && curveMap[s.id]) {
+            s.equity_curve = curveMap[s.id]
+          }
+        }
+      }
+    }
+
     return NextResponse.json({ strategies })
   } catch (error) {
     console.error('Strategies GET error:', error)
