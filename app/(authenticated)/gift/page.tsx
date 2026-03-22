@@ -41,10 +41,21 @@ function GiftPage() {
   const giftCode = searchParams.get('code')
 
   useEffect(() => {
-    if (paymentSuccess && giftCode) {
-      toast.success(`Gift card ${giftCode} paid and sent!`)
+    if (paymentSuccess && giftCode && session?.access_token) {
+      // Activate the gift card directly (webhook fallback for localhost)
+      fetch('/api/gift-cards/activate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ code: giftCode }),
+      })
+        .then(r => r.json())
+        .then(d => {
+          if (d.success || d.already_active) toast.success(`Gift card ${giftCode} is ready to share!`)
+          else toast.success(`Gift card ${giftCode} paid and sent!`)
+        })
+        .catch(() => toast.success(`Gift card ${giftCode} paid and sent!`))
     }
-  }, [paymentSuccess, giftCode])
+  }, [paymentSuccess, giftCode, session?.access_token])
 
   const [activeTab, setActiveTab] = useState<'buy' | 'history' | 'redeem'>('buy')
   const [giftHistory, setGiftHistory] = useState<any[]>([])

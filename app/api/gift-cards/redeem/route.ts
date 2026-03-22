@@ -87,9 +87,16 @@ export async function POST(request: NextRequest) {
   }
 
   // Add credits to user's balance
-  await supabaseAdmin.rpc('exec_raw_sql', {
-    sql_query: `UPDATE profiles SET credits_balance = COALESCE(credits_balance, 0) + ${giftCard.credits} WHERE id = '${user.id}'`,
-  })
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('credits_balance')
+    .eq('id', user.id)
+    .single()
+
+  await supabaseAdmin
+    .from('profiles')
+    .update({ credits_balance: (profile?.credits_balance ?? 0) + giftCard.credits })
+    .eq('id', user.id)
 
   return NextResponse.json({
     success: true,
