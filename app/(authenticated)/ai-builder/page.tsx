@@ -349,14 +349,17 @@ export default function AIBuilderPage() {
     const name = projectName.trim()
     const prompt = pendingTemplatePrompt
     setPendingTemplatePrompt(null)
-    setProjectName('')
+    // Keep projectName set so the top bar shows the strategy name
     setSidebarOpen(false)
 
-    // Check if this matches a template — if so, inject results INSTANTLY
+    // Check if this matches a template — if so, inject results with a brief thinking delay
     const clientTemplate = findClientTemplate(prompt)
 
     if (clientTemplate) {
-      // Add user message
+      // Set the title to the template name
+      setProjectName(clientTemplate.name || name)
+
+      // Add user message first
       const userMsg: ChatMessageType = {
         id: crypto.randomUUID(),
         chat_id: '',
@@ -366,6 +369,14 @@ export default function AIBuilderPage() {
         metadata: {},
         created_at: new Date().toISOString(),
       }
+
+      setMessages([userMsg])
+      // Show "thinking" state for a natural feel
+      setIsGenerating(true)
+      setStreamingContent('')
+
+      // Brief delay to simulate AI thinking
+      await new Promise((resolve) => setTimeout(resolve, 2500))
 
       // Build assistant response with all template data
       const explanation = `**${clientTemplate.name}** — ${clientTemplate.market} ${clientTemplate.timeframe}\n\n${clientTemplate.description}\n\n**Original prompt:**\n> ${clientTemplate.prompt}`
@@ -385,6 +396,7 @@ export default function AIBuilderPage() {
         created_at: new Date().toISOString(),
       }
 
+      setIsGenerating(false)
       setMessages([userMsg, assistantMsg])
 
       // Save to DB — do it async but don't swallow errors
