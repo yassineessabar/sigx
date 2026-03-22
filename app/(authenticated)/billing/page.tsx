@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
-import { ArrowLeft, ChevronDown, ChevronUp, Gift, Loader2 } from 'lucide-react'
+import { ArrowLeft, ChevronDown, ChevronUp, Gift, Loader2, CreditCard } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PageTransition } from '@/components/ui/page-transition'
 import { toast } from 'sonner'
@@ -69,8 +69,23 @@ export default function BillingPage() {
   const [selectedCycle, setSelectedCycle] = useState<'yearly' | 'monthly'>('yearly')
   const [expandedCycle, setExpandedCycle] = useState<'yearly' | 'monthly'>('yearly')
   const [loading, setLoading] = useState(false)
+  const [currentPlan, setCurrentPlan] = useState<string>('free')
+  const [currentCredits, setCurrentCredits] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!session?.access_token) return
+    fetch('/api/credits', { headers: { Authorization: `Bearer ${session.access_token}` } })
+      .then(r => r.json())
+      .then(d => {
+        if (d.plan) setCurrentPlan(d.plan)
+        if (typeof d.credits === 'number') setCurrentCredits(d.credits)
+      })
+      .catch(() => {})
+  }, [session?.access_token])
 
   const savings = (plan.monthly - plan.yearly) * 12
+  const currentPlanData = plans[currentPlan]
+  const isCurrentPlan = planId === currentPlan
 
   const handleCheckout = async () => {
     if (!session?.access_token) return
@@ -117,6 +132,32 @@ export default function BillingPage() {
             </p>
           </div>
         </div>
+
+        {/* Current plan banner */}
+        <div className={cn(
+          'rounded-2xl border px-5 py-4 flex items-center justify-between',
+          isCurrentPlan
+            ? 'border-emerald-500/20 bg-emerald-500/[0.04]'
+            : 'border-foreground/[0.06] bg-foreground/[0.02]'
+        )}>
+          <div className="flex items-center gap-3">
+            <CreditCard size={18} className={isCurrentPlan ? 'text-emerald-400' : 'text-foreground/30'} />
+            <div>
+              <p className="text-[13px] text-foreground/50 font-medium">Current plan</p>
+              <p className="text-[16px] font-bold text-foreground/85 capitalize">{currentPlan}{currentPlanData ? ` — $${currentPlanData.monthly}/mo` : ''}</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-[13px] text-foreground/50 font-medium">Credits</p>
+            <p className="text-[16px] font-bold text-foreground/85 tabular-nums">{currentCredits ?? '...'}</p>
+          </div>
+        </div>
+
+        {isCurrentPlan && (
+          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] px-4 py-3 text-center">
+            <p className="text-[13px] text-emerald-400/80 font-medium">You&apos;re already on the {plan.name} plan</p>
+          </div>
+        )}
 
         {/* Billing cycle cards */}
         <div className="space-y-3">
@@ -280,7 +321,7 @@ export default function BillingPage() {
         <div className="flex justify-end">
           <button
             onClick={handleCheckout}
-            disabled={loading}
+            disabled={loading || isCurrentPlan}
             className="rounded-xl bg-white px-8 py-3.5 text-[15px] font-semibold text-black hover:bg-white/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 min-w-[220px]"
           >
             {loading ? (
