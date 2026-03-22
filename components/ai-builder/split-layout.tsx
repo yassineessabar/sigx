@@ -413,6 +413,20 @@ export function SplitLayout({
                 }
 
                 if (!res.ok) {
+                  // Check for insufficient credits — open upgrade modal
+                  if (res.status === 402) {
+                    let parsed = false
+                    try {
+                      const errData = JSON.parse(await res.text())
+                      if (errData.code === 'NO_CREDITS') {
+                        parsed = true
+                        setPipelineStatus(null)
+                        setBacktestJustFinished(false)
+                        onUpgradeClick()
+                      }
+                    } catch { /* fall through */ }
+                    if (parsed) return
+                  }
                   const errText = await res.text().catch(() => 'Unknown error')
                   setPipelineStatus(`Backtest failed: ${errText.slice(0, 100)}`)
                   return
