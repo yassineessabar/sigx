@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { ea_name, mq5_code, symbol, period } = await request.json()
+    const { ea_name, mq5_code, symbol, period, start, end } = await request.json()
 
     if (!ea_name || !mq5_code) {
       return NextResponse.json(
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
 
     // Try /compile-and-backtest first (single call, more reliable)
     let currentCode = mq5_code
-    let lastResult = await tryCompileAndBacktest(workerUrl, ea_name, currentCode, sym, per)
+    let lastResult = await tryCompileAndBacktest(workerUrl, ea_name, currentCode, sym, per, start, end)
 
     if (lastResult.supported) {
       // Endpoint exists — use its result (with auto-fix retries)
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
           const fixed = await autoFixCode(currentCode, errorLines)
           if (!fixed) break
           currentCode = fixed
-          lastResult = await tryCompileAndBacktest(workerUrl, ea_name, currentCode, sym, per)
+          lastResult = await tryCompileAndBacktest(workerUrl, ea_name, currentCode, sym, per, start, end)
           if (lastResult.success) return NextResponse.json(lastResult.data)
           if (!lastResult.compileError) break
         }
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
     }
 
     // /compile-and-backtest not available — fall back to separate calls
-    return await fallbackSeparateCalls(workerUrl, ea_name, currentCode, sym, per, slotId)
+    return await fallbackSeparateCalls(workerUrl, ea_name, currentCode, sym, per, slotId, start, end)
   } catch (error) {
     console.error('Backtest route error:', error)
     return NextResponse.json(
@@ -132,7 +132,8 @@ export async function POST(request: NextRequest) {
  * Returns { supported: false } if endpoint doesn't exist (404).
  */
 async function tryCompileAndBacktest(
-  workerUrl: string, eaName: string, code: string, symbol: string, period: string
+  workerUrl: string, eaName: string, code: string, symbol: string, period: string,
+  start?: string, end?: string
 ) {
   try {
     const controller = new AbortController()
@@ -141,7 +142,7 @@ async function tryCompileAndBacktest(
     const res = await fetch(`${workerUrl}/compile-and-backtest`, {
       method: 'POST',
       headers: workerHeaders(),
-      body: JSON.stringify({ ea_name: eaName, mq5_code: code, symbol, period }),
+      body: JSON.stringify({ ea_name: eaName, mq5_code: code, symbol, period, ...(start ? { start } : {}), ...(end ? { end } : {}) }),
       signal: controller.signal,
     })
 
@@ -200,7 +201,8 @@ async function tryCompileAndBacktest(
  * Fallback: separate /compile then /backtest calls.
  */
 async function fallbackSeparateCalls(
-  workerUrl: string, eaName: string, code: string, symbol: string, period: string, slotId: string
+  workerUrl: string, eaName: string, code: string, symbol: string, period: string, slotId: string,
+  start?: string, end?: string
 ) {
   let currentCode = code
 
@@ -257,7 +259,7 @@ async function fallbackSeparateCalls(
     const res = await fetch(`${workerUrl}/backtest`, {
       method: 'POST',
       headers: workerHeaders(),
-      body: JSON.stringify({ ea_name: eaName, symbol, period, slot_id: slotId }),
+      body: JSON.stringify({ ea_name: eaName, symbol, period, slot_id: slotId, ...(start ? { start } : {}), ...(end ? { end } : {}) }),
       signal: controller.signal,
     })
 

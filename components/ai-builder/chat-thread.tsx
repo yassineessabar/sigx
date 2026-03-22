@@ -25,7 +25,8 @@ interface ChatThreadProps {
   onRegenerateMessage?: (messageId: string) => void
   onSend?: (message: string) => void
   onRetry?: () => void
-  onRunBacktest?: () => void
+  onRunBacktest?: (startDate?: string, endDate?: string) => void
+  onStopBacktest?: () => void
   onFocusPrompt?: (placeholder?: string) => void
 }
 
@@ -189,6 +190,76 @@ function ThinkingBubble() {
   )
 }
 
+function BacktestLauncher({ onRunBacktest, onFocusPrompt }: {
+  onRunBacktest: (startDate?: string, endDate?: string) => void
+  onFocusPrompt?: (placeholder?: string) => void
+}) {
+  const [showDates, setShowDates] = useState(false)
+  const [startDate, setStartDate] = useState('2023.01.01')
+  const [endDate, setEndDate] = useState('2025.01.01')
+
+  return (
+    <div className="flex gap-3">
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-white">
+        <span className="text-[8px] font-black text-black tracking-[-0.06em]">SX</span>
+      </div>
+      <div className="space-y-2.5">
+        <p className="text-[13px] text-foreground/50">Ready to test this strategy? You can also modify the parameters above first.</p>
+
+        {/* Date range — collapsible */}
+        {showDates && (
+          <div className="flex items-center gap-2 rounded-xl border border-foreground/[0.08] bg-foreground/[0.02] px-3 py-2">
+            <span className="text-[11px] text-foreground/35 font-medium shrink-0">Period:</span>
+            <input
+              type="text"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              placeholder="2023.01.01"
+              className="w-[90px] bg-transparent text-[12px] text-foreground/70 font-mono border-b border-foreground/[0.10] focus:border-foreground/[0.25] focus:outline-none py-0.5 text-center"
+            />
+            <span className="text-[11px] text-foreground/25">→</span>
+            <input
+              type="text"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              placeholder="2025.01.01"
+              className="w-[90px] bg-transparent text-[12px] text-foreground/70 font-mono border-b border-foreground/[0.10] focus:border-foreground/[0.25] focus:outline-none py-0.5 text-center"
+            />
+          </div>
+        )}
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => onRunBacktest(showDates ? startDate : undefined, showDates ? endDate : undefined)}
+            className="rounded-full bg-white px-4 py-2 text-[13px] font-semibold text-black hover:bg-white/90 transition-colors flex items-center gap-2"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Run Backtest
+          </button>
+          <button
+            onClick={() => setShowDates(!showDates)}
+            className={`rounded-full border px-3 py-2 text-[11px] font-medium transition-colors ${
+              showDates
+                ? 'border-foreground/[0.15] bg-foreground/[0.06] text-foreground/60'
+                : 'border-foreground/[0.08] bg-foreground/[0.02] text-foreground/35 hover:text-foreground/50'
+            }`}
+          >
+            {showDates ? `${startDate} → ${endDate}` : 'Change dates'}
+          </button>
+          {onFocusPrompt && (
+            <button
+              onClick={() => onFocusPrompt('e.g. Change SL to 300 points, add RSI filter...')}
+              className="rounded-full border border-foreground/[0.10] bg-foreground/[0.03] px-3 py-2 text-[11px] font-medium text-foreground/35 hover:text-foreground/50 hover:bg-foreground/[0.06] transition-colors"
+            >
+              Adjust params
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function cleanStreamingDisplay(text: string): string {
   let clean = text.replace(/---\w+_START---[\s\S]*?---\w+_END---/g, '')
   clean = clean.replace(/---\w+_START---[\s\S]*$/, '')
@@ -196,7 +267,7 @@ function cleanStreamingDisplay(text: string): string {
   return clean.replace(/\n{3,}/g, '\n\n').trim()
 }
 
-export function ChatThread({ messages, isGenerating, streamingContent, pipelineStatus, backtestData, previousBacktest, pipelineError, hasCode, needsBacktest, isBacktesting, onEditMessage, onRegenerateMessage, onSend, onRetry, onRunBacktest, onFocusPrompt }: ChatThreadProps) {
+export function ChatThread({ messages, isGenerating, streamingContent, pipelineStatus, backtestData, previousBacktest, pipelineError, hasCode, needsBacktest, isBacktesting, onEditMessage, onRegenerateMessage, onSend, onRetry, onRunBacktest, onStopBacktest, onFocusPrompt }: ChatThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const [hasHadMessages, setHasHadMessages] = useState(false)
@@ -354,44 +425,31 @@ export function ChatThread({ messages, isGenerating, streamingContent, pipelineS
 
         {/* Run Backtest button — shows when code exists but hasn't been backtested yet */}
         {needsBacktest && !isBacktesting && !isGenerating && !pipelineError && onRunBacktest && (
-          <div className="flex gap-3">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-white">
-              <span className="text-[8px] font-black text-black tracking-[-0.06em]">SX</span>
-            </div>
-            <div className="space-y-2">
-              <p className="text-[13px] text-foreground/50">Ready to test this strategy? You can also modify the parameters above first.</p>
-              <div className="flex gap-2">
-                <button
-                  onClick={onRunBacktest}
-                  className="rounded-full bg-white px-4 py-2 text-[13px] font-semibold text-black hover:bg-white/90 transition-colors flex items-center gap-2"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                  Run Backtest
-                </button>
-                {onFocusPrompt && (
-                  <button
-                    onClick={() => onFocusPrompt('e.g. Change SL to 300 points, add RSI filter...')}
-                    className="rounded-full border border-foreground/[0.10] bg-foreground/[0.03] px-4 py-2 text-[12px] font-medium text-foreground/50 hover:bg-foreground/[0.06] transition-colors"
-                  >
-                    Adjust parameters
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
+          <BacktestLauncher onRunBacktest={onRunBacktest} onFocusPrompt={onFocusPrompt} />
         )}
 
-        {/* Backtesting in progress indicator */}
+        {/* Backtesting in progress indicator with stop button */}
         {isBacktesting && (
           <div className="flex gap-3">
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[7px] bg-white">
               <span className="text-[8px] font-black text-black tracking-[-0.06em]">SX</span>
             </div>
-            <div className="rounded-[14px] border border-foreground/[0.04] bg-foreground/[0.012] px-4 py-3">
-              <div className="flex items-center gap-3">
-                <Loader2 className="h-4 w-4 animate-spin text-foreground/50" />
-                <span className="text-[13px] text-foreground/50 font-medium">{pipelineStatus || 'Running backtest...'}</span>
+            <div className="space-y-2">
+              <div className="rounded-[14px] border border-foreground/[0.04] bg-foreground/[0.012] px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <Loader2 className="h-4 w-4 animate-spin text-foreground/50" />
+                  <span className="text-[13px] text-foreground/50 font-medium">{pipelineStatus || 'Running backtest...'}</span>
+                </div>
               </div>
+              {onStopBacktest && (
+                <button
+                  onClick={onStopBacktest}
+                  className="rounded-full border border-red-500/20 bg-red-500/[0.06] px-4 py-1.5 text-[11px] font-medium text-red-400 hover:bg-red-500/[0.12] transition-colors flex items-center gap-1.5"
+                >
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+                  Stop Backtest
+                </button>
+              )}
             </div>
           </div>
         )}

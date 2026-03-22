@@ -333,7 +333,7 @@ export function SplitLayout({
             onEditMessage={onEditMessage}
             onRegenerateMessage={onRegenerateMessage}
             onSend={onSend}
-            onRunBacktest={displayCode ? async () => {
+            onRunBacktest={displayCode ? async (startDate?: string, endDate?: string) => {
               // Prevent double-click
               if (isBacktesting) return
 
@@ -343,7 +343,10 @@ export function SplitLayout({
 
               setIsBacktesting(true)
               setBacktestJustFinished(false)
-              setPipelineStatus(`Compiling and backtesting on MT5... · ${symbol} · H1 · Jan 2023–Jan 2025`)
+              const start = startDate || '2023.01.01'
+              const end = endDate || '2025.01.01'
+              const dateLabel = `${start.replace(/\./g, '/').slice(0,7)} – ${end.replace(/\./g, '/').slice(0,7)}`
+              setPipelineStatus(`Compiling and backtesting on MT5... · ${symbol} · H1 · ${dateLabel}`)
 
               // Clean up previous abort controller/timeout
               if (backtestTimeoutRef.current) clearTimeout(backtestTimeoutRef.current)
@@ -378,7 +381,7 @@ export function SplitLayout({
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`,
                   },
-                  body: JSON.stringify({ ea_name: eaName, mq5_code: displayCode, symbol, period: 'H1' }),
+                  body: JSON.stringify({ ea_name: eaName, mq5_code: displayCode, symbol, period: 'H1', start, end }),
                   signal: controller.signal,
                 })
 
@@ -395,7 +398,7 @@ export function SplitLayout({
                           'Content-Type': 'application/json',
                           Authorization: `Bearer ${token}`,
                         },
-                        body: JSON.stringify({ ea_name: eaName, mq5_code: displayCode, symbol, period: 'H1' }),
+                        body: JSON.stringify({ ea_name: eaName, mq5_code: displayCode, symbol, period: 'H1', start, end }),
                         signal: controller.signal,
                       })
                     }
@@ -507,6 +510,13 @@ export function SplitLayout({
                 onSend(lastUserMsg.content)
               }
             }}
+            onStopBacktest={isBacktesting ? () => {
+              backtestAbortRef.current?.abort()
+              setIsBacktesting(false)
+              setPipelineStatus('Backtest cancelled')
+              setBacktestJustFinished(true)
+              setTimeout(() => { setPipelineStatus(null); setBacktestJustFinished(false) }, 3000)
+            } : undefined}
             onFocusPrompt={(hint) => promptInputRef.current?.focus(hint)}
           />
           <PromptInput ref={promptInputRef} onSend={onSend} isGenerating={isGenerating} onStop={onStop} />
