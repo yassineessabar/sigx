@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react'
-import { ArrowUp, Square, StopCircle } from 'lucide-react'
+import { ArrowUp, Square, StopCircle, Upload, FileCode, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 import Link from 'next/link'
 
 interface PromptInputProps {
@@ -20,7 +21,9 @@ export interface PromptInputHandle {
 export const PromptInput = forwardRef<PromptInputHandle, PromptInputProps>(function PromptInput({ onSend, isGenerating, onStop, placeholder, variant = 'default' }, ref) {
   const [input, setInput] = useState('')
   const [dynamicPlaceholder, setDynamicPlaceholder] = useState<string | undefined>(undefined)
+  const [uploadedFile, setUploadedFile] = useState<{ name: string; code: string } | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useImperativeHandle(ref, () => ({
     focus: (hint?: string) => {
@@ -38,13 +41,42 @@ export const PromptInput = forwardRef<PromptInputHandle, PromptInputProps>(funct
   }, [input])
 
   const handleSubmit = () => {
-    if (!input.trim() || isGenerating) return
-    onSend(input.trim())
+    if ((!input.trim() && !uploadedFile) || isGenerating) return
+    let message = input.trim()
+    if (uploadedFile) {
+      const prefix = message ? `${message}\n\n` : `Analyze and improve this ${uploadedFile.name.endsWith('.mq4') ? 'MQL4' : 'MQL5'} Expert Advisor:\n\n`
+      message = `${prefix}---MQL5_CODE_START---\n${uploadedFile.code}\n---MQL5_CODE_END---`
+      setUploadedFile(null)
+    }
+    onSend(message)
     setInput('')
     setDynamicPlaceholder(undefined)
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
     }
+  }
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.name.endsWith('.mq5') && !file.name.endsWith('.mq4')) {
+      toast.error('Only .mq5 and .mq4 files are supported')
+      return
+    }
+    if (file.size > 500_000) {
+      toast.error('File too large (max 500KB)')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      const code = reader.result as string
+      setUploadedFile({ name: file.name, code })
+      toast.success(`${file.name} loaded — add instructions or press send`)
+      textareaRef.current?.focus()
+    }
+    reader.readAsText(file)
+    // Reset so the same file can be re-selected
+    e.target.value = ''
   }
 
   const isHero = variant === 'hero'
@@ -66,7 +98,32 @@ export const PromptInput = forwardRef<PromptInputHandle, PromptInputProps>(funct
             </button>
           </div>
         )}
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".mq5,.mq4"
+          className="hidden"
+          onChange={handleFileUpload}
+        />
+
         <div className="relative rounded-2xl border border-foreground/[0.08] bg-surface transition-all duration-200 focus-within:border-foreground/[0.14]">
+          {/* Uploaded file badge */}
+          {uploadedFile && (
+            <div className="px-4 pt-3 pb-0">
+              <div className="inline-flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-500/[0.06] px-3 py-1.5">
+                <FileCode size={14} className="text-blue-400 shrink-0" />
+                <span className="text-[12px] font-medium text-blue-400/80 truncate max-w-[200px]">{uploadedFile.name}</span>
+                <button
+                  onClick={() => setUploadedFile(null)}
+                  className="text-blue-400/40 hover:text-blue-400 transition-colors"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Textarea */}
           <textarea
             ref={textareaRef}
@@ -90,7 +147,17 @@ export const PromptInput = forwardRef<PromptInputHandle, PromptInputProps>(funct
           {/* Bottom bar */}
           <div className="flex items-center justify-between px-3 pb-3">
             <div className="flex items-center gap-1">
-              {/* Model indicator (passive label) */}
+              {/* Upload .mq5/.mq4 */}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isGenerating}
+                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] text-foreground/40 hover:text-foreground/70 hover:bg-foreground/[0.04] font-medium transition-colors disabled:opacity-30"
+                title="Upload .mq5 or .mq4 file"
+              >
+                <Upload size={13} />
+                <span className="hidden sm:inline">.mq5</span>
+              </button>
+              {/* Model indicator */}
               <div className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] text-foreground/60 font-medium">
                 <div className="w-[14px] h-[14px] rounded-full border border-foreground/[0.15] flex items-center justify-center">
                   <div className="w-[5px] h-[5px] rounded-full bg-emerald-400/60" />
@@ -111,7 +178,7 @@ export const PromptInput = forwardRef<PromptInputHandle, PromptInputProps>(funct
               ) : (
                 <button
                   onClick={handleSubmit}
-                  disabled={!input.trim()}
+                  disabled={!input.trim() && !uploadedFile}
                   className="flex items-center justify-center h-8 w-8 rounded-full bg-white text-black hover:bg-white/90 transition-all disabled:opacity-30 disabled:bg-foreground/20 disabled:text-foreground/40"
                 >
                   <ArrowUp size={14} strokeWidth={2.5} />
