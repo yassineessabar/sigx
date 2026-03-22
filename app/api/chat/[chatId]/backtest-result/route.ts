@@ -54,6 +54,33 @@ export async function POST(
       return NextResponse.json({ error: 'Failed to save' }, { status: 500 })
     }
 
+    // Update the linked strategy record with latest backtest metrics
+    const { data: chatWithStrategy } = await supabaseAdmin
+      .from('chats')
+      .select('strategy_id')
+      .eq('id', chatId)
+      .single()
+
+    if (chatWithStrategy?.strategy_id) {
+      const strategyUpdate: Record<string, unknown> = {
+        sharpe_ratio: metrics.sharpe ?? null,
+        max_drawdown: metrics.max_drawdown ?? null,
+        win_rate: metrics.win_rate ?? null,
+        total_return: metrics.total_return ?? null,
+        status: 'backtested',
+        updated_at: new Date().toISOString(),
+      }
+      if (mql5_code) strategyUpdate.mql5_code = mql5_code
+      if (strategy_snapshot?.name) strategyUpdate.name = strategy_snapshot.name
+      if (strategy_snapshot?.market) strategyUpdate.market = strategy_snapshot.market
+
+      await supabaseAdmin
+        .from('strategies')
+        .update(strategyUpdate)
+        .eq('id', chatWithStrategy.strategy_id)
+        .eq('user_id', user.id)
+    }
+
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Backtest result route error:', error)
