@@ -218,31 +218,53 @@ export async function POST(request: NextRequest) {
                 content: display, metadata,
               })
 
-              // Save strategy if code was generated
+              // Save or update strategy if code was generated
               if (metadata.mql5_code) {
                 const strat = (metadata.strategy_snapshot as { name: string; market: string }) || {}
                 const bt = metadata.backtest_snapshot as Record<string, number> | undefined
-                let name = strat.name || message.slice(0, 50) || 'Strategy'
 
-                // Deduplicate name
-                const { data: existing } = await supabaseAdmin.from('strategies').select('name').eq('user_id', user.id)
-                if (existing) {
-                  const names = existing.map(s => s.name)
-                  const base = name; let c = 1
-                  while (names.includes(name)) { c++; name = `${base} (${c})` }
-                }
+                // Check if this chat already has a linked strategy
+                const { data: chatRow } = await supabaseAdmin
+                  .from('chats')
+                  .select('strategy_id')
+                  .eq('id', currentChatId)
+                  .single()
 
-                const { data: strategy } = await supabaseAdmin.from('strategies').insert({
-                  user_id: user.id, name, market: strat.market || 'XAUUSD',
-                  strategy_summary: metadata.strategy_snapshot || null,
-                  mql5_code: (metadata.mql5_code as string) || null,
-                  status: bt ? 'backtested' : 'draft',
-                  sharpe_ratio: bt?.sharpe || null, max_drawdown: bt?.max_drawdown || null,
-                  win_rate: bt?.win_rate || null, total_return: bt?.total_return ?? bt?.net_profit ?? null,
-                }).select().single()
+                if (chatRow?.strategy_id) {
+                  // UPDATE existing strategy — don't create duplicates
+                  await supabaseAdmin.from('strategies').update({
+                    strategy_summary: metadata.strategy_snapshot || null,
+                    mql5_code: (metadata.mql5_code as string) || null,
+                    status: bt ? 'backtested' : 'draft',
+                    sharpe_ratio: bt?.sharpe || null,
+                    max_drawdown: bt?.max_drawdown || null,
+                    win_rate: bt?.win_rate || null,
+                    total_return: bt?.total_return ?? bt?.net_profit ?? null,
+                    updated_at: new Date().toISOString(),
+                  }).eq('id', chatRow.strategy_id)
+                } else {
+                  // First code generation — create new strategy
+                  let name = strat.name || message.slice(0, 50) || 'Strategy'
 
-                if (strategy) {
-                  await supabaseAdmin.from('chats').update({ strategy_id: strategy.id }).eq('id', currentChatId)
+                  const { data: existing } = await supabaseAdmin.from('strategies').select('name').eq('user_id', user.id)
+                  if (existing) {
+                    const names = existing.map(s => s.name)
+                    const base = name; let c = 1
+                    while (names.includes(name)) { c++; name = `${base} (${c})` }
+                  }
+
+                  const { data: strategy } = await supabaseAdmin.from('strategies').insert({
+                    user_id: user.id, name, market: strat.market || 'XAUUSD',
+                    strategy_summary: metadata.strategy_snapshot || null,
+                    mql5_code: (metadata.mql5_code as string) || null,
+                    status: bt ? 'backtested' : 'draft',
+                    sharpe_ratio: bt?.sharpe || null, max_drawdown: bt?.max_drawdown || null,
+                    win_rate: bt?.win_rate || null, total_return: bt?.total_return ?? bt?.net_profit ?? null,
+                  }).select().single()
+
+                  if (strategy) {
+                    await supabaseAdmin.from('chats').update({ strategy_id: strategy.id }).eq('id', currentChatId)
+                  }
                 }
               }
 
