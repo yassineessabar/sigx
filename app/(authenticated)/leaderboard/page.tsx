@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
+import Link from 'next/link'
 import {
   TrendingUp, TrendingDown, ArrowUpDown,
-  ChevronUp, ChevronDown, BarChart3, Copy, Users, Target, Info, Shield, ExternalLink, X
+  ChevronUp, ChevronDown, BarChart3, Copy, Users, Target, Info, Shield, ExternalLink, X, Trophy, ArrowRight
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PageTransition } from '@/components/ui/page-transition'
@@ -152,8 +153,30 @@ function SparklineSVG({ data, id, height = 80 }: { data: number[]; id: string; h
 
 // ── Main page ───────────────────────────────────────────────────────────────────
 
+const CHALLENGE_END = new Date("2026-04-30T23:59:59Z")
+
+function useCountdown(target: Date) {
+  const [left, setLeft] = useState({ d: 0, h: 0, m: 0, s: 0 })
+  useEffect(() => {
+    const tick = () => {
+      const diff = Math.max(0, target.getTime() - Date.now())
+      setLeft({
+        d: Math.floor(diff / 86400000),
+        h: Math.floor((diff / 3600000) % 24),
+        m: Math.floor((diff / 60000) % 60),
+        s: Math.floor((diff / 1000) % 60),
+      })
+    }
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [target])
+  return left
+}
+
 export default function LeaderboardPage() {
   const { session, profile } = useAuth()
+  const countdown = useCountdown(CHALLENGE_END)
   const [sortBy, setSortBy] = useState<SortKey>('score')
   const [sortAsc, setSortAsc] = useState(false)
   const [selectedEntry, setSelectedEntry] = useState<LeaderboardEntry | null>(null)
@@ -219,6 +242,53 @@ export default function LeaderboardPage() {
 
   return (
     <PageTransition className="p-6 sm:p-8 lg:p-10 space-y-6 max-w-[1400px]">
+
+      {/* ── Challenge Banner ──────────────────────────────────────────── */}
+      <Link href="/challenge" className="block group">
+        <div className="relative rounded-2xl border border-amber-400/[0.12] bg-gradient-to-r from-amber-400/[0.05] via-amber-500/[0.02] to-transparent overflow-hidden">
+          <div className="absolute -top-12 left-1/4 w-[250px] h-[100px] bg-amber-400/[0.04] rounded-full blur-[50px] pointer-events-none" />
+          <div className="relative flex flex-col sm:flex-row items-center justify-between gap-4 px-5 sm:px-6 py-4">
+            {/* Left */}
+            <div className="flex items-center gap-3.5">
+              <div className="h-10 w-10 rounded-xl bg-amber-400/10 border border-amber-400/[0.1] flex items-center justify-center shrink-0">
+                <Trophy size={18} className="text-amber-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[20px] font-black text-amber-400 tracking-tight">$10,000</span>
+                  <span className="text-[10px] font-bold text-amber-400/50 uppercase tracking-widest">Challenge</span>
+                </div>
+                <p className="text-[11px] text-foreground/35 font-medium">Build the best AI strategy — top 5 win cash</p>
+              </div>
+            </div>
+
+            {/* Countdown */}
+            <div className="flex items-center gap-1.5">
+              {[
+                { v: countdown.d, l: "D" },
+                { v: countdown.h, l: "H" },
+                { v: countdown.m, l: "M" },
+                { v: countdown.s, l: "S" },
+              ].map((u, i) => (
+                <div key={u.l} className="flex items-center gap-1.5">
+                  <div className="h-[34px] w-[34px] rounded-lg border border-amber-400/[0.1] bg-amber-400/[0.03] flex items-center justify-center">
+                    <span className="text-[14px] font-black text-foreground tabular-nums">{String(u.v).padStart(2, "0")}</span>
+                  </div>
+                  {i < 3 && <span className="text-[12px] text-amber-400/25 font-bold">:</span>}
+                </div>
+              ))}
+            </div>
+
+            {/* CTA */}
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[12px] font-semibold text-amber-400/60 group-hover:text-amber-400 transition-colors">Enter</span>
+              <div className="h-7 w-7 rounded-full bg-amber-400/10 group-hover:bg-amber-400/20 flex items-center justify-center transition-colors">
+                <ArrowRight size={12} className="text-amber-400 group-hover:translate-x-0.5 transition-transform" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </Link>
 
       {/* ── Header ──────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">

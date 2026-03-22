@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Copy, Check, Share2, Gift, X, Users, Zap, Trophy } from 'lucide-react'
+import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
 import {
@@ -200,9 +201,9 @@ export function InviteModal({ open, onOpenChange }: InviteModalProps) {
 
             {/* Footer */}
             <div className="mt-5 pt-4 border-t border-foreground/[0.06] flex items-center justify-between">
-              <button className="text-[11px] text-foreground/25 hover:text-foreground/50 transition-colors">
+              <Link href="/terms" className="text-[11px] text-foreground/25 hover:text-foreground/50 transition-colors">
                 Terms & Conditions
-              </button>
+              </Link>
               <p className="text-[11px] text-foreground/20">
                 Credits balance: <span className="font-semibold text-foreground/40 tabular-nums">{stats.credits_balance}</span>
               </p>

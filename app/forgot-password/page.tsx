@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 
@@ -9,9 +9,18 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState('')
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [cooldown, setCooldown] = useState(0)
+
+  // Cooldown timer
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const timer = setTimeout(() => setCooldown(cooldown - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [cooldown])
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (cooldown > 0) return
     setError('')
     setLoading(true)
 
@@ -20,9 +29,15 @@ export default function ForgotPasswordPage() {
     })
 
     if (resetError) {
-      setError(resetError.message)
+      if (resetError.message.toLowerCase().includes('rate') || resetError.message.toLowerCase().includes('limit')) {
+        setError('Please wait a minute before requesting another reset link.')
+        setCooldown(60)
+      } else {
+        setError(resetError.message)
+      }
     } else {
       setSent(true)
+      setCooldown(60)
     }
     setLoading(false)
   }
@@ -47,9 +62,23 @@ export default function ForgotPasswordPage() {
             <div className="rounded-[10px] bg-emerald-500/[0.06] border border-emerald-500/[0.08] px-4 py-3 text-[12px] text-emerald-400/70 font-medium">
               Check your email for a password reset link.
             </div>
-            <Link href="/login" className="text-[13px] text-foreground/60 hover:text-foreground/80 transition-colors duration-300 font-medium">
-              Back to Sign In
-            </Link>
+            {cooldown > 0 ? (
+              <p className="text-[13px] text-foreground/30 font-medium">
+                Resend available in <span className="font-semibold text-foreground/50 tabular-nums">{cooldown}s</span>
+              </p>
+            ) : (
+              <button
+                onClick={() => { setSent(false); setError('') }}
+                className="text-[13px] text-foreground/50 hover:text-foreground/80 transition-colors duration-300 font-medium"
+              >
+                Didn&apos;t receive it? Send again
+              </button>
+            )}
+            <div>
+              <Link href="/login" className="text-[13px] text-foreground/60 hover:text-foreground/80 transition-colors duration-300 font-medium">
+                Back to Sign In
+              </Link>
+            </div>
           </div>
         ) : (
           <form onSubmit={handleReset} className="space-y-4">
@@ -76,11 +105,13 @@ export default function ForgotPasswordPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || cooldown > 0}
               className="flex w-full items-center justify-center rounded-[10px] bg-white px-4 py-2.5 text-[13px] font-semibold text-black transition-all duration-300 hover:bg-white/85 disabled:opacity-50"
             >
               {loading ? (
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-black border-t-transparent" />
+              ) : cooldown > 0 ? (
+                `Wait ${cooldown}s`
               ) : (
                 'Send Reset Link'
               )}

@@ -10,25 +10,28 @@ const plans = [
   {
     id: 'starter',
     name: 'Starter',
-    price: 16,
-    credits: { monthly: '100', backtest: '2k' },
+    price: 19,
+    credits: '1,000',
+    usage: '~125 AI messages or ~200 backtests',
     cta: 'Subscribe to Starter',
     highlights: [
       'Unlimited strategies',
       'MQL5 Expert Advisors',
+      '1,000 credits/month',
     ],
   },
   {
     id: 'builder',
     name: 'Builder',
-    price: 40,
+    price: 49,
     recommended: true,
-    credits: { monthly: '250', backtest: '10k' },
+    credits: '3,000',
+    usage: '~375 AI messages or ~600 backtests',
     cta: 'Subscribe to Builder',
     highlights: [
       'Unlimited strategies',
       'MQL5 Expert Advisors',
-      'SIGX Pro models',
+      '3,000 credits/month',
       'Priority backtesting',
       'API access',
       'Share strategies',
@@ -37,13 +40,14 @@ const plans = [
   {
     id: 'pro',
     name: 'Pro',
-    price: 80,
-    credits: { monthly: '500', backtest: '20k' },
+    price: 99,
+    credits: '8,000',
+    usage: '~1,000 AI messages or ~1,600 backtests',
     cta: 'Subscribe to Pro',
     highlights: [
       'Unlimited strategies',
       'MQL5 Expert Advisors',
-      'SIGX Pro models',
+      '8,000 credits/month',
       'Priority backtesting',
       'API access',
       'Share strategies',
@@ -54,13 +58,14 @@ const plans = [
   {
     id: 'elite',
     name: 'Elite',
-    price: 160,
-    credits: { monthly: '1.2k', backtest: '50k' },
+    price: 199,
+    credits: '20,000',
+    usage: '~2,500 AI messages or ~4,000 backtests',
     cta: 'Subscribe to Elite',
     highlights: [
       'Unlimited strategies',
       'MQL5 Expert Advisors',
-      'SIGX Pro models',
+      '20,000 credits/month',
       'Priority backtesting',
       'API access',
       'Share strategies',
@@ -78,19 +83,19 @@ const faqs = [
   },
   {
     q: "What's included in the free plan?",
-    a: 'The free plan includes $5 of usage credit per month, up to 10 strategies, basic backtesting, and access to MQL5 Expert Advisors.',
+    a: 'The free plan includes 50 credits per month — enough for about 6 AI messages or 10 backtests. Great for trying out the platform.',
   },
   {
-    q: 'What are backtest credits?',
-    a: 'Backtest credits are used each time you run a backtest on your strategy. More complex strategies and longer timeframes use more credits.',
+    q: 'How do credits work?',
+    a: 'Credits are a single unified currency for all operations. An AI chat message costs 8 credits, a backtest costs 5 credits, and a full pipeline run costs 15 credits per iteration. Credits reset monthly with your plan.',
   },
   {
     q: 'Can I cancel my subscription anytime?',
     a: 'Yes, you can cancel your subscription at any time. Your plan will remain active until the end of your current billing period.',
   },
   {
-    q: 'What happens if I reach my plan limits?',
-    a: 'If you reach your monthly credit limit, you can purchase additional credits or upgrade to a higher plan for more capacity.',
+    q: 'What happens if I run out of credits?',
+    a: 'You can upgrade to a higher plan for more monthly credits. Credit costs are shown before each operation so you always know what you are spending.',
   },
 ]
 
@@ -141,15 +146,11 @@ export default function UpgradePage() {
                 {/* Credits */}
                 <div className="mb-6">
                   <div className="text-[14px] text-foreground">
-                    <span className="font-medium min-w-[30px] inline-block">{plan.credits.monthly}</span>
-                    <span className="font-normal"> Monthly credits</span>
+                    <span className="font-medium">{plan.credits}</span>
+                    <span className="font-normal"> credits</span>
                     <span className="text-foreground/30 ml-1">/mo</span>
                   </div>
-                  <div className="text-[14px] text-foreground mt-2">
-                    <span className="font-medium min-w-[30px] inline-block">{plan.credits.backtest}</span>
-                    <span className="font-normal"> Backtest credits</span>
-                    <span className="text-foreground/30 ml-1">/mo</span>
-                  </div>
+                  <p className="text-[11px] text-foreground/30 mt-1.5 font-medium">{plan.usage}</p>
                 </div>
 
                 {/* CTA */}

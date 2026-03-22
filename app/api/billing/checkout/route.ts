@@ -3,11 +3,13 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getUserFromToken } from '@/lib/api-auth'
 import { stripe } from '@/lib/stripe'
 
+import { PLANS as PLAN_DEFS } from '@/lib/credit-costs'
+
 const PLANS: Record<string, { yearly: number; monthly: number; credits: number; name: string }> = {
-  starter:  { yearly: 15360, monthly: 1600, credits: 100,  name: 'Starter' },  // $12.80/mo yearly
-  builder:  { yearly: 38400, monthly: 4000, credits: 250,  name: 'Builder' },  // $32/mo yearly
-  pro:      { yearly: 76800, monthly: 8000, credits: 500,  name: 'Pro' },      // $64/mo yearly
-  elite:    { yearly: 153600, monthly: 16000, credits: 1200, name: 'Elite' },   // $128/mo yearly
+  starter:  { yearly: PLAN_DEFS.starter.yearly_price_cents, monthly: PLAN_DEFS.starter.monthly_price_cents, credits: PLAN_DEFS.starter.credits, name: PLAN_DEFS.starter.name },
+  builder:  { yearly: PLAN_DEFS.builder.yearly_price_cents, monthly: PLAN_DEFS.builder.monthly_price_cents, credits: PLAN_DEFS.builder.credits, name: PLAN_DEFS.builder.name },
+  pro:      { yearly: PLAN_DEFS.pro.yearly_price_cents,     monthly: PLAN_DEFS.pro.monthly_price_cents,     credits: PLAN_DEFS.pro.credits,     name: PLAN_DEFS.pro.name },
+  elite:    { yearly: PLAN_DEFS.elite.yearly_price_cents,   monthly: PLAN_DEFS.elite.monthly_price_cents,   credits: PLAN_DEFS.elite.credits,   name: PLAN_DEFS.elite.name },
 }
 
 export async function POST(request: NextRequest) {

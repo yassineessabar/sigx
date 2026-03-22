@@ -1,7 +1,8 @@
 'use client'
 
+import { useCallback } from 'react'
 import { EquityCurve } from '@/components/charts/equity-curve'
-import { TrendingUp, TrendingDown, BarChart3, Target } from 'lucide-react'
+import { TrendingUp, TrendingDown, BarChart3, Target, Download } from 'lucide-react'
 
 interface BacktestPreviewProps {
   backtest: {
@@ -16,11 +17,40 @@ interface BacktestPreviewProps {
     equity_curve?: { date: string; equity: number }[]
     _estimated?: boolean
   }
+  reportHtmlB64?: string | null
 }
 
-export function BacktestPreview({ backtest }: BacktestPreviewProps) {
+export function BacktestPreview({ backtest, reportHtmlB64 }: BacktestPreviewProps) {
   const hasTrades = backtest.total_trades > 0
   const isEstimated = (backtest as Record<string, unknown>)._estimated === true
+
+  const handleDownloadReport = useCallback(() => {
+    if (!reportHtmlB64) return
+    try {
+      // Decode base64 to raw bytes (preserves binary data like embedded chart images)
+      const binaryStr = atob(reportHtmlB64)
+      const bytes = new Uint8Array(binaryStr.length)
+      for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i)
+
+      // Detect UTF-16LE BOM (0xFF 0xFE) — MT5 default encoding
+      const isUtf16 = bytes[0] === 0xFF && bytes[1] === 0xFE
+      const mimeType = isUtf16 ? 'text/html; charset=utf-16le' : 'text/html; charset=utf-8'
+      const blob = new Blob([bytes], { type: mimeType })
+
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `backtest-report-${new Date().toISOString().slice(0, 10)}.html`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch {
+      // Fallback: let the browser decode the base64 natively (preserves all binary)
+      const dataUri = `data:text/html;base64,${reportHtmlB64}`
+      window.open(dataUri, '_blank')
+    }
+  }, [reportHtmlB64])
 
   return (
     <div className="rounded-2xl border border-foreground/[0.08] bg-secondary overflow-hidden">
@@ -29,12 +59,24 @@ export function BacktestPreview({ backtest }: BacktestPreviewProps) {
           <span className="font-medium text-[14px] text-[#fafafa]">
             {isEstimated ? 'Estimated Results' : 'Backtest Results'}
           </span>
-          <span className={`rounded-full px-2.5 py-0.5 text-[12px] font-medium ${
-            isEstimated ? 'bg-blue-500/10 text-blue-400'
-            : hasTrades ? 'bg-[rgba(34,197,94,0.1)] text-[#22c55e]' : 'bg-amber-500/10 text-amber-400'
-          }`}>
-          {isEstimated ? 'AI Estimate' : hasTrades ? `${backtest.total_trades} trades` : 'No trades'}
-        </span>
+          <div className="flex items-center gap-2">
+            {reportHtmlB64 && (
+              <button
+                onClick={handleDownloadReport}
+                className="flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium text-foreground/40 hover:text-foreground/70 bg-foreground/[0.04] hover:bg-foreground/[0.08] border border-foreground/[0.06] transition-all"
+                title="Download full MT5 HTML report"
+              >
+                <Download size={11} />
+                Full Report
+              </button>
+            )}
+            <span className={`rounded-full px-2.5 py-0.5 text-[12px] font-medium ${
+              isEstimated ? 'bg-blue-500/10 text-blue-400'
+              : hasTrades ? 'bg-[rgba(34,197,94,0.1)] text-[#22c55e]' : 'bg-amber-500/10 text-amber-400'
+            }`}>
+              {isEstimated ? 'AI Estimate' : hasTrades ? `${backtest.total_trades} trades` : 'No trades'}
+            </span>
+          </div>
         </div>
         <p className="text-[11px] text-foreground/25 mt-1.5">
           {isEstimated ? 'Estimated • ' : ''}Backtest period: Jan 2023 — Jan 2025 • {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}

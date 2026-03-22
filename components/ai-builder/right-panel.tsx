@@ -14,6 +14,7 @@ import type { StrategyVersion } from '@/lib/use-versions'
 interface RightPanelProps {
   strategySnapshot: ChatMessageMetadata['strategy_snapshot'] | null
   backtestSnapshot: ChatMessageMetadata['backtest_snapshot'] | null
+  reportHtmlB64?: string | null
   mql5Code: string | null
   isOpen: boolean
   onToggle: () => void
@@ -37,6 +38,7 @@ interface RightPanelProps {
 export function RightPanel({
   strategySnapshot,
   backtestSnapshot,
+  reportHtmlB64,
   mql5Code,
   isOpen,
   onToggle,
@@ -149,7 +151,7 @@ export function RightPanel({
               {strategySnapshot || backtestSnapshot ? (
                 <>
                   {backtestSnapshot && (
-                    <BacktestPreview backtest={backtestSnapshot} />
+                    <BacktestPreview backtest={backtestSnapshot} reportHtmlB64={reportHtmlB64} />
                   )}
                   {backtestSnapshot && (
                     <StrategyScore backtest={backtestSnapshot} onAction={onSendPrompt} />

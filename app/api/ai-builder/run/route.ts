@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromToken } from '@/lib/api-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { CREDIT_COSTS, deductCredits, canAfford } from '@/lib/credit-costs'
 
 /**
  * POST /api/ai-builder/run
  * Forwards prompt + iterations + symbol + period to the Hybrid Manager.
  * Returns { job_id, status, ea_name }.
- * Requires auth. Deducts 1 credit.
+ * Requires auth. Deducts credits based on iteration count.
+ *
+ * Cost: PIPELINE_ITERATION × iterations (e.g., 3 iterations = 45 credits)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -15,29 +18,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check credits
-    const { data: profile } = await supabaseAdmin
-      .from('profiles')
-      .select('credits_balance')
-      .eq('id', user.id)
-      .single()
+    const body = await request.json()
+    const iterations = body.iterations || 3
+    const totalCost = CREDIT_COSTS.PIPELINE_ITERATION * iterations
 
-    if (!profile || (profile.credits_balance ?? 0) <= 0) {
+    // Check and deduct credits
+    const deduction = await deductCredits(supabaseAdmin, user.id, totalCost, `Pipeline (${iterations} iterations)`)
+    if (!deduction.success) {
+      const { balance } = await canAfford(supabaseAdmin, user.id, 0)
       return NextResponse.json(
-        { error: 'NO_CREDITS', message: 'You have no credits remaining. Please upgrade your plan.' },
+        {
+          error: 'NO_CREDITS',
+          message: `This pipeline costs ${totalCost} credits (${CREDIT_COSTS.PIPELINE_ITERATION}/iteration × ${iterations}). You have ${balance} credits.`,
+          credits_required: totalCost,
+          credits_balance: balance,
+        },
         { status: 402 }
       )
     }
-
-    // Deduct 1 credit
-    const newBalance = Math.max((profile.credits_balance ?? 0) - 1, 0)
-    await supabaseAdmin
-      .from('profiles')
-      .update({ credits_balance: newBalance })
-      .eq('id', user.id)
-
-    const body = await request.json()
-    const { prompt, iterations = 3, symbol = 'EURUSD', period = 'H1', ea_name } = body
+    const { prompt, symbol = 'EURUSD', period = 'H1', ea_name } = body
 
     if (!prompt) {
       return NextResponse.json({ error: 'prompt is required' }, { status: 400 })

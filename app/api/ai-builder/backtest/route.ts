@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromToken } from '@/lib/api-auth'
+import { supabaseAdmin } from '@/lib/supabase-admin'
+import { CREDIT_COSTS, deductCredits } from '@/lib/credit-costs'
 import Anthropic from '@anthropic-ai/sdk'
 
 const MAX_FIX_RETRIES = 2
@@ -59,6 +61,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: 'ea_name and mq5_code are required' },
         { status: 400 }
+      )
+    }
+
+    // Deduct backtest credits
+    const deduction = await deductCredits(supabaseAdmin, user.id, CREDIT_COSTS.BACKTEST, 'Backtest')
+    if (!deduction.success) {
+      return NextResponse.json(
+        { success: false, error: deduction.error, code: 'NO_CREDITS', credits_required: CREDIT_COSTS.BACKTEST, credits_balance: deduction.new_balance },
+        { status: 402 }
       )
     }
 
@@ -179,7 +190,7 @@ async function tryCompileAndBacktest(
       return {
         supported: true,
         success: true,
-        data: { success: true, metrics, equity_curve },
+        data: { success: true, metrics, equity_curve, report_b64: data.report_b64 || null },
       }
     }
 
@@ -285,7 +296,7 @@ async function fallbackSeparateCalls(
     const metrics = normalizeMetrics(data.metrics)
     const equity_curve = parseEquityCurve(data.report_b64, metrics)
 
-    return NextResponse.json({ success: true, metrics, equity_curve })
+    return NextResponse.json({ success: true, metrics, equity_curve, report_b64: data.report_b64 || null })
   } catch (err) {
     if ((err as Error).name === 'AbortError') {
       return NextResponse.json({

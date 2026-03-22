@@ -9,9 +9,9 @@ const navLinks = [
   { label: "Strategies", href: "#strategies" },
   { label: "Marketplace", href: "#marketplace" },
   { label: "Leaderboard", href: "#leaderboard" },
+  { label: "$10K Challenge", href: "/challenge", highlight: true },
   { label: "Pricing", href: "#pricing" },
   { label: "Enterprise", href: "#enterprise" },
-  { label: "Docs", href: "#docs" },
 ];
 
 export default function Navbar() {
@@ -51,15 +51,29 @@ export default function Navbar() {
           </Link>
 
           <div className="hidden md:flex items-center gap-0.5">
-            {navLinks.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                className="px-3 py-1.5 text-[12.5px] text-foreground/60 hover:text-foreground/90 transition-colors duration-300 font-medium"
-              >
-                {link.label}
-              </a>
-            ))}
+            {navLinks.map((link) =>
+              link.href.startsWith("/") ? (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  className={`px-3 py-1.5 text-[12.5px] font-medium transition-colors duration-300 ${
+                    link.highlight
+                      ? "text-amber-400/80 hover:text-amber-400"
+                      : "text-foreground/60 hover:text-foreground/90"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              ) : (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  className="px-3 py-1.5 text-[12.5px] text-foreground/60 hover:text-foreground/90 transition-colors duration-300 font-medium"
+                >
+                  {link.label}
+                </a>
+              )
+            )}
           </div>
 
           <div className="hidden md:flex items-center gap-1.5">
@@ -96,16 +110,29 @@ export default function Navbar() {
             className="md:hidden mx-4 mt-2 rounded-2xl border border-foreground/[0.05] bg-card/95 backdrop-blur-2xl"
           >
             <div className="p-2">
-              {navLinks.map((link) => (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  onClick={() => setMobileOpen(false)}
-                  className="block px-4 py-3 text-[14px] text-foreground/60 hover:text-foreground hover:bg-foreground/[0.03] transition-all rounded-xl font-medium"
-                >
-                  {link.label}
-                </a>
-              ))}
+              {navLinks.map((link) =>
+                link.href.startsWith("/") ? (
+                  <Link
+                    key={link.label}
+                    href={link.href}
+                    onClick={() => setMobileOpen(false)}
+                    className={`block px-4 py-3 text-[14px] hover:bg-foreground/[0.03] transition-all rounded-xl font-medium ${
+                      link.highlight ? "text-amber-400/80 hover:text-amber-400" : "text-foreground/60 hover:text-foreground"
+                    }`}
+                  >
+                    {link.label}
+                  </Link>
+                ) : (
+                  <a
+                    key={link.label}
+                    href={link.href}
+                    onClick={() => setMobileOpen(false)}
+                    className="block px-4 py-3 text-[14px] text-foreground/60 hover:text-foreground hover:bg-foreground/[0.03] transition-all rounded-xl font-medium"
+                  >
+                    {link.label}
+                  </a>
+                )
+              )}
               <div className="pt-2 mt-1 border-t border-foreground/[0.04]">
                 <Link href="/login" className="block px-4 py-3 text-[14px] text-foreground/60 font-medium" onClick={() => setMobileOpen(false)}>
                   Log in

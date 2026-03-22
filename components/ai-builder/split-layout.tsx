@@ -99,6 +99,7 @@ export function SplitLayout({
   // Optimized results that override the latest from messages
   const [optimizedCode, setOptimizedCode] = useState<string | null>(null)
   const [optimizedBacktest, setOptimizedBacktest] = useState<ChatMessageType['metadata']['backtest_snapshot'] | null>(null)
+  const [reportHtmlB64, setReportHtmlB64] = useState<string | null>(null)
 
   // ── Hybrid Manager integration ──
   const strategy = useStrategy(accessToken)
@@ -312,6 +313,7 @@ export function SplitLayout({
         strategyName={latestStrategy?.name}
         strategyMarket={latestStrategy?.market}
         hasResults={hasResults}
+        backtestMetrics={displayBacktest}
         onUpgradeClick={onUpgradeClick}
       />
       <div className="flex flex-1 overflow-hidden relative">
@@ -430,6 +432,7 @@ export function SplitLayout({
                     equity_curve: data.equity_curve || [],
                   }
                   setOptimizedBacktest(btSnapshot)
+                  if (data.report_b64) setReportHtmlB64(data.report_b64)
 
                   // Save as a version
                   const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')
@@ -527,6 +530,7 @@ export function SplitLayout({
           <RightPanel
             strategySnapshot={latestStrategy}
             backtestSnapshot={displayBacktest}
+            reportHtmlB64={reportHtmlB64}
             mql5Code={displayCode}
             isOpen={panelOpen}
             onToggle={() => setPanelOpen((prev) => !prev)}

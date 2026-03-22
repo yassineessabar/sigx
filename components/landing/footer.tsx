@@ -1,8 +1,16 @@
+import Link from "next/link";
+
 const links = {
   Product: ["Home", "Strategies", "Marketplace", "Leaderboard", "Pricing", "Enterprise"],
   Resources: ["Docs", "API", "FAQs", "Blog"],
   Company: ["About", "Careers", "Contact"],
-  Legal: ["Privacy", "Terms", "Security"],
+  Legal: ["Privacy", "Terms", "Disclaimer"],
+};
+
+const legalRoutes: Record<string, string> = {
+  Privacy: "/privacy",
+  Terms: "/terms",
+  Disclaimer: "/disclaimer",
 };
 
 export default function Footer() {
@@ -20,6 +28,9 @@ export default function Footer() {
             <p className="text-[12px] text-foreground/40 max-w-[220px] leading-[1.6] font-medium">
               AI-powered infrastructure for building and deploying trading strategies.
             </p>
+            <p className="text-[10px] text-foreground/25 mt-3 max-w-[220px] leading-[1.6] font-medium">
+              AI-generated strategies are not financial advice. Trading involves risk. See our <Link href="/disclaimer" className="underline underline-offset-2 hover:text-foreground/40 transition-colors">Disclaimer</Link>.
+            </p>
             <div className="flex gap-4 mt-5">
               {["X", "LinkedIn", "GitHub"].map((s) => (
                 <a key={s} href="#" className="text-[11px] text-foreground/35 hover:text-foreground/60 transition-colors duration-300 font-semibold">
@@ -35,13 +46,22 @@ export default function Footer() {
                 {title}
               </h4>
               <ul className="space-y-2.5">
-                {items.map((item) => (
-                  <li key={item}>
-                    <a href="#" className="text-[12px] text-foreground/35 hover:text-foreground/60 transition-colors duration-300 font-medium">
-                      {item}
-                    </a>
-                  </li>
-                ))}
+                {items.map((item) => {
+                  const route = legalRoutes[item];
+                  return (
+                    <li key={item}>
+                      {route ? (
+                        <Link href={route} className="text-[12px] text-foreground/35 hover:text-foreground/60 transition-colors duration-300 font-medium">
+                          {item}
+                        </Link>
+                      ) : (
+                        <a href="#" className="text-[12px] text-foreground/35 hover:text-foreground/60 transition-colors duration-300 font-medium">
+                          {item}
+                        </a>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           ))}

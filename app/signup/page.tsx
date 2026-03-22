@@ -471,6 +471,14 @@ function SignupPage() {
               )}
             </div>
 
+            <p className="text-[11px] text-foreground/35 leading-relaxed text-center">
+              By creating an account, you agree to our{' '}
+              <Link href="/terms" className="text-foreground/55 hover:text-foreground/80 underline underline-offset-2 transition-colors">Terms of Service</Link>,{' '}
+              <Link href="/privacy" className="text-foreground/55 hover:text-foreground/80 underline underline-offset-2 transition-colors">Privacy Policy</Link>, and{' '}
+              <Link href="/disclaimer" className="text-foreground/55 hover:text-foreground/80 underline underline-offset-2 transition-colors">Disclaimer</Link>.
+              AI-generated strategies are not financial advice.
+            </p>
+
             <button
               type="submit"
               disabled={loading}

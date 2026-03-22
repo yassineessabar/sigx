@@ -1,7 +1,30 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Trophy, Medal, TrendingUp, Crown, Flame } from "lucide-react";
+import Link from "next/link";
+import { Trophy, Medal, TrendingUp, Crown, Flame, ArrowRight } from "lucide-react";
+
+const CHALLENGE_END = new Date("2026-04-30T23:59:59Z");
+
+function useCountdown(target: Date) {
+  const [left, setLeft] = useState({ d: 0, h: 0, m: 0, s: 0 });
+  useEffect(() => {
+    const tick = () => {
+      const diff = Math.max(0, target.getTime() - Date.now());
+      setLeft({
+        d: Math.floor(diff / 86400000),
+        h: Math.floor((diff / 3600000) % 24),
+        m: Math.floor((diff / 60000) % 60),
+        s: Math.floor((diff / 1000) % 60),
+      });
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [target]);
+  return left;
+}
 
 const leaders = [
   { rank: 1, strategy: "EURUSD Precision Scalper", market: "FX", sharpe: "2.8", drawdown: "2.1%", returnPct: "+47%", creator: "elite_fx", badge: "Top 1%", sparkline: [10, 15, 13, 20, 25, 23, 30, 35, 38, 42, 45, 47] },
@@ -59,9 +82,77 @@ function RankIcon({ rank }: { rank: number }) {
 }
 
 export default function LeaderboardTable() {
+  const countdown = useCountdown(CHALLENGE_END);
+
   return (
     <section id="leaderboard" className="relative py-32 px-4">
       <div className="mx-auto max-w-[960px]">
+        {/* Challenge Prize Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="mb-12"
+        >
+          <Link href="/challenge" className="block group">
+            <div className="relative rounded-[20px] border border-amber-400/[0.12] bg-gradient-to-r from-amber-400/[0.04] via-amber-500/[0.02] to-transparent overflow-hidden">
+              {/* Glow */}
+              <div className="absolute -top-16 left-1/4 w-[300px] h-[120px] bg-amber-400/[0.04] rounded-full blur-[60px] pointer-events-none" />
+
+              <div className="relative flex flex-col sm:flex-row items-center justify-between gap-5 px-6 sm:px-8 py-5">
+                {/* Left: Prize info */}
+                <div className="flex items-center gap-4 sm:gap-5">
+                  <div className="h-12 w-12 rounded-[14px] bg-amber-400/10 border border-amber-400/[0.12] flex items-center justify-center shrink-0">
+                    <Trophy size={22} className="text-amber-400" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-[22px] sm:text-[26px] font-black text-amber-400 tracking-tight">$10,000</span>
+                      <span className="text-[12px] font-bold text-amber-400/50 uppercase tracking-widest">Prize Pool</span>
+                    </div>
+                    <p className="text-[12px] text-foreground/40 font-medium mt-0.5">
+                      Build the best AI strategy — top 5 win cash prizes
+                    </p>
+                  </div>
+                </div>
+
+                {/* Center: Countdown */}
+                <div className="flex items-center gap-2">
+                  {[
+                    { v: countdown.d, l: "D" },
+                    { v: countdown.h, l: "H" },
+                    { v: countdown.m, l: "M" },
+                    { v: countdown.s, l: "S" },
+                  ].map((u, i) => (
+                    <div key={u.l} className="flex items-center gap-2">
+                      <div className="flex flex-col items-center">
+                        <div className="h-[38px] w-[38px] rounded-[10px] border border-amber-400/[0.1] bg-amber-400/[0.03] flex items-center justify-center">
+                          <span className="text-[16px] font-black text-foreground tabular-nums">
+                            {String(u.v).padStart(2, "0")}
+                          </span>
+                        </div>
+                        <span className="text-[8px] text-foreground/25 font-bold mt-1">{u.l}</span>
+                      </div>
+                      {i < 3 && <span className="text-[14px] text-amber-400/30 font-bold mb-3">:</span>}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Right: CTA */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[13px] font-semibold text-amber-400/70 group-hover:text-amber-400 transition-colors hidden sm:inline">
+                    Enter Challenge
+                  </span>
+                  <div className="h-8 w-8 rounded-full bg-amber-400/10 group-hover:bg-amber-400/20 flex items-center justify-center transition-colors">
+                    <ArrowRight size={14} className="text-amber-400 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Link>
+        </motion.div>
+
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}

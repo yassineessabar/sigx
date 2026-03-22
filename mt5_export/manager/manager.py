@@ -32,6 +32,8 @@ from collections import deque
 from datetime import datetime
 from typing import Optional
 
+import mimetypes
+
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -349,7 +351,8 @@ Do NOT write any other files. Do NOT explain. Just write the .mq5 file."""
 
 def improve_code_with_claude(mq5_code: str, metrics: dict, compile_errors: str,
                               ea_name: str, workspace: str,
-                              job_id: str = "") -> str:
+                              job_id: str = "",
+                              iteration_history: list = None) -> str:
     """Call Claude Code to fix or improve MQL5 code based on results."""
     output_file = os.path.join(workspace, "strategies", f"{ea_name}.mq5")
     current_file = os.path.join(workspace, "strategies", f"{ea_name}_current.mq5")
@@ -367,9 +370,17 @@ Do NOT explain anything. Just write the fixed .mq5 file."""
         _emit(job_id, "fixing", {"ea_name": ea_name, "reason": "compile_errors"})
     else:
         issues = _diagnose_issues(metrics)
-        prompt = f"""The MQL5 EA at {current_file} needs improvement based on backtest results.
+        history_text = _format_iteration_history(iteration_history) if iteration_history else ""
+        prompt = f"""You are improving an existing MQL5 EA INCREMENTALLY. This is NOT a rewrite.
 
-BACKTEST RESULTS:
+CRITICAL RULES:
+- Preserve the core strategy structure (same indicator types, same general logic)
+- Make ONE or TWO targeted changes per iteration — not a full rewrite
+- Every change must have a clear goal: improve a specific metric
+- Do NOT add unrelated indicators or completely change the strategy approach
+- Do NOT remove working logic — refine it
+
+CURRENT BACKTEST RESULTS:
 - Net Profit: {metrics.get('net_profit', 'N/A')}
 - Profit Factor: {metrics.get('profit_factor', 'N/A')}
 - Total Trades: {metrics.get('total_trades', 'N/A')}
@@ -377,11 +388,14 @@ BACKTEST RESULTS:
 - Recovery Factor: {metrics.get('recovery_factor', 'N/A')}
 - Sharpe: {metrics.get('sharpe', 'N/A')}
 - Win Rate: {metrics.get('win_rate', 'N/A')}
-
-ISSUES:
+{history_text}
+DIAGNOSED ISSUES (fix the FIRST one as priority):
 {issues}
 
-Read the file, improve the strategy, and write the improved code to: {output_file}
+IMPROVEMENT APPROACH:
+{_suggest_improvement_approach(metrics)}
+
+Read the file at {current_file}, make targeted improvements, and write to: {output_file}
 Do NOT explain anything. Just write the improved .mq5 file."""
         _emit(job_id, "improving", {"ea_name": ea_name, "metrics": metrics})
 
@@ -410,30 +424,93 @@ Do NOT explain anything. Just write the improved .mq5 file."""
 
 
 def _diagnose_issues(metrics: dict) -> str:
-    """Generate diagnostic feedback from backtest metrics."""
+    """Generate prioritized diagnostic feedback from backtest metrics."""
     issues = []
     trades = metrics.get("total_trades", 0) or 0
     pf = metrics.get("profit_factor", 0) or 0
     net = metrics.get("net_profit", 0) or 0
     rf = metrics.get("recovery_factor", 0) or 0
+    sharpe = metrics.get("sharpe", 0) or 0
+    win_rate = metrics.get("win_rate", 0) or 0
+    dd = metrics.get("max_drawdown", "")
 
+    # Priority 1: No trades — nothing else matters
     if trades == 0:
-        issues.append("- ZERO TRADES: Entry conditions never trigger. Relax conditions or check indicator logic.")
+        issues.append("- [P1] ZERO TRADES: Entry conditions never trigger. Relax conditions, widen SL, simplify logic.")
+        return "\n".join(issues)
     elif trades < 20:
-        issues.append(f"- TOO FEW TRADES ({trades}): Strategy too conservative. Widen entry conditions.")
+        issues.append(f"- [P1] TOO FEW TRADES ({trades}): Widen entry conditions or shorten indicator periods.")
 
+    # Priority 2: Losing money
     if pf and pf < 1.0:
-        issues.append(f"- LOSING (PF={pf}): Adjust SL/TP ratio or entry logic.")
+        issues.append(f"- [P2] LOSING (PF={pf:.2f}): Widen TP or tighten SL. Consider if entry direction is correct.")
     elif pf and 1.0 <= pf < 1.3:
-        issues.append(f"- MARGINAL (PF={pf}): Barely profitable. Tighten stops or improve signal quality.")
+        issues.append(f"- [P3] MARGINAL (PF={pf:.2f}): Tighten stops or add a trend filter to improve signal quality.")
 
     if net and net < 0:
-        issues.append(f"- NEGATIVE P&L (${net}): Consider reversing logic or adding trend filter.")
+        issues.append(f"- [P2] NEGATIVE P&L (${net:.2f}): Entry logic may be inverted or SL/TP ratio is wrong.")
 
+    # Priority 3: Risk metrics
     if rf and rf < 0.5:
-        issues.append(f"- LOW RECOVERY ({rf}): Drawdowns too deep. Reduce position size or add DD protection.")
+        issues.append(f"- [P3] LOW RECOVERY ({rf:.2f}): Drawdowns too deep. Reduce lot size or add max-DD protection.")
 
-    return "\n".join(issues) if issues else "- Strategy is profitable but could be improved further."
+    if sharpe and sharpe < 0.5:
+        issues.append(f"- [P3] LOW SHARPE ({sharpe:.2f}): Returns inconsistent. Reduce position sizing or add volatility filter.")
+    elif sharpe and 0.5 <= sharpe < 1.0:
+        issues.append(f"- [P4] MODERATE SHARPE ({sharpe:.2f}): Acceptable but can improve with tighter risk management.")
+
+    if win_rate and win_rate < 35:
+        issues.append(f"- [P3] LOW WIN RATE ({win_rate:.1f}%): Entry signals are weak. Tighten entry conditions or add confirmation.")
+    elif win_rate and win_rate > 75:
+        issues.append(f"- [P4] HIGH WIN RATE ({win_rate:.1f}%) but check if TP is too tight — may be leaving profit on table.")
+
+    return "\n".join(issues) if issues else "- Strategy is profitable. Focus on: tighter risk management, better Sharpe, or lower drawdown."
+
+
+def _format_iteration_history(history: list) -> str:
+    """Format iteration history so Claude can see the improvement trajectory."""
+    if not history:
+        return ""
+    lines = ["\nITERATION HISTORY (showing improvement trajectory):"]
+    for entry in history:
+        m = entry.get("metrics", {})
+        if not m:
+            lines.append(f"  Iter {entry.get('iteration', '?')}: failed ({entry.get('error', 'unknown')})")
+            continue
+        lines.append(
+            f"  Iter {entry.get('iteration', '?')}: "
+            f"PF={m.get('profit_factor', 'N/A')}, "
+            f"Trades={m.get('total_trades', 'N/A')}, "
+            f"Sharpe={m.get('sharpe', 'N/A')}, "
+            f"DD={m.get('max_drawdown', 'N/A')}, "
+            f"WinRate={m.get('win_rate', 'N/A')}"
+        )
+    lines.append("Aim to improve on the BEST iteration, not regress.")
+    return "\n".join(lines)
+
+
+def _suggest_improvement_approach(metrics: dict) -> str:
+    """Suggest a specific, targeted improvement approach based on current metrics."""
+    trades = metrics.get("total_trades", 0) or 0
+    pf = metrics.get("profit_factor", 0) or 0
+    sharpe = metrics.get("sharpe", 0) or 0
+    win_rate = metrics.get("win_rate", 0) or 0
+
+    if trades == 0:
+        return "SIMPLIFY entry logic. Remove extra filters. Use wider SL/TP. This is the only priority."
+    if trades < 20:
+        return "Loosen entry conditions: shorter indicator periods, wider thresholds, or remove one filter."
+    if pf < 1.0:
+        return "Fix SL/TP ratio (e.g. widen TP by 20-30% or tighten SL). Do NOT change the entry signal."
+    if pf < 1.3:
+        return "Add ONE trend-direction filter (e.g. 200-EMA direction) to filter bad signals. Keep everything else."
+    if sharpe < 0.5:
+        return "Add volatility-based position sizing or skip trades during high-volatility periods."
+    if win_rate < 40:
+        return "Add ONE confirmation indicator (e.g. RSI zone check) to filter weak entries. Keep SL/TP unchanged."
+    if pf >= 1.5 and sharpe >= 1.0:
+        return "Strategy is strong. Make only minor tweaks: fine-tune indicator periods by ±10-20% or adjust SL/TP by small amounts."
+    return "Make ONE targeted improvement: either tighten SL, widen TP, or adjust the main indicator period. Do not change multiple things at once."
 
 
 # ── Job Runner ───────────────────────────────────────────────────────────────
@@ -470,7 +547,8 @@ def _run_job(job_id: str):
             else:
                 job["current_step"] = f"improving code ({iteration}/{iterations})"
                 mq5_code = improve_code_with_claude(
-                    best_code, best_metrics or {}, "", ea_name, workspace, job_id
+                    best_code, best_metrics or {}, "", ea_name, workspace, job_id,
+                    iteration_history=all_iterations
                 )
 
             if not mq5_code or len(mq5_code) < 100:
@@ -604,6 +682,93 @@ def _run_job(job_id: str):
         if slot_id is not None:
             _release_slot(slot_id)
         job["finished_at"] = datetime.now().isoformat()
+
+
+# ── Report Inlining ──────────────────────────────────────────────────────────
+
+def _inline_report_images(report_path: str) -> bytes:
+    """Read an MT5 .htm report and inline all external image references as data URIs.
+
+    MT5 generates charts as separate files in a folder like 'ReportName.files/'.
+    This function embeds them directly in the HTML so the report is self-contained.
+    """
+    with open(report_path, "rb") as f:
+        raw = f.read()
+
+    # Detect encoding
+    if raw[:2] == b'\xff\xfe':
+        html = raw.decode("utf-16-le", errors="replace")
+    else:
+        html = raw.decode("utf-8", errors="replace")
+
+    report_dir = os.path.dirname(report_path)
+    report_stem = os.path.splitext(os.path.basename(report_path))[0]
+
+    # Possible image directories MT5 uses
+    img_dirs = [
+        os.path.join(report_dir, f"{report_stem}.files"),
+        os.path.join(report_dir, report_stem),
+        report_dir,
+    ]
+
+    def _resolve_and_inline(match):
+        tag_before = match.group(1)
+        src = match.group(2)
+        tag_after = match.group(3)
+
+        # Skip already-inlined data URIs
+        if src.startswith("data:"):
+            return match.group(0)
+
+        # Try to find the image file
+        img_path = None
+        for d in img_dirs:
+            candidate = os.path.join(d, src)
+            if os.path.isfile(candidate):
+                img_path = candidate
+                break
+            # Also try just the filename (strip subdirectory prefix)
+            basename = os.path.basename(src)
+            candidate = os.path.join(d, basename)
+            if os.path.isfile(candidate):
+                img_path = candidate
+                break
+
+        if not img_path:
+            return match.group(0)  # leave as-is if not found
+
+        try:
+            with open(img_path, "rb") as imgf:
+                img_data = imgf.read()
+            mime = mimetypes.guess_type(img_path)[0] or "image/gif"
+            b64 = base64.b64encode(img_data).decode("ascii")
+            return f'{tag_before}data:{mime};base64,{b64}{tag_after}'
+        except Exception:
+            return match.group(0)
+
+    # Replace src="..." in <img> tags
+    html = re.sub(
+        r'(<img[^>]*\s+src=["\'])([^"\']+)(["\'])',
+        _resolve_and_inline,
+        html,
+        flags=re.IGNORECASE,
+    )
+
+    # Re-encode to original format
+    if raw[:2] == b'\xff\xfe':
+        return html.encode("utf-16-le")
+    return html.encode("utf-8")
+
+
+def _encode_report(report_path: str) -> str:
+    """Encode an MT5 report as base64 with images inlined."""
+    try:
+        data = _inline_report_images(report_path)
+    except Exception:
+        # Fallback: raw file without inlining
+        with open(report_path, "rb") as f:
+            data = f.read()
+    return base64.b64encode(data).decode()
 
 
 # ── Request Models ───────────────────────────────────────────────────────────
@@ -809,8 +974,7 @@ def api_backtest(req: BacktestReq, x_api_key: str = Header()):
         # Include base64-encoded report if available
         report_path = result.get("report_path")
         if report_path and os.path.exists(report_path):
-            with open(report_path, "rb") as f:
-                result["report_b64"] = base64.b64encode(f.read()).decode()
+            result["report_b64"] = _encode_report(report_path)
         return result
     finally:
         _release_slot(req.slot_id)
@@ -846,8 +1010,7 @@ def api_compile_and_backtest(req: CompileAndBacktestReq, x_api_key: str = Header
         )
         report_path = result.get("report_path")
         if report_path and os.path.exists(report_path):
-            with open(report_path, "rb") as f:
-                result["report_b64"] = base64.b64encode(f.read()).decode()
+            result["report_b64"] = _encode_report(report_path)
         return result
     finally:
         _release_slot(slot_id)
