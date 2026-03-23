@@ -276,12 +276,13 @@ export async function compileAndBacktestEA(
 
     if (data.success && data.metrics) {
       const raw = data.metrics
+      const safeNum = (v: unknown, fb = 0) => { const n = Number(v); return isNaN(n) ? fb : n }
       const metrics = {
-        sharpe: raw.sharpe ?? raw.sharpe_ratio ?? 0,
-        max_drawdown: Math.abs(raw.max_drawdown ?? raw.max_dd ?? raw.drawdown ?? 0),
-        win_rate: raw.win_rate ?? raw.win_pct ?? 0,
-        total_return: raw.total_return ?? raw.net_profit ?? 0,
-        profit_factor: raw.profit_factor ?? 0,
+        sharpe: safeNum(raw.sharpe ?? raw.sharpe_ratio),
+        max_drawdown: Math.abs(safeNum(raw.max_drawdown ?? raw.max_dd ?? raw.drawdown)),
+        win_rate: safeNum(raw.win_rate ?? raw.win_pct),
+        total_return: safeNum(raw.total_return ?? raw.net_profit),
+        profit_factor: safeNum(raw.profit_factor),
         total_trades: raw.total_trades ?? 0,
         net_profit: raw.net_profit ?? 0,
         recovery_factor: raw.recovery_factor ?? 0,

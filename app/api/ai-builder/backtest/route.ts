@@ -394,10 +394,12 @@ function extractCompileErrors(log: unknown): string[] {
 }
 
 function parseNum(val: unknown, fallback = 0): number {
-  if (typeof val === 'number') return val
+  if (typeof val === 'number') return isNaN(val) ? fallback : val
   if (typeof val === 'string') {
     const match = val.match(/-?[\d,.]+/)
-    return match ? parseFloat(match[0].replace(/,/g, '').replace(/ /g, '')) : fallback
+    if (!match) return fallback
+    const parsed = parseFloat(match[0].replace(/,/g, '').replace(/ /g, ''))
+    return isNaN(parsed) ? fallback : parsed
   }
   return fallback
 }
@@ -467,7 +469,7 @@ function normalizeMetrics(raw: Record<string, unknown>, reportB64?: string) {
 
   return {
     sharpe: parseNum(raw.sharpe ?? raw.sharpe_ratio ?? fromReport.sharpe),
-    max_drawdown: Math.abs(parseNum(raw.max_drawdown ?? raw.max_dd ?? fromReport.max_drawdown)),
+    max_drawdown: Math.abs(parseNum(raw.max_drawdown ?? raw.max_dd ?? fromReport.max_drawdown)) || 0,
     win_rate: parseNum(raw.win_rate ?? raw.win_pct ?? fromReport.win_rate),
     total_return: totalReturn,
     profit_factor: parseNum(raw.profit_factor ?? fromReport.profit_factor),

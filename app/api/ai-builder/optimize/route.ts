@@ -156,13 +156,16 @@ export async function POST(request: NextRequest) {
             const changesMatch = improvedCode.match(/\/\/\s*CHANGES?:\s*(.+)$/m)
             const changeSummary = changesMatch ? changesMatch[1].trim() : 'unspecified changes'
 
+            // Use unique EA name per iteration to avoid VPS caching stale results
+            const iterEaName = `${ea_name}_v${i}`
+
             // Compile + Backtest atomically on same slot (with auto-fix retries)
             send({ type: 'status', iteration: i, message: `Compiling & backtesting iteration ${i} on ${symbol} ${period}...` })
             let currentCode = improvedCode
             let result: CompileAndBacktestResult | null = null
 
             for (let r = 0; r <= MAX_FIX_RETRIES; r++) {
-              result = await compileAndBacktestEA(ea_name, currentCode, symbol, period)
+              result = await compileAndBacktestEA(iterEaName, currentCode, symbol, period)
               if (result.success) break
 
               // If compile error, try auto-fix
