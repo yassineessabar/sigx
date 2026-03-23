@@ -230,7 +230,16 @@ async function tryCompileAndBacktest(
     const res = await fetch(`${workerUrl}/compile-and-backtest`, {
       method: 'POST',
       headers: workerHeaders(),
-      body: JSON.stringify({ ea_name: eaName, mq5_code: code, symbol, period, ...(start ? { start } : {}), ...(end ? { end } : {}) }),
+      body: JSON.stringify({
+        ea_name: eaName, mq5_code: code, symbol, period,
+        ...(start ? { start } : {}), ...(end ? { end } : {}),
+        // Pass MT5 account credentials so VPS configures the correct broker
+        ...(process.env.MT5_ACCOUNT_LOGIN ? {
+          account_login: parseInt(process.env.MT5_ACCOUNT_LOGIN),
+          account_password: process.env.MT5_ACCOUNT_PASSWORD,
+          account_server: process.env.MT5_ACCOUNT_SERVER,
+        } : {}),
+      }),
       signal: controller.signal,
     })
 

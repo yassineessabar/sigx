@@ -250,7 +250,15 @@ export async function compileAndBacktestEA(
     const res = await fetch(`${getWorkerUrl()}/compile-and-backtest`, {
       method: 'POST',
       headers: workerHeaders(),
-      body: JSON.stringify({ ea_name: eaName, mq5_code: mq5Code, symbol, period, slot_id: slotId }),
+      body: JSON.stringify({
+        ea_name: eaName, mq5_code: mq5Code, symbol, period, slot_id: slotId,
+        // Pass MT5 account credentials so VPS manager can configure the terminal
+        ...(process.env.MT5_ACCOUNT_LOGIN ? {
+          account_login: parseInt(process.env.MT5_ACCOUNT_LOGIN),
+          account_password: process.env.MT5_ACCOUNT_PASSWORD,
+          account_server: process.env.MT5_ACCOUNT_SERVER,
+        } : {}),
+      }),
       signal: controller.signal,
     })
 

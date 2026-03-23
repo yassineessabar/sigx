@@ -373,7 +373,9 @@ def _parse_tester_log(slot_id: str, deposit: int = 100000) -> dict:
 
 def run_backtest(slot_id: str, ea_name: str, symbol="EURUSD", period="H1",
                  start="2025.01.01", end="2026.03.01", deposit=100000,
-                 timeout_s=180) -> dict:
+                 timeout_s=180,
+                 account_login: int = None, account_password: str = None,
+                 account_server: str = None) -> dict:
     """Run backtest on a specific slot. Returns {success, metrics, report_path}."""
     slot = _slots[slot_id]
     report_name = f"{ea_name}_{slot_id}_report"
@@ -391,8 +393,18 @@ def run_backtest(slot_id: str, ea_name: str, symbol="EURUSD", period="H1",
             os.remove(old)
 
     # Build config — ShutdownTerminal=1 so MT5 exits when done
+    # If account credentials are provided, add [Common] section so MT5 logs into the correct broker
+    common_section = ""
+    if account_login and account_password and account_server:
+        common_section = f"""\
+[Common]
+Login={account_login}
+Password={account_password}
+Server={account_server}
+"""
+
     config_content = f"""\
-[Tester]
+{common_section}[Tester]
 Expert={ea_name}
 Symbol={symbol}
 Period={period}
@@ -858,6 +870,9 @@ class BacktestReq(BaseModel):
     end: str = "2026.03.01"
     deposit: int = 100000
     slot_id: str = "0"
+    account_login: Optional[int] = None
+    account_password: Optional[str] = None
+    account_server: Optional[str] = None
 
 class CompileAndBacktestReq(BaseModel):
     ea_name: str
@@ -868,6 +883,9 @@ class CompileAndBacktestReq(BaseModel):
     end: str = "2026.03.01"
     deposit: int = 100000
     slot_id: Optional[str] = None  # auto-select if None
+    account_login: Optional[int] = None
+    account_password: Optional[str] = None
+    account_server: Optional[str] = None
 
 class DeployReq(BaseModel):
     ea_name: str
@@ -1034,6 +1052,9 @@ def api_backtest(req: BacktestReq, x_api_key: str = Header()):
         result = run_backtest(
             req.slot_id, req.ea_name, req.symbol, req.period,
             req.start, req.end, req.deposit,
+            account_login=req.account_login,
+            account_password=req.account_password,
+            account_server=req.account_server,
         )
         # Include base64-encoded report if available
         report_path = result.get("report_path")
@@ -1087,6 +1108,9 @@ def api_compile_and_backtest(req: CompileAndBacktestReq, x_api_key: str = Header
         result = run_backtest(
             slot_id, req.ea_name, req.symbol, req.period,
             req.start, req.end, req.deposit,
+            account_login=req.account_login,
+            account_password=req.account_password,
+            account_server=req.account_server,
         )
         report_path = result.get("report_path")
         if report_path and os.path.exists(report_path):

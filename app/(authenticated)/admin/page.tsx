@@ -163,7 +163,7 @@ export default function AdminPage() {
         {/* Content */}
         {tab === 'overview' && <OverviewTab data={overview} />}
         {tab === 'users' && <UsersTab data={users} onPageChange={(p) => fetchSection('users', p)} />}
-        {tab === 'vps' && <VpsTab data={vps} />}
+        {tab === 'vps' && <VpsTab data={vps} token={token || null} />}
         {tab === 'runs' && <RunsTab data={runs} onPageChange={(p) => fetchSection('runs', p)} />}
         {tab === 'errors' && <ErrorsTab data={errors} />}
         {tab === 'strategies' && <StrategiesTab data={strategies} onPageChange={(p) => fetchSection('strategies', p)} />}
@@ -309,13 +309,85 @@ function PlanBadge({ plan }: { plan: string }) {
 
 // ── VPS Tab ─────────────────────────────────────────────────────────
 
-function VpsTab({ data }: { data: VpsData | null }) {
+function VpsTab({ data, token }: { data: VpsData | null; token: string | null }) {
+  const [loginStatus, setLoginStatus] = useState<{ loading: boolean; result: Record<string, unknown> | null; error: string | null }>({ loading: false, result: null, error: null })
+  const [accountInfo, setAccountInfo] = useState<{ server: string | null; login: string | null; configured: boolean } | null>(null)
+
+  // Load account config on mount
+  useEffect(() => {
+    if (!token) return
+    fetch('/api/admin/login-slots', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => setAccountInfo(d))
+      .catch(() => {})
+  }, [token])
+
+  const handleLoginSlots = async () => {
+    if (!token) return
+    setLoginStatus({ loading: true, result: null, error: null })
+    try {
+      const res = await fetch('/api/admin/login-slots', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setLoginStatus({ loading: false, result: data, error: null })
+      } else {
+        setLoginStatus({ loading: false, result: null, error: data.error || 'Login failed' })
+      }
+    } catch (err) {
+      setLoginStatus({ loading: false, result: null, error: (err as Error).message })
+    }
+  }
+
   if (!data) return <Loading />
   const s = data.status as Record<string, unknown> | null
   const slots = data.slots as Record<string, { busy: boolean; pid?: number; terminal_pid?: number }> | null
 
   return (
     <div className="space-y-6">
+      {/* MT5 Account Login */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h3 className="text-sm font-medium text-zinc-400">MT5 Account</h3>
+            {accountInfo?.configured ? (
+              <p className="text-xs text-zinc-500 mt-1">Server: <span className="text-cyan-400 font-mono">{accountInfo.server}</span> · Login: <span className="text-cyan-400 font-mono">{accountInfo.login}</span></p>
+            ) : (
+              <p className="text-xs text-red-400 mt-1">Not configured — set MT5_ACCOUNT_SERVER, MT5_ACCOUNT_LOGIN, MT5_ACCOUNT_PASSWORD in .env</p>
+            )}
+          </div>
+          <button
+            onClick={handleLoginSlots}
+            disabled={loginStatus.loading || !accountInfo?.configured}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-zinc-700 disabled:text-zinc-500 rounded-lg text-sm font-medium transition-colors"
+          >
+            {loginStatus.loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+            Login All Slots
+          </button>
+        </div>
+        {loginStatus.error && (
+          <div className="mt-3 p-3 bg-red-900/20 border border-red-900/30 rounded-lg text-sm text-red-300">{loginStatus.error}</div>
+        )}
+        {loginStatus.result && (() => {
+          const r = loginStatus.result as Record<string, unknown>
+          const acct = r.account as Record<string, unknown> | undefined
+          return (
+            <div className="mt-3 p-3 bg-green-900/20 border border-green-900/30 rounded-lg text-sm text-green-300">
+              <p className="font-medium">{String(r.message || 'Done')}</p>
+              {acct ? (
+                <div className="mt-2 text-xs text-zinc-400 space-y-0.5">
+                  <div>Name: {String(acct.name || 'N/A')}</div>
+                  <div>Balance: {String(acct.balance || 'N/A')} {String(acct.currency || '')}</div>
+                  <div>Company: {String(acct.company || 'N/A')}</div>
+                </div>
+              ) : null}
+            </div>
+          )
+        })()}
+      </div>
+
       {/* VPS Status */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <StatCard label="Status" value={s?.ready ? 'Online' : 'Offline'} icon={s?.ready ? Wifi : WifiOff} color={s?.ready ? 'green' : 'red'} />
