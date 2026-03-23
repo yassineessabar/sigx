@@ -292,6 +292,7 @@ export function SplitLayout({
           period: 'H1',
           iterations: totalIterations,
           previous_results: latestBacktest ? { metrics: latestBacktest } : undefined,
+          chatId: chatId || undefined,
         }),
         signal: controller.signal,
       })
@@ -319,15 +320,27 @@ export function SplitLayout({
           try {
             const data = JSON.parse(line.slice(6))
 
-            if (data.type === 'iteration') {
+            if (data.type === 'knowledge_loaded') {
+              setPipelineStatus(data.message || `Loaded ${data.totalPastRuns} past runs`)
+            } else if (data.type === 'status') {
+              setPipelineStatus(data.message || 'Processing...')
+            } else if (data.type === 'iteration_start') {
               setOptimizeProgress({
                 iteration: data.iteration,
                 total: totalIterations,
               })
+              setPipelineStatus(data.message || `Iteration ${data.iteration}/${data.total}: Analyzing...`)
+            } else if (data.type === 'iteration') {
+              setOptimizeProgress({
+                iteration: data.iteration,
+                total: totalIterations,
+              })
+              const m = data.metrics
+              const metricsStr = m ? `PF ${m.profit_factor?.toFixed(2) || '—'} · ${m.total_trades || 0} trades · Sharpe ${m.sharpe?.toFixed(2) || '—'}` : ''
               setPipelineStatus(
                 data.improved
-                  ? `Iteration ${data.iteration}: Improved! Sharpe ${data.metrics?.sharpe?.toFixed(2) || '—'}`
-                  : `Iteration ${data.iteration}: No improvement`
+                  ? `Iteration ${data.iteration}: Improved! ${metricsStr}${data.changeSummary ? ` · ${data.changeSummary}` : ''}`
+                  : `Iteration ${data.iteration}: No improvement ${metricsStr ? `(${metricsStr})` : ''}${data.changeSummary ? ` · ${data.changeSummary}` : ''}`
               )
             } else if (data.type === 'done') {
               if (data.best_code) {
@@ -360,7 +373,7 @@ export function SplitLayout({
       setOptimizeProgress(undefined)
       optimizeAbortRef.current = null
     }
-  }, [latestCode, latestStrategy, latestBacktest, accessToken])
+  }, [latestCode, latestStrategy, latestBacktest, accessToken, chatId])
 
   // Use optimized results if available, otherwise use latest from messages
   const displayBacktest = optimizedBacktest || latestBacktest

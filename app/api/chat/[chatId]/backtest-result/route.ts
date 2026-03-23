@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getUserFromToken } from '@/lib/api-auth'
+import { saveLearning, compositeScore } from '@/lib/strategy-learnings'
 
 /**
  * POST /api/chat/[chatId]/backtest-result
@@ -80,6 +81,26 @@ export async function POST(
         .update(strategyUpdate)
         .eq('id', chatWithStrategy.strategy_id)
         .eq('user_id', user.id)
+
+      // Save learning entry so future optimization runs learn from this backtest
+      const metricsNorm = {
+        profit_factor: Number(metrics.profit_factor || 0),
+        total_trades: Number(metrics.total_trades || 0),
+        sharpe: Number(metrics.sharpe || 0),
+        win_rate: Number(metrics.win_rate || 0),
+        max_drawdown: Math.abs(Number(metrics.max_drawdown || 0)),
+        net_profit: Number(metrics.net_profit || 0),
+      }
+      const score = compositeScore(metricsNorm)
+
+      saveLearning(supabaseAdmin, chatWithStrategy.strategy_id, {
+        timestamp: new Date().toISOString(),
+        changeSummary: 'manual backtest run',
+        metrics: metricsNorm,
+        score,
+        improved: false, // will be recalculated when loading knowledge
+        source: 'manual_backtest',
+      }).catch(err => console.error('Save learning error:', err))
     }
 
     return NextResponse.json({ success: true })

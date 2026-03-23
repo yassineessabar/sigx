@@ -132,7 +132,8 @@ export async function POST(request: NextRequest) {
           while (Date.now() < deadline) {
             const info = await getQueueInfo(workerUrl)
             if (info.hostname) vpsHostname = info.hostname
-            let position = info.busy - info.available + 1
+            // Position = how many busy slots ahead of us (we're waiting behind all of them)
+            let position = info.busy >= info.total ? info.busy : 1
             if (position < 1) position = 1
             send({ type: 'queue', position, busy: info.busy, total: info.total, vps_host: vpsHostname })
 
@@ -359,115 +360,6 @@ async function runSeparateCalls(
   } catch (err) {
     if ((err as Error).name === 'AbortError') return { success: false, error: 'Backtest timed out (4 min)' }
     return { success: false, error: `Backtest error: ${(err as Error).message}` }
-  }
-}
-
-/**
- * Fallback: separate /compile then /backtest calls.
- */
-async function fallbackSeparateCalls(
-  workerUrl: string, eaName: string, code: string, symbol: string, period: string, slotId: string,
-  start?: string, end?: string
-) {
-  let currentCode = code
-
-  // Step 1: Compile (with auto-fix retries)
-  for (let attempt = 0; attempt <= MAX_FIX_RETRIES; attempt++) {
-    try {
-      const res = await fetch(`${workerUrl}/compile`, {
-        method: 'POST',
-        headers: workerHeaders(),
-        body: JSON.stringify({ ea_name: eaName, mq5_code: currentCode, slot_id: slotId }),
-      })
-
-      if (!res.ok) {
-        const text = await res.text().catch(() => '')
-        if (attempt === MAX_FIX_RETRIES) {
-          return NextResponse.json({
-            success: false,
-            error: `VPS compile error (${res.status}): ${text.slice(0, 150)}`,
-          })
-        }
-        continue
-      }
-
-      const data = await res.json()
-
-      if (data.success) break // compiled!
-
-      const errors = typeof data.errors === 'string' ? [data.errors] : (data.errors || ['Unknown error'])
-
-      if (attempt < MAX_FIX_RETRIES && getAnthropic()) {
-        const fixed = await autoFixCode(currentCode, errors)
-        if (fixed) { currentCode = fixed; continue }
-      }
-
-      return NextResponse.json({
-        success: false,
-        error: `Compilation failed: ${errors.slice(0, 3).join('; ').slice(0, 200)}`,
-      })
-    } catch (err) {
-      if (attempt === MAX_FIX_RETRIES) {
-        return NextResponse.json({
-          success: false,
-          error: `Compile error: ${(err as Error).message}`,
-        })
-      }
-    }
-  }
-
-  // Step 2: Backtest
-  try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 240_000)
-
-    const res = await fetch(`${workerUrl}/backtest`, {
-      method: 'POST',
-      headers: workerHeaders(),
-      body: JSON.stringify({ ea_name: eaName, symbol, period, slot_id: slotId, ...(start ? { start } : {}), ...(end ? { end } : {}) }),
-      signal: controller.signal,
-    })
-
-    clearTimeout(timeout)
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => '')
-      return NextResponse.json({
-        success: false,
-        error: `Backtest request failed (${res.status}): ${text.slice(0, 150)}`,
-      })
-    }
-
-    const data = await res.json()
-
-    if (!data.success) {
-      return NextResponse.json({
-        success: false,
-        error: data.error || 'Backtest returned no results',
-      })
-    }
-
-    const metrics = normalizeMetrics(data.metrics)
-    const equity_curve = parseEquityCurve(data.report_b64, metrics)
-
-    return NextResponse.json({
-      success: true, metrics, equity_curve,
-      report_b64: data.report_b64 || null,
-      report_is_mt5: data.report_is_mt5 ?? false,
-      slot_id: data.slot_id ?? slotId,
-      vps_host: data.vps_host ?? null,
-    })
-  } catch (err) {
-    if ((err as Error).name === 'AbortError') {
-      return NextResponse.json({
-        success: false,
-        error: 'Backtest timed out (4 min). The MT5 terminal may need symbol data downloaded first.',
-      })
-    }
-    return NextResponse.json({
-      success: false,
-      error: `Backtest error: ${(err as Error).message}`,
-    })
   }
 }
 

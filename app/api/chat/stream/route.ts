@@ -4,6 +4,7 @@ import { getUserFromToken } from '@/lib/api-auth'
 // mt5-worker removed — backtest now handled by /api/ai-builder/backtest route
 import { getTemplateByName } from '@/lib/templates'
 import Anthropic from '@anthropic-ai/sdk'
+import { loadStrategyKnowledge, buildKnowledgePrompt } from '@/lib/strategy-learnings'
 
 // ── System prompt ──────────────────────────────────────────────────
 const SYSTEM_PROMPT = `You are SIGX, an expert MQL5 developer that builds profitable MetaTrader 5 trading strategies. Always respond.
@@ -42,17 +43,20 @@ COMMON 0-TRADE CAUSES (fix these proactively):
 5. Wrong indicator period — period 200 on H1 needs 200+ bars of history
 6. Checking IsTradeAllowed() or similar — always true in tester, but may block in live
 
-When asked to OPTIMIZE with backtest results:
+When asked to OPTIMIZE or IMPROVE with backtest results:
 - INCREMENTAL IMPROVEMENT ONLY — preserve the core strategy structure, do NOT rewrite from scratch
-- Make ONE or TWO targeted changes per optimization, not a complete overhaul
-- If 0 trades: DRASTICALLY simplify. Remove all filters except the core signal. Widen SL/TP by 2x.
-- If negative profit: adjust SL/TP ratio (widen TP 20-30% or tighten SL), don't add more filters
-- If low win rate: add ONE confirmation filter, don't add exit rules
-- If low trades (<20): loosen conditions, shorter indicator periods
-- If profitable (PF>1.3): only fine-tune — adjust parameters by 10-20%, don't change logic
-- Explain what you changed and WHY (which metric it targets)
+- Make EXACTLY ONE targeted change that addresses the WEAKEST metric
+- State clearly: "I changed [WHAT] because [WHY] to improve [WHICH METRIC]"
+- If 0 trades: This is the #1 priority. REMOVE all filters except core signal. Widen SL by 2x. Widen TP by 1.5x. Simplify entry to a single condition.
+- If losing (PF<1.0): Fix TP/SL ratio FIRST. Increase TP by 20-30% OR tighten SL by 15-20%. Do NOT add filters.
+- If marginal (PF 1.0-1.3): Add ONE simple trend filter (e.g. price > 200-EMA for buys) OR adjust TP +10-15%.
+- If low trades (<30): Loosen ONE entry condition or shorten indicator period by 20-30%.
+- If high DD (>15%): Reduce lot size by 30% or tighten SL by 15%.
+- If profitable (PF>1.3, Sharpe>0.5): FINE-TUNE ONLY — adjust parameters by ±10-15%, do NOT change logic
 - ALWAYS generate the full updated code, not just snippets
 - NEVER degrade a working strategy by adding unnecessary complexity
+- NEVER swap out indicators (e.g. don't replace RSI with MACD)
+- NEVER add more than one new condition per optimization round
 
 When asked a QUESTION: answer conversationally, no code.
 When message is unclear: ask what they want to build.`
@@ -194,9 +198,34 @@ export async function POST(request: NextRequest) {
                 // Convert backtest_result messages into a user message with results
                 // so Claude knows the performance and can optimize accordingly
                 if (meta?.type === 'backtest_result') {
-                  const bt = meta.backtest_snapshot as Record<string, unknown> | undefined
+                  const bt = meta.backtest_snapshot as Record<string, number> | undefined
                   if (bt) {
-                    const summary = `[Backtest results: ${bt.total_trades} trades, PF ${bt.profit_factor}, net profit $${bt.net_profit}, max DD ${bt.max_drawdown}%, win rate ${bt.win_rate}%, sharpe ${bt.sharpe}]`
+                    const trades = bt.total_trades || 0
+                    const pf = bt.profit_factor || 0
+                    const net = bt.net_profit || 0
+                    const dd = Math.abs(bt.max_drawdown || 0)
+                    const wr = bt.win_rate || 0
+                    const sharpe = bt.sharpe || 0
+
+                    // Build detailed feedback for Claude
+                    let diagnosis = ''
+                    if (trades === 0) {
+                      diagnosis = 'CRITICAL: Zero trades. Remove filters, widen SL/TP, simplify entry logic.'
+                    } else if (trades < 20) {
+                      diagnosis = `Low trade count (${trades}). Loosen entry conditions.`
+                    } else if (pf < 1.0) {
+                      diagnosis = `Losing strategy (PF=${pf.toFixed(2)}). Fix SL/TP ratio — increase TP by 20-30% or tighten SL.`
+                    } else if (pf < 1.3) {
+                      diagnosis = `Marginal (PF=${pf.toFixed(2)}). Consider adding one trend filter or adjusting TP +10%.`
+                    } else {
+                      diagnosis = `Profitable (PF=${pf.toFixed(2)}). Fine-tune only — adjust parameters by ±10-15%.`
+                    }
+
+                    const summary = `[BACKTEST RESULTS — use these to guide your next optimization:
+  Profit Factor: ${pf.toFixed(2)} | Total Trades: ${trades} | Net Profit: $${net.toFixed(2)}
+  Max Drawdown: ${dd.toFixed(1)}% | Win Rate: ${wr.toFixed(1)}% | Sharpe: ${sharpe.toFixed(2)}
+  Assessment: ${diagnosis}]`
+
                     // Append to the last assistant message as context
                     const last = chatMessages[chatMessages.length - 1]
                     if (last && last.role === 'assistant') {
@@ -259,11 +288,31 @@ export async function POST(request: NextRequest) {
               chatMessages.length = 0
               chatMessages.push(...merged)
 
+              // Load persistent strategy knowledge if this chat has a linked strategy
+              let knowledgeContext = ''
+              {
+                const { data: chatRow } = await supabaseAdmin
+                  .from('chats')
+                  .select('strategy_id')
+                  .eq('id', currentChatId)
+                  .single()
+                if (chatRow?.strategy_id) {
+                  const knowledge = await loadStrategyKnowledge(supabaseAdmin, chatRow.strategy_id)
+                  if (knowledge.totalRuns > 0) {
+                    knowledgeContext = buildKnowledgePrompt(knowledge)
+                  }
+                }
+              }
+
+              const systemPrompt = knowledgeContext
+                ? `${SYSTEM_PROMPT}\n\n${knowledgeContext}`
+                : SYSTEM_PROMPT
+
               try {
                 const messageStream = anthropic.messages.stream({
                   model: 'claude-sonnet-4-20250514',
                   max_tokens: 16384,
-                  system: SYSTEM_PROMPT,
+                  system: systemPrompt,
                   messages: chatMessages,
                 })
 

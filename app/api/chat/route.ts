@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getUserFromToken } from '@/lib/api-auth'
 import Anthropic from '@anthropic-ai/sdk'
+import { loadStrategyKnowledge, buildKnowledgePrompt } from '@/lib/strategy-learnings'
 
 function getAnthropic(): Anthropic | null {
   const key = process.env.ANTHROPIC_API_KEY
@@ -95,24 +96,63 @@ export async function POST(request: NextRequest) {
       content: message,
     })
 
-    // Get chat history
+    // Get chat history (include metadata for backtest results)
     const { data: history } = await supabaseAdmin
       .from('chat_messages')
-      .select('role, content')
+      .select('role, content, metadata')
       .eq('chat_id', currentChatId)
       .order('created_at', { ascending: true })
       .limit(20)
 
-    const chatMessages: Anthropic.MessageParam[] = (history || []).map((m) => ({
-      role: m.role as 'user' | 'assistant',
-      content: m.content,
-    }))
+    // Build chat history with backtest context (same logic as streaming route)
+    const chatMessages: Anthropic.MessageParam[] = []
+    for (const m of (history || [])) {
+      const meta = m.metadata as Record<string, unknown> | null
+      if (meta?.type === 'backtest_result') {
+        const bt = meta.backtest_snapshot as Record<string, number> | undefined
+        if (bt) {
+          const summary = `[BACKTEST RESULTS: PF ${(bt.profit_factor || 0).toFixed(2)} | ${bt.total_trades || 0} trades | Net $${(bt.net_profit || 0).toFixed(2)} | DD ${Math.abs(bt.max_drawdown || 0).toFixed(1)}% | WR ${(bt.win_rate || 0).toFixed(1)}% | Sharpe ${(bt.sharpe || 0).toFixed(2)}]`
+          const last = chatMessages[chatMessages.length - 1]
+          if (last && last.role === 'assistant') {
+            last.content = (last.content as string) + '\n\n' + summary
+          }
+        }
+        continue
+      }
+      const role = m.role as 'user' | 'assistant'
+      let content = m.content
+      if (role === 'assistant' && meta?.mql5_code) {
+        content += '\n\n---MQL5_CODE_START---\n' + (meta.mql5_code as string) + '\n---MQL5_CODE_END---'
+      }
+      const last = chatMessages[chatMessages.length - 1]
+      if (last && last.role === role) {
+        last.content = (last.content as string) + '\n\n' + content
+      } else {
+        chatMessages.push({ role, content })
+      }
+    }
+
+    // Load persistent strategy knowledge
+    let systemPrompt = SYSTEM_PROMPT
+    {
+      const { data: chatRow } = await supabaseAdmin
+        .from('chats')
+        .select('strategy_id')
+        .eq('id', currentChatId)
+        .single()
+      if (chatRow?.strategy_id) {
+        const knowledge = await loadStrategyKnowledge(supabaseAdmin, chatRow.strategy_id)
+        if (knowledge.totalRuns > 0) {
+          systemPrompt += '\n\n' + buildKnowledgePrompt(knowledge)
+        }
+      }
+    }
 
     // Call Claude
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 8192,
-      system: SYSTEM_PROMPT,
+      system: systemPrompt,
       messages: chatMessages,
     })
 
