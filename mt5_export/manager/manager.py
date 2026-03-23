@@ -366,6 +366,7 @@ def _parse_tester_log(slot_id: str, deposit: int = 100000) -> dict:
         metrics["recovery_factor"] = 0
 
     metrics["initial_deposit"] = deposit
+    metrics["_log_content"] = content  # Pass log content for report generation
 
     return metrics
 
@@ -480,7 +481,8 @@ ShutdownTerminal=1"""
     log.info(f"[slot {slot_id}] No .htm report found, parsing tester agent log")
     log_metrics = _parse_tester_log(slot_id, deposit)
     if log_metrics and log_metrics.get("total_trades", 0) > 0:
-        report_html = _generate_report_html(ea_name, symbol, period, log_metrics)
+        log_content = log_metrics.pop("_log_content", "")
+        report_html = _generate_report_html(ea_name, symbol, period, log_metrics, log_content)
         report_b64 = base64.b64encode(report_html.encode("utf-8")).decode()
         return {"success": True, "metrics": log_metrics, "report_path": None, "report_b64": report_b64}
 
@@ -584,8 +586,9 @@ def _run_job(job_id: str):
         job["finished_at"] = datetime.now().isoformat()
 
 
-def _generate_report_html(ea_name: str, symbol: str, period: str, metrics: dict) -> str:
-    """Generate a basic HTML backtest report from metrics when MT5 doesn't produce one."""
+def _generate_report_html(ea_name: str, symbol: str, period: str, metrics: dict,
+                          log_content: str = "") -> str:
+    """Generate a detailed HTML backtest report from metrics and tester log trade data."""
     net = metrics.get("net_profit", 0)
     pf = metrics.get("profit_factor", 0)
     trades = metrics.get("total_trades", 0)
@@ -594,40 +597,156 @@ def _generate_report_html(ea_name: str, symbol: str, period: str, metrics: dict)
     sharpe = metrics.get("sharpe", 0)
     rf = metrics.get("recovery_factor", 0)
     deposit = metrics.get("initial_deposit", 100000)
-    color = "#22c55e" if net >= 0 else "#ef4444"
+    balance = deposit + net
+    net_color = "#22c55e" if net >= 0 else "#ef4444"
+    start_date = metrics.get("_start", "2025.01.01")
+    end_date = metrics.get("_end", "2026.03.01")
+
+    # Parse trade history from log
+    trade_rows = ""
+    equity_points = [deposit]
+    running_balance = float(deposit)
+    trade_num = 0
+
+    if log_content:
+        # Parse deal lines: "deal #N buy/sell X.XX SYMBOL at PRICE done"
+        deal_pattern = re.compile(
+            r'(\d{4}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2})\s+deal\s+#(\d+)\s+(buy|sell)\s+([\d.]+)\s+(\w+)\s+at\s+([\d.]+)\s+done',
+            re.IGNORECASE
+        )
+        # Parse triggers: "take profit triggered" / "stop loss triggered"
+        trigger_pattern = re.compile(
+            r'(\d{4}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2})\s+(take profit|stop loss)\s+triggered\s+#(\d+)\s+(buy|sell)\s+([\d.]+)\s+\w+\s+([\d.]+)',
+            re.IGNORECASE
+        )
+
+        open_positions = {}  # ticket -> {type, lots, price, time}
+        trade_list = []
+
+        for line in log_content.split("\n"):
+            # Track deal opens
+            dm = deal_pattern.search(line)
+            if dm:
+                deal_time, deal_id, deal_type, lots, sym, price = dm.groups()
+                open_positions[deal_id] = {
+                    "type": deal_type, "lots": float(lots),
+                    "price": float(price), "time": deal_time
+                }
+
+            # Track closes (TP/SL)
+            tm = trigger_pattern.search(line)
+            if tm:
+                close_time, trigger_type, ticket, pos_type, lots_str, open_price_str = tm.groups()
+                # Find close price in the line
+                close_match = re.search(r'at\s+([\d.]+)\]', line)
+                if close_match:
+                    close_price = float(close_match.group(1))
+                    open_price = float(open_price_str)
+                    lots = float(lots_str)
+                    if pos_type.lower() == "buy":
+                        pl = (close_price - open_price) * lots * 100  # rough P/L
+                    else:
+                        pl = (open_price - close_price) * lots * 100
+                    running_balance += pl
+                    equity_points.append(round(running_balance, 2))
+                    trade_num += 1
+                    result = "TP" if "take profit" in trigger_type.lower() else "SL"
+                    pl_color = "#22c55e" if pl >= 0 else "#ef4444"
+                    trade_list.append({
+                        "n": trade_num, "time": close_time, "type": pos_type.upper(),
+                        "lots": lots, "open": open_price, "close": close_price,
+                        "result": result, "pl": pl, "balance": running_balance, "pl_color": pl_color
+                    })
+
+        # Build trade table rows (last 50 trades max for report size)
+        display_trades = trade_list[-50:] if len(trade_list) > 50 else trade_list
+        for t in display_trades:
+            trade_rows += f"""<tr>
+<td>{t['n']}</td><td>{t['time']}</td><td>{t['type']}</td>
+<td>{t['lots']:.2f}</td><td>{t['open']:.5f}</td><td>{t['close']:.5f}</td>
+<td>{t['result']}</td><td style="color:{t['pl_color']}">{t['pl']:+.2f}</td>
+<td>{t['balance']:,.2f}</td></tr>"""
+
+        if len(trade_list) > 50:
+            trade_rows = f'<tr><td colspan="9" style="color:#71717a;text-align:center">... {len(trade_list) - 50} earlier trades omitted ...</td></tr>' + trade_rows
+
+    # Build equity curve SVG
+    equity_svg = ""
+    if len(equity_points) > 2:
+        pts = equity_points
+        min_eq, max_eq = min(pts), max(pts)
+        eq_range = max(max_eq - min_eq, 1)
+        w, h = 700, 200
+        svg_points = []
+        for i, eq in enumerate(pts):
+            x = (i / max(len(pts) - 1, 1)) * w
+            y = h - ((eq - min_eq) / eq_range) * (h - 20) - 10
+            svg_points.append(f"{x:.1f},{y:.1f}")
+        polyline = " ".join(svg_points)
+        fill_points = f"0,{h} " + polyline + f" {w},{h}"
+        eq_color = "#22c55e" if pts[-1] >= pts[0] else "#ef4444"
+        equity_svg = f"""<svg viewBox="0 0 {w} {h}" style="width:100%;height:{h}px;margin:16px 0">
+<defs><linearGradient id="eg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="{eq_color}" stop-opacity="0.3"/><stop offset="100%" stop-color="{eq_color}" stop-opacity="0"/></linearGradient></defs>
+<polygon points="{fill_points}" fill="url(#eg)"/>
+<polyline points="{polyline}" fill="none" stroke="{eq_color}" stroke-width="2"/>
+<text x="5" y="15" font-size="11" fill="#71717a">${max_eq:,.0f}</text>
+<text x="5" y="{h-5}" font-size="11" fill="#71717a">${min_eq:,.0f}</text>
+</svg>"""
 
     return f"""<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Backtest Report: {ea_name}</title>
+<html><head><meta charset="utf-8"><title>Strategy Tester Report — {ea_name}</title>
 <style>
-body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #e4e4e7; padding: 40px; max-width: 800px; margin: 0 auto; }}
-h1 {{ color: #fafafa; font-size: 24px; }}
-.subtitle {{ color: #71717a; font-size: 14px; margin-bottom: 30px; }}
-table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
-td {{ padding: 12px 16px; border-bottom: 1px solid #27272a; }}
-td:first-child {{ color: #a1a1aa; font-size: 13px; }}
-td:last-child {{ text-align: right; font-weight: 600; font-size: 15px; font-family: 'SF Mono', monospace; }}
-.profit {{ color: {color}; font-size: 28px; font-weight: 700; }}
-.section {{ background: #18181b; border-radius: 12px; padding: 20px; margin: 16px 0; border: 1px solid #27272a; }}
+* {{ margin:0; padding:0; box-sizing:border-box; }}
+body {{ font-family:'Segoe UI',system-ui,sans-serif; background:#0c0c0c; color:#e4e4e7; padding:32px; }}
+.container {{ max-width:900px; margin:0 auto; }}
+h1 {{ font-size:22px; color:#fafafa; margin-bottom:4px; }}
+h2 {{ font-size:15px; color:#a1a1aa; margin:28px 0 12px; border-bottom:1px solid #27272a; padding-bottom:8px; }}
+.subtitle {{ color:#71717a; font-size:13px; margin-bottom:24px; }}
+.grid {{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:16px 0; }}
+.card {{ background:#18181b; border:1px solid #27272a; border-radius:10px; padding:14px; }}
+.card .label {{ font-size:11px; color:#71717a; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; }}
+.card .value {{ font-size:18px; font-weight:700; font-family:'SF Mono',monospace; }}
+.green {{ color:#22c55e; }}
+.red {{ color:#ef4444; }}
+.yellow {{ color:#eab308; }}
+.big-profit {{ font-size:32px; font-weight:800; color:{net_color}; margin:8px 0; }}
+table {{ width:100%; border-collapse:collapse; font-size:12px; }}
+th {{ text-align:left; padding:8px 10px; background:#18181b; color:#71717a; font-weight:600; text-transform:uppercase; font-size:10px; letter-spacing:0.5px; border-bottom:2px solid #27272a; }}
+td {{ padding:7px 10px; border-bottom:1px solid #1e1e1e; font-family:'SF Mono',monospace; font-size:11px; }}
+tr:hover td {{ background:#18181b; }}
+.footer {{ color:#52525b; font-size:10px; margin-top:32px; padding-top:16px; border-top:1px solid #1e1e1e; }}
 </style></head><body>
-<h1>Backtest Report: {ea_name}</h1>
-<p class="subtitle">{symbol} {period} &bull; Jan 2023 — Jan 2025 &bull; Initial Deposit: ${deposit:,.0f}</p>
-<div class="section">
-<p style="color:#71717a;font-size:12px;margin:0 0 8px">Net Profit</p>
-<p class="profit">{"+" if net >= 0 else ""}{net:,.2f} USD</p>
+<div class="container">
+<h1>Strategy Tester Report — {ea_name}</h1>
+<p class="subtitle">{symbol} {period} &bull; {start_date} — {end_date} &bull; MetaTrader 5</p>
+
+<div class="grid">
+<div class="card"><div class="label">Net Profit</div><div class="value {'green' if net>=0 else 'red'}">{"+" if net>=0 else ""}{net:,.2f}</div></div>
+<div class="card"><div class="label">Profit Factor</div><div class="value {'green' if pf>=1 else 'red'}">{pf:.2f}</div></div>
+<div class="card"><div class="label">Total Trades</div><div class="value">{trades}</div></div>
+<div class="card"><div class="label">Win Rate</div><div class="value {'green' if win_rate>=50 else 'yellow'}">{win_rate:.1f}%</div></div>
+<div class="card"><div class="label">Sharpe Ratio</div><div class="value">{sharpe:.2f}</div></div>
+<div class="card"><div class="label">Max Drawdown</div><div class="value red">{dd}</div></div>
+<div class="card"><div class="label">Recovery Factor</div><div class="value">{rf:.2f}</div></div>
+<div class="card"><div class="label">Final Balance</div><div class="value">${balance:,.2f}</div></div>
 </div>
-<div class="section">
-<table>
-<tr><td>Profit Factor</td><td>{pf:.2f}</td></tr>
-<tr><td>Total Trades</td><td>{trades}</td></tr>
-<tr><td>Win Rate</td><td>{win_rate:.1f}%</td></tr>
-<tr><td>Sharpe Ratio</td><td>{sharpe:.2f}</td></tr>
-<tr><td>Max Drawdown</td><td>{dd}</td></tr>
-<tr><td>Recovery Factor</td><td>{rf:.2f}</td></tr>
-<tr><td>Initial Deposit</td><td>${deposit:,.0f}</td></tr>
-<tr><td>Total Return</td><td>{net/deposit*100:.2f}%</td></tr>
-</table>
+
+<h2>Equity Curve</h2>
+{equity_svg if equity_svg else '<p style="color:#52525b">No equity data available</p>'}
+
+<h2>Initial Deposit</h2>
+<p style="font-size:14px;color:#a1a1aa">${deposit:,.2f} &rarr; ${balance:,.2f} ({net/deposit*100:+.2f}%)</p>
+
+{f'<h2>Trade History (last {min(len(trade_rows)//5 if trade_rows else 0, 50)} trades)</h2>' if trade_rows else ''}
+{f'''<div style="overflow-x:auto"><table>
+<tr><th>#</th><th>Time</th><th>Type</th><th>Lots</th><th>Open</th><th>Close</th><th>Exit</th><th>P/L</th><th>Balance</th></tr>
+{trade_rows}
+</table></div>''' if trade_rows else ''}
+
+<div class="footer">
+Generated by SIGX MT5 Manager &bull; {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} &bull; {symbol} {period}
 </div>
-<p style="color:#52525b;font-size:11px;margin-top:30px;">Generated by MT5 Manager &bull; {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
+</div>
 </body></html>"""
 
 
