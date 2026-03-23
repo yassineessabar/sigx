@@ -413,6 +413,13 @@ export function SplitLayout({
   const displayBacktest = optimizedBacktest || latestBacktest
   const displayCode = optimizedCode || latestCode
 
+  // Debug: track what code the backtest will use
+  useEffect(() => {
+    if (latestCode || optimizedCode) {
+      console.log(`[CODE] latestCode=${latestCode?.length || 0}ch optimizedCode=${optimizedCode?.length || 0}ch → displayCode=${displayCode?.length || 0}ch msgs=${messages.length}`)
+    }
+  }, [latestCode, optimizedCode, displayCode, messages.length])
+
   // Determine if Hybrid Manager is actively running
   const isHybridRunning = strategy.status === 'running'
   const hybridIterations = strategy.iterations
@@ -499,6 +506,9 @@ export function SplitLayout({
                   setPipelineStatus('Session expired — please refresh the page')
                   return
                 }
+
+                // Debug: log what code is being sent
+                console.log(`[BACKTEST] EA=${eaName} code_len=${displayCode?.length} code_hash=${displayCode?.slice(0, 80).replace(/\s+/g, ' ')} optimizedCode=${!!optimizedCode} latestCode_len=${latestCode?.length}`)
 
                 let res = await fetch('/api/ai-builder/backtest', {
                   method: 'POST',

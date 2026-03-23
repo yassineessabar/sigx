@@ -76,23 +76,34 @@ function parseResponse(content: string) {
     try { metadata.strategy_snapshot = JSON.parse(stratMatch[1]); metadata.type = 'strategy' } catch {}
   }
 
-  // Match code block — also handle when Claude mistakenly uses START as closing tag
+  // Match code block — try multiple formats Claude might use
   const codeMatch = content.match(/---MQL5_CODE_START---\s*([\s\S]*?)\s*---MQL5_CODE_END---/)
   if (codeMatch) {
     metadata.mql5_code = codeMatch[1].trim()
   } else {
-    // Fallback: Claude used ---MQL5_CODE_START--- twice (START as closing tag)
+    // Fallback 1: Claude used ---MQL5_CODE_START--- twice (START as closing tag)
     const parts = content.split(/---MQL5_CODE_START---/)
     if (parts.length >= 3) {
-      // Code is between the first and second occurrence
       metadata.mql5_code = parts[1].trim()
     } else if (parts.length === 2) {
-      // Only one START and no END — take everything after it, strip trailing markers
       const raw = parts[1]
         .replace(/---\w+_(?:START|END)---[\s\S]*$/, '')
         .trim()
       if (raw.includes('#include') || raw.includes('OnTick') || raw.includes('CTrade')) {
         metadata.mql5_code = raw
+      }
+    }
+
+    // Fallback 2: Claude output code in a markdown code block (```mql5 or ```cpp or ```)
+    // This happens often when Claude "improves" code without using the markers
+    if (!metadata.mql5_code) {
+      const mdCodeMatch = content.match(/```(?:mql5|mql4|cpp|c\+\+)?\s*\n([\s\S]*?)```/)
+      if (mdCodeMatch) {
+        const candidate = mdCodeMatch[1].trim()
+        // Only accept if it looks like real MQL5 code (has key patterns)
+        if (candidate.includes('#include') || (candidate.includes('OnTick') && candidate.includes('trade.'))) {
+          metadata.mql5_code = candidate
+        }
       }
     }
   }
@@ -102,12 +113,17 @@ function parseResponse(content: string) {
     try { metadata.backtest_snapshot = JSON.parse(btMatch[1]) } catch {}
   }
 
-  const display = content
+  let display = content
     .replace(/---STRATEGY_JSON_START---[\s\S]*?---STRATEGY_JSON_END---/g, '')
     .replace(/---MQL5_CODE_START---[\s\S]*?---MQL5_CODE_(?:END|START)---/g, '')
     .replace(/---BACKTEST_JSON_START---[\s\S]*?---BACKTEST_JSON_END---/g, '')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
+
+  // If we captured code from a markdown block, remove it from display too
+  if (metadata.mql5_code && display.includes('```')) {
+    display = display.replace(/```(?:mql5|mql4|cpp|c\+\+)?\s*\n[\s\S]*?```/g, '\n*(Code updated — see Code tab)*\n')
+  }
+
+  display = display.replace(/\n{3,}/g, '\n\n').trim()
 
   return { display, metadata }
 }
