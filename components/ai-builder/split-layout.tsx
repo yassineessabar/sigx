@@ -446,6 +446,8 @@ export function SplitLayout({
                 controller.abort()
               }, 300000)
 
+              const backtestStartTime = Date.now()
+
               try {
                 // Get a valid token — refresh if needed
                 let token = accessToken
@@ -569,6 +571,7 @@ export function SplitLayout({
                   onAddMessage?.(btMessage)
 
                   // Persist to DB so results survive page reload
+                  const durationS = Math.round((Date.now() - backtestStartTime) / 1000)
                   if (chatId && token) {
                     fetch(`/api/chat/${chatId}/backtest-result`, {
                       method: 'POST',
@@ -580,6 +583,9 @@ export function SplitLayout({
                         metrics: btSnapshot,
                         mql5_code: displayCode,
                         strategy_snapshot: latestStrategy,
+                        slot_id: data.slot_id ?? null,
+                        vps_host: data.vps_host ?? null,
+                        duration_s: durationS,
                       }),
                     }).catch(() => {})
                   }

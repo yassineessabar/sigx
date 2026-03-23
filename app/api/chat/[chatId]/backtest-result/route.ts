@@ -18,7 +18,7 @@ export async function POST(
     }
 
     const { chatId } = await params
-    const { metrics, mql5_code, strategy_snapshot } = await request.json()
+    const { metrics, mql5_code, strategy_snapshot, slot_id, vps_host, duration_s } = await request.json()
 
     if (!metrics) {
       return NextResponse.json({ error: 'metrics required' }, { status: 400 })
@@ -47,6 +47,9 @@ export async function POST(
         backtest_snapshot: metrics,
         mql5_code: mql5_code || null,
         strategy_snapshot: strategy_snapshot || null,
+        slot_id: slot_id ?? null,
+        vps_host: vps_host ?? null,
+        duration_s: duration_s ?? null,
       },
     })
 

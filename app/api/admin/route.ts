@@ -209,6 +209,9 @@ async function getRecentRuns(request: NextRequest) {
           max_drawdown: bt.max_drawdown || 0,
           net_profit: bt.net_profit || 0,
         } : null,
+        slot_id: meta?.slot_id ?? null,
+        vps_host: meta?.vps_host ?? null,
+        duration_s: meta?.duration_s ?? null,
         summary: d.content,
       }
     }),

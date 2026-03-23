@@ -28,6 +28,7 @@ interface RunRow {
   chat: { title: string; strategy_id: string | null }
   timestamp: string; summary: string
   metrics: { profit_factor: number; total_trades: number; sharpe: number; win_rate: number; max_drawdown: number; net_profit: number } | null
+  slot_id: string | null; vps_host: string | null; duration_s: number | null
 }
 
 interface ErrorRow {
@@ -406,11 +407,13 @@ function RunsTab({ data, onPageChange }: { data: { runs: RunRow[]; total: number
             <th className="text-left py-3 px-2">Time</th>
             <th className="text-left py-3 px-2">User</th>
             <th className="text-left py-3 px-2">Strategy</th>
+            <th className="text-center py-3 px-2">VPS / Slot</th>
+            <th className="text-right py-3 px-2">Duration</th>
             <th className="text-right py-3 px-2">PF</th>
             <th className="text-right py-3 px-2">Trades</th>
             <th className="text-right py-3 px-2">Sharpe</th>
-            <th className="text-right py-3 px-2">Win Rate</th>
-            <th className="text-right py-3 px-2">Net Profit</th>
+            <th className="text-right py-3 px-2">WR%</th>
+            <th className="text-right py-3 px-2">Net $</th>
           </tr></thead>
           <tbody>
             {data.runs.map(r => (
@@ -421,7 +424,22 @@ function RunsTab({ data, onPageChange }: { data: { runs: RunRow[]; total: number
                 <td className="py-3 px-2">
                   <div className="text-xs">{r.user.name || r.user.email}</div>
                 </td>
-                <td className="py-3 px-2 max-w-[200px] truncate text-zinc-400">{r.chat.title}</td>
+                <td className="py-3 px-2 max-w-[180px] truncate text-zinc-400">{r.chat.title}</td>
+                <td className="py-3 px-2 text-center">
+                  {r.vps_host || r.slot_id != null ? (
+                    <div className="flex flex-col items-center gap-0.5">
+                      {r.vps_host ? <span className="text-xs text-cyan-400 font-mono">{r.vps_host}</span> : null}
+                      {r.slot_id != null ? <span className="text-[10px] px-1.5 py-0.5 bg-zinc-800 rounded text-zinc-300">slot {r.slot_id}</span> : null}
+                    </div>
+                  ) : <span className="text-zinc-600">—</span>}
+                </td>
+                <td className="py-3 px-2 text-right font-mono whitespace-nowrap">
+                  {r.duration_s != null ? (
+                    <span className={`${r.duration_s > 120 ? 'text-amber-400' : r.duration_s > 60 ? 'text-zinc-300' : 'text-green-400'}`}>
+                      {r.duration_s >= 60 ? `${Math.floor(r.duration_s / 60)}m ${r.duration_s % 60}s` : `${r.duration_s}s`}
+                    </span>
+                  ) : <span className="text-zinc-600">—</span>}
+                </td>
                 <td className="py-3 px-2 text-right font-mono">
                   {r.metrics ? <span className={r.metrics.profit_factor >= 1.3 ? 'text-green-400' : r.metrics.profit_factor >= 1.0 ? 'text-amber-400' : 'text-red-400'}>{r.metrics.profit_factor.toFixed(2)}</span> : '—'}
                 </td>
