@@ -413,12 +413,12 @@ export function SplitLayout({
   const displayBacktest = optimizedBacktest || latestBacktest
   const displayCode = optimizedCode || latestCode
 
-  // Debug: track what code the backtest will use
+  // Keep a ref to the latest displayCode so the backtest handler
+  // always uses the current code, not a stale closure value
+  const displayCodeRef = useRef(displayCode)
   useEffect(() => {
-    if (latestCode || optimizedCode) {
-      console.log(`[CODE] latestCode=${latestCode?.length || 0}ch optimizedCode=${optimizedCode?.length || 0}ch → displayCode=${displayCode?.length || 0}ch msgs=${messages.length}`)
-    }
-  }, [latestCode, optimizedCode, displayCode, messages.length])
+    displayCodeRef.current = displayCode
+  }, [displayCode])
 
   // Determine if Hybrid Manager is actively running
   const isHybridRunning = strategy.status === 'running'
@@ -465,6 +465,13 @@ export function SplitLayout({
               // Prevent double-click / duplicate auto-trigger
               if (isBacktesting) return
 
+              // CRITICAL: Read code from ref to avoid stale closure.
+              // The inline handler captures displayCode at render time,
+              // but if the AI just updated the code, the closure is stale.
+              // The ref always has the latest value.
+              const currentCode = displayCodeRef.current
+              if (!currentCode) return
+
               const strat = latestStrategy as { name?: string; market?: string } | undefined
               // Use unique EA name per run to prevent VPS caching stale .ex5/.htm results
               const baseName = (strat?.name || 'SigxEA').replace(/[^a-zA-Z0-9_]/g, '_')
@@ -484,7 +491,6 @@ export function SplitLayout({
 
               const controller = new AbortController()
               backtestAbortRef.current = controller
-              // 5 min timeout — compile auto-fix + backtest can take 2-4 min
               backtestTimeoutRef.current = setTimeout(() => {
                 controller.abort()
               }, 300000)
@@ -507,16 +513,13 @@ export function SplitLayout({
                   return
                 }
 
-                // Debug: log what code is being sent
-                console.log(`[BACKTEST] EA=${eaName} code_len=${displayCode?.length} code_hash=${displayCode?.slice(0, 80).replace(/\s+/g, ' ')} optimizedCode=${!!optimizedCode} latestCode_len=${latestCode?.length}`)
-
                 let res = await fetch('/api/ai-builder/backtest', {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`,
                   },
-                  body: JSON.stringify({ ea_name: eaName, mq5_code: displayCode, symbol, period: 'H1', start, end }),
+                  body: JSON.stringify({ ea_name: eaName, mq5_code: currentCode, symbol, period: 'H1', start, end }),
                   signal: controller.signal,
                 })
 
@@ -533,7 +536,7 @@ export function SplitLayout({
                           'Content-Type': 'application/json',
                           Authorization: `Bearer ${token}`,
                         },
-                        body: JSON.stringify({ ea_name: eaName, mq5_code: displayCode, symbol, period: 'H1', start, end }),
+                        body: JSON.stringify({ ea_name: eaName, mq5_code: currentCode, symbol, period: 'H1', start, end }),
                         signal: controller.signal,
                       })
                     }
@@ -593,7 +596,7 @@ export function SplitLayout({
                   // Save as a version
                   const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')
                   versionHistory.addVersion(
-                    displayCode!,
+                    currentCode,
                     btSnapshot,
                     latestStrategy as Record<string, unknown> | null,
                     lastUserMsg?.content || 'Backtest',
@@ -609,7 +612,7 @@ export function SplitLayout({
                     metadata: {
                       type: 'backtest_result',
                       backtest_snapshot: btSnapshot,
-                      mql5_code: displayCode,
+                      mql5_code: currentCode,
                       strategy_snapshot: latestStrategy || undefined,
                     },
                     created_at: new Date().toISOString(),
@@ -627,7 +630,7 @@ export function SplitLayout({
                       },
                       body: JSON.stringify({
                         metrics: btSnapshot,
-                        mql5_code: displayCode,
+                        mql5_code: currentCode,
                         strategy_snapshot: latestStrategy,
                         slot_id: data.slot_id ?? null,
                         vps_host: data.vps_host ?? null,

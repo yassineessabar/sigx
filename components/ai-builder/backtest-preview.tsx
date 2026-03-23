@@ -67,10 +67,10 @@ export function BacktestPreview({ backtest, reportHtmlB64, reportIsMt5, slotId, 
               <button
                 onClick={handleDownloadReport}
                 className="flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium text-foreground/40 hover:text-foreground/70 bg-foreground/[0.04] hover:bg-foreground/[0.08] border border-foreground/[0.06] transition-all"
-                title="Download backtest report"
+                title="Download MT5 backtest report (.htm)"
               >
                 <Download size={11} />
-                Report
+                MT5 Report
               </button>
             )}
             <span className={`rounded-full px-2.5 py-0.5 text-[12px] font-medium ${
