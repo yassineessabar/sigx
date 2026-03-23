@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Eye, Code2, ChevronsRight, BarChart3, Sparkles, Loader2, Square, Zap, Trophy, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { StrategyCard } from './strategy-card'
@@ -62,7 +62,22 @@ export function RightPanel({
   hybridCurrentStep,
   hybridTotalIterations,
 }: RightPanelProps) {
+  // Default to 'code' tab if there's code but no backtest results yet
+  const hasBacktest = !!backtestSnapshot
   const [activeTab, setActiveTab] = useState<'preview' | 'code' | 'iterations'>('preview')
+
+  // Auto-switch to code tab when code first appears without backtest
+  const [hasAutoSwitched, setHasAutoSwitched] = useState(false)
+  useEffect(() => {
+    if (mql5Code && !hasBacktest && !hasAutoSwitched) {
+      setActiveTab('code')
+      setHasAutoSwitched(true)
+    }
+    // Switch back to preview when backtest results arrive
+    if (hasBacktest && activeTab === 'code' && hasAutoSwitched) {
+      setActiveTab('preview')
+    }
+  }, [mql5Code, hasBacktest, hasAutoSwitched, activeTab])
 
   // Find the best iteration by profit_factor
   const bestIteration = hybridIterations.length > 0
