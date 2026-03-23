@@ -80,6 +80,8 @@ interface SplitLayoutProps {
   onAddMessage?: (message: ChatMessageType) => void
   credits: number | null
   onUpgradeClick: () => void
+  /** When true, auto-trigger a VPS backtest after code loads (used for templates) */
+  autoBacktest?: boolean
 }
 
 export function SplitLayout({
@@ -98,6 +100,7 @@ export function SplitLayout({
   onAddMessage,
   credits,
   onUpgradeClick,
+  autoBacktest,
 }: SplitLayoutProps) {
   const { latestStrategy, latestBacktest, latestCode, latestStrategyId, codeHasBacktest, codeFromUpload } = useMemo(() => {
     let strategy = null as ChatMessageType['metadata']['strategy_snapshot'] | null
@@ -172,6 +175,37 @@ export function SplitLayout({
 
   // Compile/backtest error popup state
   const [compileErrorPopup, setCompileErrorPopup] = useState<{ error: string } | null>(null)
+
+  // Auto-backtest for templates: triggers VPS backtest automatically after code loads
+  const autoBacktestTriggeredRef = useRef(false)
+
+  useEffect(() => {
+    // Only trigger once, when conditions are met
+    if (!autoBacktest || autoBacktestTriggeredRef.current) return
+    if (!latestCode || isGenerating || isBacktesting || codeHasBacktest || optimizedBacktest) return
+
+    autoBacktestTriggeredRef.current = true
+
+    // Small delay so UI renders the code panel first
+    const timer = setTimeout(() => {
+      // Programmatically trigger the backtest by simulating what the Run Backtest button does
+      // We dispatch a custom event that the handler below picks up
+      window.dispatchEvent(new CustomEvent('sigx-auto-backtest'))
+    }, 1500)
+
+    return () => clearTimeout(timer)
+  }, [autoBacktest, latestCode, isGenerating, isBacktesting, codeHasBacktest, optimizedBacktest])
+
+  // Listen for auto-backtest trigger
+  useEffect(() => {
+    const handler = () => {
+      // Find the BacktestLauncher button and click it
+      const btn = document.querySelector('[data-auto-backtest-trigger]') as HTMLButtonElement | null
+      if (btn) btn.click()
+    }
+    window.addEventListener('sigx-auto-backtest', handler)
+    return () => window.removeEventListener('sigx-auto-backtest', handler)
+  }, [])
 
   // ── Hybrid Manager integration ──
   const strategy = useStrategy(accessToken)
@@ -421,7 +455,7 @@ export function SplitLayout({
             onRegenerateMessage={onRegenerateMessage}
             onSend={onSend}
             onRunBacktest={displayCode ? async (startDate?: string, endDate?: string) => {
-              // Prevent double-click
+              // Prevent double-click / duplicate auto-trigger
               if (isBacktesting) return
 
               const strat = latestStrategy as { name?: string; market?: string } | undefined

@@ -91,6 +91,7 @@ export default function AIBuilderPage() {
   const [showNameModal, setShowNameModal] = useState(false)
   const [projectName, setProjectName] = useState('')
   const [pendingTemplatePrompt, setPendingTemplatePrompt] = useState<string | null>(null)
+  const [loadedFromTemplate, setLoadedFromTemplate] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
   const newChatIdRef = useRef<string | null>(null)
   const streamingRef = useRef('')
@@ -412,6 +413,7 @@ export default function AIBuilderPage() {
 
       setIsGenerating(false)
       setMessages([userMsg, assistantMsg])
+      setLoadedFromTemplate(true)
 
       // Save to DB — do it async but don't swallow errors
       ;(async () => {
@@ -809,6 +811,7 @@ export default function AIBuilderPage() {
         onAddMessage={(msg) => setMessages((prev) => [...prev, msg])}
         credits={credits}
         onUpgradeClick={() => setShowUpgradeModal(true)}
+        autoBacktest={loadedFromTemplate}
       />
     </div>
   )

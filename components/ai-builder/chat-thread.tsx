@@ -230,6 +230,7 @@ function BacktestLauncher({ onRunBacktest, onFocusPrompt }: {
 
         <div className="flex items-center gap-2">
           <button
+            data-auto-backtest-trigger
             onClick={() => onRunBacktest(showDates ? startDate : undefined, showDates ? endDate : undefined)}
             className="rounded-full bg-white px-4 py-2 text-[13px] font-semibold text-black hover:bg-white/90 transition-colors flex items-center gap-2"
           >
