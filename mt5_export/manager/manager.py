@@ -280,24 +280,42 @@ def _parse_tester_log(slot_id: str, deposit: int = 100000) -> dict:
     if not content:
         return {}
 
+    # ── CRITICAL: Use only the LAST run's data from the log ──
+    # The log file accumulates ALL runs from the same day.
+    # We use findall() and take the LAST match for balance,
+    # and find the last run boundary for deal/trade counting.
+
+    # Find the last "final balance" and extract only the run that produced it
+    # Each run boundary: look for the last ".ex5" marker before the last "final balance"
+    all_balance_positions = [m.start() for m in re.finditer(r"final balance", content, re.IGNORECASE)]
+    if all_balance_positions:
+        last_balance_pos = all_balance_positions[-1]
+        # Find the last ".ex5" line BEFORE this final balance — that's where this run started
+        ex5_positions = [m.start() for m in re.finditer(r'\.ex5', content[:last_balance_pos])]
+        if ex5_positions:
+            # Go back a bit to capture the full line with .ex5
+            run_start = content.rfind('\n', 0, ex5_positions[-1])
+            if run_start < 0:
+                run_start = 0
+            content = content[run_start:]
+
     metrics = {}
 
-    # Extract final balance (handles tab-delimited MT5 log format)
-    match = re.search(r"final balance\s+([\d.,]+)", content, re.IGNORECASE)
-    if match:
+    # Extract final balance — use findall and take LAST match
+    all_balances = re.findall(r"final balance\s+([\d.,]+)", content, re.IGNORECASE)
+    if all_balances:
         try:
-            balance = float(match.group(1).replace(",", ""))
+            balance = float(all_balances[-1].replace(",", ""))
             metrics["net_profit"] = round(balance - deposit, 2)
         except ValueError:
             pass
 
-    # Count deals and analyze trade outcomes
-    # Each "deal performed" is a deal; trades = entry+exit pairs
+    # Count deals ONLY from the last run
     deal_lines = re.findall(r"deal #(\d+)\s+(buy|sell)\s+[\d.]+\s+\w+\s+at\s+([\d.]+)", content, re.IGNORECASE)
     deal_count = len(deal_lines)
     metrics["total_trades"] = deal_count // 2
 
-    # Count wins/losses from trigger lines
+    # Count wins/losses from trigger lines in last run only
     tp_count = len(re.findall(r"take profit triggered", content, re.IGNORECASE))
     sl_count = len(re.findall(r"stop loss triggered", content, re.IGNORECASE))
     close_count = tp_count + sl_count
@@ -306,35 +324,13 @@ def _parse_tester_log(slot_id: str, deposit: int = 100000) -> dict:
     else:
         metrics["win_rate"] = 0
 
-    # Track equity progression for equity curve
-    balance_values = []
-    current_balance = float(deposit)
-    balance_values.append(current_balance)
-
-    # Parse deal P/L by tracking position opens/closes
-    # Look for "deal performed" lines to track balance changes
-    total_profit = 0.0
-    total_loss = 0.0
-    for line in content.split("\n"):
-        # Track take profits and stop losses for P/L estimation
-        if "take profit triggered" in line.lower():
-            # Extract the price difference from TP triggers
-            total_profit += 1
-        elif "stop loss triggered" in line.lower():
-            total_loss += 1
-
     # Calculate profit factor from win/loss counts and net profit
     net = metrics.get("net_profit", 0)
     trades = metrics.get("total_trades", 0)
 
     if tp_count > 0 and sl_count > 0 and net != 0:
-        # Estimate: if we know W wins and L losses with net profit N
-        # avg_win = (N + L * avg_loss) / W, estimate avg_loss from SL/TP ratio
-        # Simpler: PF = gross_profit / gross_loss
-        # With win_rate and net, estimate PF
         win_rate_frac = tp_count / max(close_count, 1)
         if net > 0:
-            # PF > 1; estimate from ratio of wins to losses weighted by profit
             metrics["profit_factor"] = round(1.0 + abs(net) / max(abs(net) + sl_count * abs(net) / max(tp_count, 1), 1), 2)
         else:
             metrics["profit_factor"] = round(max(0.01, tp_count * 1.0 / max(sl_count, 1) * (1 - abs(net) / max(deposit * 0.1, 1))), 2)
