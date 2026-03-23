@@ -803,6 +803,13 @@ export function SplitLayout({
             slotId={backtestSlotId}
             vpsHost={backtestVpsHost}
             mql5Code={displayCode}
+            onCodeChange={(newCode) => {
+              // User edited the code — store as optimizedCode so it's used for backtests
+              setOptimizedCode(newCode)
+              // Clear previous backtest results since the code changed
+              setOptimizedBacktest(null)
+              setReportHtmlB64(null)
+            }}
             isOpen={panelOpen}
             onToggle={() => setPanelOpen((prev) => !prev)}
             onOptimize={handleOptimize}

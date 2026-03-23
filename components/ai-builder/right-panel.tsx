@@ -19,6 +19,7 @@ interface RightPanelProps {
   slotId?: string | null
   vpsHost?: string | null
   mql5Code: string | null
+  onCodeChange?: (newCode: string) => void
   isOpen: boolean
   onToggle: () => void
   onOptimize?: () => void
@@ -46,6 +47,7 @@ export function RightPanel({
   slotId,
   vpsHost,
   mql5Code,
+  onCodeChange,
   isOpen,
   onToggle,
   onOptimize,
@@ -450,7 +452,7 @@ export function RightPanel({
           ) : (
             <div className="p-4">
               {mql5Code ? (
-                <CodeViewer code={mql5Code} />
+                <CodeViewer code={mql5Code} onCodeChange={onCodeChange} />
               ) : (
                 <div className="flex flex-col items-center justify-center py-24 text-center">
                   <Code2 size={32} className="text-foreground/10 mb-3" />
