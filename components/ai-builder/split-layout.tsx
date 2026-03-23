@@ -459,7 +459,9 @@ export function SplitLayout({
               if (isBacktesting) return
 
               const strat = latestStrategy as { name?: string; market?: string } | undefined
-              const eaName = (strat?.name || 'SigxEA').replace(/[^a-zA-Z0-9_]/g, '_')
+              // Use unique EA name per run to prevent VPS caching stale .ex5/.htm results
+              const baseName = (strat?.name || 'SigxEA').replace(/[^a-zA-Z0-9_]/g, '_')
+              const eaName = `${baseName}_${Date.now().toString(36).slice(-5)}`
               const symbol = strat?.market || 'XAUUSD'
 
               setIsBacktesting(true)
@@ -677,7 +679,8 @@ export function SplitLayout({
             onBacktestFile={async (code, fileName) => {
               if (isBacktesting) return
 
-              const eaName = fileName.replace(/\.(mq5|mq4)$/i, '').replace(/[^a-zA-Z0-9_]/g, '_') || 'UploadedEA'
+              const baseEaName = fileName.replace(/\.(mq5|mq4)$/i, '').replace(/[^a-zA-Z0-9_]/g, '_') || 'UploadedEA'
+              const eaName = `${baseEaName}_${Date.now().toString(36).slice(-5)}`
               const symbol = 'XAUUSD'
 
               setIsBacktesting(true)
