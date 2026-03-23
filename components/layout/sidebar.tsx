@@ -77,6 +77,8 @@ export function Sidebar({ chats = [], onNewChat, onDeleteChat }: SidebarProps) {
   const { theme, setTheme } = useTheme()
   const searchInputRef = useRef<HTMLInputElement>(null)
 
+  const [isAdminUser, setIsAdminUser] = useState(false)
+
   // Load credits — on mount, on route change, and every 30s
   useEffect(() => {
     const loadCredits = async () => {
@@ -92,6 +94,15 @@ export function Sidebar({ chats = [], onNewChat, onDeleteChat }: SidebarProps) {
     const interval = setInterval(loadCredits, 30000)
     return () => clearInterval(interval)
   }, [session?.access_token, pathname])
+
+  // Check admin status
+  useEffect(() => {
+    if (!session?.access_token) return
+    fetch('/api/admin/check', { headers: { Authorization: `Bearer ${session.access_token}` } })
+      .then(r => r.json())
+      .then(d => setIsAdminUser(!!d.isAdmin))
+      .catch(() => {})
+  }, [session?.access_token])
 
   useEffect(() => {
     if (searchActive && searchInputRef.current) {
@@ -271,6 +282,20 @@ export function Sidebar({ chats = [], onNewChat, onDeleteChat }: SidebarProps) {
               </Link>
             )
           })}
+          {isAdminUser && (
+            <Link
+              href="/admin"
+              className={cn(
+                'flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] transition-colors duration-200 font-medium',
+                pathname === '/admin'
+                  ? 'bg-foreground/[0.06] text-foreground/90'
+                  : 'text-foreground/50 hover:bg-foreground/[0.03] hover:text-foreground/80'
+              )}
+            >
+              <Settings className="h-[18px] w-[18px] shrink-0" strokeWidth={1.8} />
+              <span>Admin</span>
+            </Link>
+          )}
         </nav>
 
         {/* Recents */}
