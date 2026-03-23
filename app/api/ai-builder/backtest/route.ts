@@ -115,36 +115,29 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Check if any slot is free — if not, stream queue updates
-    let slotId = await findFreeSlot(workerUrl)
+    // Always stream NDJSON with step-by-step progress updates
+    const encoder = new TextEncoder()
+    const stream = new ReadableStream({
+      async start(controller) {
+        const send = (data: Record<string, unknown>) => {
+          controller.enqueue(encoder.encode(JSON.stringify(data) + '\n'))
+        }
 
-    if (!slotId) {
-      // All slots busy — stream queue position updates via NDJSON
-      const encoder = new TextEncoder()
-      const stream = new ReadableStream({
-        async start(controller) {
-          const send = (data: Record<string, unknown>) => {
-            controller.enqueue(encoder.encode(JSON.stringify(data) + '\n'))
-          }
+        let slotId = await findFreeSlot(workerUrl)
+        let vpsHostname = ''
 
-          // Poll for a free slot, streaming position updates
+        // ── Step 1: Wait for slot if all busy ──
+        if (!slotId) {
           const deadline = Date.now() + MAX_QUEUE_WAIT_MS
-          let position = 1
-          let vpsHostname = ''
           while (Date.now() < deadline) {
             const info = await getQueueInfo(workerUrl)
             if (info.hostname) vpsHostname = info.hostname
-            position = info.busy - info.available + 1
+            let position = info.busy - info.available + 1
             if (position < 1) position = 1
             send({ type: 'queue', position, busy: info.busy, total: info.total, vps_host: vpsHostname })
 
-            // Try to get a slot
             const slot = await findFreeSlot(workerUrl)
-            if (slot) {
-              slotId = slot
-              send({ type: 'queue_done', slot_id: slot, vps_host: vpsHostname })
-              break
-            }
+            if (slot) { slotId = slot; break }
             await new Promise(resolve => setTimeout(resolve, QUEUE_POLL_INTERVAL))
           }
 
@@ -153,81 +146,65 @@ export async function POST(request: NextRequest) {
             controller.close()
             return
           }
+        } else {
+          // Get hostname even when no queue
+          const info = await getQueueInfo(workerUrl)
+          vpsHostname = info.hostname || ''
+        }
 
-          // Slot acquired — run the backtest
-          send({ type: 'status', message: `Compiling and backtesting on ${vpsHostname || 'VPS'} · slot ${slotId}...` })
-          let currentCode = mq5_code
-          let lastResult = await tryCompileAndBacktest(workerUrl, ea_name, currentCode, sym, per, start, end)
+        send({ type: 'status', message: `Slot acquired · ${vpsHostname || 'VPS'} · slot ${slotId}` })
 
-          if (lastResult.supported) {
-            if (!lastResult.success && lastResult.compileError && getAnthropic()) {
-              for (let i = 0; i < MAX_FIX_RETRIES; i++) {
-                send({ type: 'status', message: `Auto-fixing compile errors (attempt ${i + 1})...` })
-                const errorLines = extractCompileErrors(lastResult.compileError)
-                const fixed = await autoFixCode(currentCode, errorLines)
-                if (!fixed) break
-                currentCode = fixed
-                lastResult = await tryCompileAndBacktest(workerUrl, ea_name, currentCode, sym, per, start, end)
-                if (lastResult.success || !lastResult.compileError) break
-              }
+        // ── Step 2: Compile ──
+        send({ type: 'status', message: `Compiling ${ea_name}.mq5 on ${vpsHostname || 'VPS'}...` })
+
+        let currentCode = mq5_code
+        let lastResult = await tryCompileAndBacktest(workerUrl, ea_name, currentCode, sym, per, start, end)
+
+        if (lastResult.supported) {
+          // ── Step 3: Auto-fix compile errors if needed ──
+          if (!lastResult.success && lastResult.compileError && getAnthropic()) {
+            for (let i = 0; i < MAX_FIX_RETRIES; i++) {
+              send({ type: 'status', message: `Compile error detected · Auto-fixing with AI (attempt ${i + 1}/${MAX_FIX_RETRIES})...` })
+              const errorLines = extractCompileErrors(lastResult.compileError)
+              const fixed = await autoFixCode(currentCode, errorLines)
+              if (!fixed) break
+              currentCode = fixed
+              send({ type: 'status', message: `Re-compiling fixed code (attempt ${i + 2})...` })
+              lastResult = await tryCompileAndBacktest(workerUrl, ea_name, currentCode, sym, per, start, end)
+              if (lastResult.success || !lastResult.compileError) break
             }
-
-            if (lastResult.success) {
-              send({ type: 'result', data: lastResult.data })
-            } else {
-              const cleanError = lastResult.compileError
-                ? 'Compilation failed: ' + extractCompileErrors(lastResult.compileError).join('; ')
-                : (lastResult.data?.error || 'Compile + backtest failed')
-              send({ type: 'result', data: { success: false, error: cleanError.slice(0, 200) } })
-            }
-          } else {
-            // Fallback to separate calls — run synchronously and return result
-            const fbRes = await runSeparateCalls(workerUrl, ea_name, currentCode, sym, per, slotId!, start, end)
-            send({ type: 'result', data: fbRes })
           }
 
-          controller.close()
-        },
-      })
+          if (lastResult.success) {
+            // The compile+backtest call already completed — backtest ran on VPS
+            send({ type: 'status', message: `Compiled successfully · Backtest running on ${sym} ${per}...` })
+            // Small delay so user sees the backtest step
+            await new Promise(resolve => setTimeout(resolve, 500))
+            send({ type: 'status', message: `Backtest complete · Parsing results...` })
+            send({ type: 'result', data: lastResult.data })
+          } else {
+            const cleanError = lastResult.compileError
+              ? 'Compilation failed: ' + extractCompileErrors(lastResult.compileError).join('; ')
+              : (lastResult.data?.error || 'Compile + backtest failed')
+            send({ type: 'result', data: { success: false, error: cleanError.slice(0, 200) } })
+          }
+        } else {
+          // Fallback to separate /compile + /backtest calls with granular updates
+          send({ type: 'status', message: `Compiling ${ea_name}.mq5...` })
 
-      return new Response(stream, {
-        headers: { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-cache' },
-      })
-    }
-
-    // Slot available immediately — standard JSON response (no queue)
-    let currentCode = mq5_code
-    let lastResult = await tryCompileAndBacktest(workerUrl, ea_name, currentCode, sym, per, start, end)
-
-    if (lastResult.supported) {
-      if (lastResult.success) {
-        return NextResponse.json(lastResult.data)
-      }
-
-      if (lastResult.compileError && getAnthropic()) {
-        for (let i = 0; i < MAX_FIX_RETRIES; i++) {
-          console.log(`Auto-fix attempt ${i + 1}/${MAX_FIX_RETRIES}...`)
-          const errorLines = extractCompileErrors(lastResult.compileError)
-          const fixed = await autoFixCode(currentCode, errorLines)
-          if (!fixed) break
-          currentCode = fixed
-          lastResult = await tryCompileAndBacktest(workerUrl, ea_name, currentCode, sym, per, start, end)
-          if (lastResult.success) return NextResponse.json(lastResult.data)
-          if (!lastResult.compileError) break
+          const fbRes = await runSeparateCalls(workerUrl, ea_name, currentCode, sym, per, slotId!, start, end, (step: string) => {
+            send({ type: 'status', message: step })
+          })
+          send({ type: 'result', data: fbRes })
         }
-      }
 
-      const cleanError = lastResult.compileError
-        ? 'Compilation failed: ' + extractCompileErrors(lastResult.compileError).join('; ')
-        : (lastResult.data?.error || 'Compile + backtest failed')
-      return NextResponse.json({
-        success: false,
-        error: cleanError.slice(0, 200),
-      })
-    }
+        controller.close()
+      },
+    })
 
-    // /compile-and-backtest not available — fall back to separate calls
-    return await fallbackSeparateCalls(workerUrl, ea_name, currentCode, sym, per, slotId, start, end)
+    return new Response(stream, {
+      headers: { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-cache' },
+    })
   } catch (error) {
     console.error('Backtest route error:', error)
     return NextResponse.json(
@@ -318,7 +295,8 @@ async function tryCompileAndBacktest(
  */
 async function runSeparateCalls(
   workerUrl: string, eaName: string, code: string, symbol: string, period: string, slotId: string,
-  start?: string, end?: string
+  start?: string, end?: string,
+  onStep?: (msg: string) => void
 ): Promise<Record<string, unknown>> {
   let currentCode = code
 
@@ -335,11 +313,19 @@ async function runSeparateCalls(
         continue
       }
       const data = await res.json()
-      if (data.success) break
+      if (data.success) {
+        onStep?.(`Compiled successfully · 0 errors`)
+        break
+      }
       const errors = typeof data.errors === 'string' ? [data.errors] : (data.errors || ['Unknown error'])
       if (attempt < MAX_FIX_RETRIES && getAnthropic()) {
+        onStep?.(`Compile error · Auto-fixing with AI (attempt ${attempt + 1}/${MAX_FIX_RETRIES})...`)
         const fixed = await autoFixCode(currentCode, errors)
-        if (fixed) { currentCode = fixed; continue }
+        if (fixed) {
+          currentCode = fixed
+          onStep?.(`Re-compiling fixed code...`)
+          continue
+        }
       }
       return { success: false, error: `Compilation failed: ${errors.slice(0, 3).join('; ').slice(0, 200)}` }
     } catch (err) {
@@ -347,6 +333,7 @@ async function runSeparateCalls(
     }
   }
 
+  onStep?.(`Running backtest on ${symbol} ${period}...`)
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 240_000)

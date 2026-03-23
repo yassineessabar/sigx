@@ -420,7 +420,7 @@ export function SplitLayout({
               const start = startDate || '2025.01.01'
               const end = endDate || '2026.03.01'
               const dateLabel = `${start.replace(/\./g, '/').slice(0,7)} – ${end.replace(/\./g, '/').slice(0,7)}`
-              setPipelineStatus(`Compiling and backtesting on MT5... · ${symbol} · H1 · ${dateLabel}`)
+              setPipelineStatus(`Connecting to MT5 VPS... · ${symbol} · H1 · ${dateLabel}`)
 
               // Clean up previous abort controller/timeout
               if (backtestTimeoutRef.current) clearTimeout(backtestTimeoutRef.current)
