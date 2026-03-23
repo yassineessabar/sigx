@@ -448,11 +448,23 @@ function VpsTab({ data, token }: { data: VpsData | null; token: string | null })
         </div>
       )}
 
+      {/* Deploy Manager Update */}
+      <div className="bg-zinc-900 border border-amber-900/30 rounded-xl p-5">
+        <h3 className="text-sm font-medium text-amber-400 mb-2">Deploy Manager Update</h3>
+        <p className="text-xs text-zinc-400 mb-3">Run this on the VPS (PowerShell) to update manager.py with FTMO account login support:</p>
+        <div className="bg-zinc-950 rounded-lg p-3 font-mono text-xs text-green-400 overflow-x-auto whitespace-pre">
+{`# Run on VPS PowerShell:
+Invoke-WebRequest -Uri "YOUR_WEBAPP_URL/api/admin/manager-update" -Headers @{"x-api-key"="YOUR_VPS_KEY"} -OutFile "C:\\MT5\\manager\\manager.py"
+# Then restart:
+taskkill /F /IM uvicorn.exe 2>$null; cd C:\\MT5\\manager; Start-Process python -ArgumentList "-m","uvicorn","manager:app","--host","0.0.0.0","--port","8000" -NoNewWindow`}
+        </div>
+        <p className="text-xs text-zinc-500 mt-2">After deploying, click &quot;Login All Slots&quot; above to connect all MT5 terminals to the FTMO account.</p>
+      </div>
+
       {/* VPS Address */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
         <h3 className="text-sm font-medium text-zinc-400 mb-2">Connection Info</h3>
         <div className="text-sm space-y-1">
-          <div><span className="text-zinc-500">Manager URL:</span> <code className="text-blue-400">{process.env.NEXT_PUBLIC_MT5_MANAGER_URL || 'Set MT5_MANAGER_URL in env'}</code></div>
           <div><span className="text-zinc-500">Hostname:</span> {String(s?.hostname || 'N/A')}</div>
           <div><span className="text-zinc-500">Running Jobs:</span> {String(s?.running_jobs || 0)}</div>
           <div><span className="text-zinc-500">Completed Jobs:</span> {String((s as Record<string, unknown>)?.completed_jobs || 0)}</div>
