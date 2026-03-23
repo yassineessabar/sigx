@@ -422,17 +422,24 @@ function parseReportMetrics(reportB64: string | undefined): Record<string, numbe
   try {
     const buf = Buffer.from(reportB64, 'base64')
     const html = (buf[0] === 0xff && buf[1] === 0xfe) ? buf.toString('utf16le') : buf.toString('utf-8')
-    const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')
+    // Strip HTML tags and normalize whitespace (including non-breaking spaces \u00a0)
+    const text = html.replace(/<[^>]+>/g, ' ').replace(/[\s\u00a0]+/g, ' ')
 
     const result: Record<string, number> = {}
 
     // Sharpe Ratio: -1.93
-    const sharpe = text.match(/Sharpe Ratio:\s*(-?[\d.]+)/)
+    const sharpe = text.match(/Sharpe Ratio:?\s*(-?[\d.]+)/)
     if (sharpe) result.sharpe = parseFloat(sharpe[1])
 
-    // Balance Drawdown Maximal: 2 606.48 (2.58%)
-    const ddMax = text.match(/(?:Balance|Equity) Drawdown Maximal:\s*[\d\s,.]+\(([\d.]+)%\)/)
-    if (ddMax) result.max_drawdown = parseFloat(ddMax[1])
+    // Balance Drawdown Maximal: 2 606.48 (2.58%)  OR  Equity Drawdown Maximal: ...
+    // Try Balance first, then Equity — use the percentage inside parentheses
+    const ddBalance = text.match(/Balance Drawdown Maximal:?\s*[-\d\s,.]+\(([\d.]+)%\)/)
+    const ddEquity = text.match(/Equity Drawdown Maximal:?\s*[-\d\s,.]+\(([\d.]+)%\)/)
+    // Use the larger of the two (more conservative)
+    const ddBalVal = ddBalance ? parseFloat(ddBalance[1]) : 0
+    const ddEqVal = ddEquity ? parseFloat(ddEquity[1]) : 0
+    const ddVal = Math.max(ddBalVal, ddEqVal)
+    if (ddVal > 0) result.max_drawdown = ddVal
 
     // Profit Trades (% of total): 191 (37.75%)
     const winRate = text.match(/Profit Trades \(% of total\):\s*\d+\s*\(([\d.]+)%\)/)
@@ -469,22 +476,25 @@ function parseReportMetrics(reportB64: string | undefined): Record<string, numbe
 }
 
 function normalizeMetrics(raw: Record<string, unknown>, reportB64?: string) {
-  // Parse the HTML report for metrics the VPS parser misses
+  // Parse the HTML report — this is the authoritative source for metrics.
+  // The VPS Python parser only estimates some values (drawdown, sharpe)
+  // so we ALWAYS prefer the HTML report values when available.
   const fromReport = parseReportMetrics(reportB64)
 
-  const netProfit = parseNum(raw.net_profit ?? fromReport.net_profit)
+  const netProfit = parseNum(fromReport.net_profit ?? raw.net_profit)
   const initialDeposit = fromReport.initial_deposit || 100000
   const totalReturn = initialDeposit > 0 ? (netProfit / initialDeposit) * 100 : 0
 
   return {
-    sharpe: parseNum(raw.sharpe ?? raw.sharpe_ratio ?? fromReport.sharpe),
-    max_drawdown: Math.abs(parseNum(raw.max_drawdown ?? raw.max_dd ?? fromReport.max_drawdown)) || 0,
-    win_rate: parseNum(raw.win_rate ?? raw.win_pct ?? fromReport.win_rate),
+    // Prefer HTML report values (accurate) over VPS estimates
+    sharpe: parseNum(fromReport.sharpe ?? raw.sharpe ?? raw.sharpe_ratio),
+    max_drawdown: Math.abs(parseNum(fromReport.max_drawdown ?? raw.max_drawdown ?? raw.max_dd)) || 0,
+    win_rate: parseNum(fromReport.win_rate ?? raw.win_rate ?? raw.win_pct),
     total_return: totalReturn,
-    profit_factor: parseNum(raw.profit_factor ?? fromReport.profit_factor),
-    total_trades: parseNum(raw.total_trades ?? fromReport.total_trades),
+    profit_factor: parseNum(fromReport.profit_factor ?? raw.profit_factor),
+    total_trades: parseNum(fromReport.total_trades ?? raw.total_trades),
     net_profit: netProfit,
-    recovery_factor: parseNum(raw.recovery_factor ?? fromReport.recovery_factor),
+    recovery_factor: parseNum(fromReport.recovery_factor ?? raw.recovery_factor),
     initial_deposit: initialDeposit,
   }
 }

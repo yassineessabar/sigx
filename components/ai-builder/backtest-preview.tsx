@@ -44,7 +44,7 @@ export function BacktestPreview({ backtest, reportHtmlB64, reportIsMt5, slotId, 
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `backtest-report-${new Date().toISOString().slice(0, 10)}.html`
+      a.download = `MT5_Report_${new Date().toISOString().slice(0, 10)}.htm`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
