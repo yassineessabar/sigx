@@ -91,6 +91,7 @@ export interface ChatMessageMetadata {
     net_profit?: number
     recovery_factor?: number
     equity_curve?: { date: string; equity: number }[]
+    _estimated?: boolean
   }
   mql5_code?: string
 }

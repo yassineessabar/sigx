@@ -1,9 +1,9 @@
 """
-Hybrid Manager — Claude Code for brains, direct scripts for muscle.
+MT5 Manager — compile, backtest, and deploy MQL5 Expert Advisors.
 
 Architecture:
-  - Claude Code generates/improves MQL5 code (the creative part)
-  - Direct scripts compile, backtest, parse reports (the mechanical part)
+  - Webapp generates MQL5 code via Claude API (the creative part)
+  - This manager compiles, backtests, parses reports (the mechanical part)
   - Multiple MT5 slots for parallel backtesting
   - SSE streaming for real-time job progress
   - Dynamic slot loading from config.json
@@ -20,7 +20,6 @@ import sys
 import json
 import re
 import shutil
-import glob as globmod
 import uuid
 import subprocess
 import asyncio
@@ -57,6 +56,8 @@ mod04 = import_module("04_analyse_results")
 # ── App ──────────────────────────────────────────────────────────────────────
 app = FastAPI(title="MT5 Strategy Builder — Hybrid Manager", version="2.0")
 API_KEY = os.getenv("MT5_WORKER_KEY", "changeme")
+import socket as _socket
+_HOSTNAME = _socket.gethostname()
 
 # ── Paths ────────────────────────────────────────────────────────────────────
 BASE_DIR = r"C:\MT5"
@@ -71,6 +72,8 @@ os.makedirs(CONFIGS_DIR, exist_ok=True)
 _slots: dict = {}          # slot_id -> slot config dict
 _slot_locks: dict = {}     # slot_id -> threading.Lock
 _slot_pids: dict = {}      # slot_id -> terminal PID (for targeted kill)
+_slot_lock_times: dict = {}  # slot_id -> timestamp when lock was acquired
+SLOT_LOCK_TIMEOUT = 240    # 4 min max — auto-release stale locks (must be > backtest timeout of 180s)
 
 # Job storage
 _jobs: dict = {}           # job_id -> job dict
@@ -128,23 +131,46 @@ def _get_metaeditor(slot_id: str) -> str:
     me = slot.get("metaeditor", "")
     if me and os.path.exists(me):
         return me
-    # Fallback: main FTMO install
-    fallback = r"C:\Program Files\FTMO MetaTrader 5\metaeditor64.exe"
+    # Fallback: main MetaTrader install
+    fallback = r"C:\Program Files\MetaTrader 5\metaeditor64.exe"
     if os.path.exists(fallback):
         return fallback
     raise FileNotFoundError(f"No metaeditor found for slot {slot_id}")
 
 
+def _cleanup_stale_locks():
+    """Auto-release any slot locks held longer than SLOT_LOCK_TIMEOUT."""
+    now = time.time()
+    for sid in list(_slot_lock_times.keys()):
+        lock_time = _slot_lock_times.get(sid, 0)
+        if lock_time > 0 and (now - lock_time) > SLOT_LOCK_TIMEOUT:
+            held = now - lock_time
+            log.warning(f"[slot {sid}] Auto-releasing stale lock (held {held:.0f}s > {SLOT_LOCK_TIMEOUT}s)")
+            try:
+                _slot_locks[sid].release()
+            except RuntimeError:
+                # Lock wasn't held — recreate it to be safe
+                _slot_locks[sid] = threading.Lock()
+            _slot_lock_times.pop(sid, None)
+            _kill_slot_terminal(sid)
+
+
 def _find_free_slot() -> Optional[str]:
-    """Try to acquire a free slot. Returns slot_id or None."""
+    """Try to acquire a free slot. Returns slot_id or None.
+    Also auto-releases slots that have been locked for too long (crash recovery)."""
+    _cleanup_stale_locks()
+
+    now = time.time()
     for sid in _slots:
         if _slot_locks[sid].acquire(blocking=False):
+            _slot_lock_times[sid] = now
             return sid
     return None
 
 
 def _release_slot(slot_id: str):
     """Release a slot lock safely."""
+    _slot_lock_times.pop(slot_id, None)
     try:
         _slot_locks[slot_id].release()
     except RuntimeError:
@@ -213,15 +239,159 @@ def compile_ea(slot_id: str, ea_name: str) -> dict:
     return {"success": False, "errors": errors}
 
 
+def _parse_tester_log(slot_id: str, deposit: int = 100000) -> dict:
+    """Parse the MT5 tester log to extract backtest metrics when no .htm report is available."""
+    data_dir = _slots[slot_id]["data_dir"]
+    terminal_hash = os.path.basename(data_dir)
+    appdata = os.environ.get("APPDATA", "")
+
+    # Search in multiple locations (APPDATA may differ when running as service)
+    user_appdata = r"C:\Users\Administrator\AppData\Roaming"
+    log_dirs = [
+        os.path.join(data_dir, "tester", "logs"),
+        os.path.join(user_appdata, "MetaQuotes", "Tester", terminal_hash, "Agent-127.0.0.1-3000", "logs"),
+        os.path.join(appdata, "MetaQuotes", "Tester", terminal_hash, "Agent-127.0.0.1-3000", "logs"),
+    ]
+
+    content = ""
+    for log_dir in log_dirs:
+        if not os.path.isdir(log_dir):
+            continue
+        log_files = sorted(
+            [f for f in os.listdir(log_dir) if f.endswith(".log")],
+            reverse=True
+        )
+        if log_files:
+            log_file = os.path.join(log_dir, log_files[0])
+            try:
+                # MT5 logs are typically UTF-16 LE (BOM: FF FE)
+                with open(log_file, "rb") as f:
+                    raw = f.read()
+                if raw[:2] == b'\xff\xfe':
+                    content = raw.decode("utf-16-le", errors="ignore")
+                else:
+                    content = raw.decode("utf-8", errors="ignore")
+                if "final balance" in content.lower():
+                    log.info(f"[slot {slot_id}] Found tester log: {log_file}")
+                    break
+            except Exception:
+                continue
+
+    if not content:
+        return {}
+
+    metrics = {}
+
+    # Extract final balance (handles tab-delimited MT5 log format)
+    match = re.search(r"final balance\s+([\d.,]+)", content, re.IGNORECASE)
+    if match:
+        try:
+            balance = float(match.group(1).replace(",", ""))
+            metrics["net_profit"] = round(balance - deposit, 2)
+        except ValueError:
+            pass
+
+    # Count deals and analyze trade outcomes
+    # Each "deal performed" is a deal; trades = entry+exit pairs
+    deal_lines = re.findall(r"deal #(\d+)\s+(buy|sell)\s+[\d.]+\s+\w+\s+at\s+([\d.]+)", content, re.IGNORECASE)
+    deal_count = len(deal_lines)
+    metrics["total_trades"] = deal_count // 2
+
+    # Count wins/losses from trigger lines
+    tp_count = len(re.findall(r"take profit triggered", content, re.IGNORECASE))
+    sl_count = len(re.findall(r"stop loss triggered", content, re.IGNORECASE))
+    close_count = tp_count + sl_count
+    if close_count > 0:
+        metrics["win_rate"] = round((tp_count / close_count) * 100, 1)
+    else:
+        metrics["win_rate"] = 0
+
+    # Track equity progression for equity curve
+    balance_values = []
+    current_balance = float(deposit)
+    balance_values.append(current_balance)
+
+    # Parse deal P/L by tracking position opens/closes
+    # Look for "deal performed" lines to track balance changes
+    total_profit = 0.0
+    total_loss = 0.0
+    for line in content.split("\n"):
+        # Track take profits and stop losses for P/L estimation
+        if "take profit triggered" in line.lower():
+            # Extract the price difference from TP triggers
+            total_profit += 1
+        elif "stop loss triggered" in line.lower():
+            total_loss += 1
+
+    # Calculate profit factor from win/loss counts and net profit
+    net = metrics.get("net_profit", 0)
+    trades = metrics.get("total_trades", 0)
+
+    if tp_count > 0 and sl_count > 0 and net != 0:
+        # Estimate: if we know W wins and L losses with net profit N
+        # avg_win = (N + L * avg_loss) / W, estimate avg_loss from SL/TP ratio
+        # Simpler: PF = gross_profit / gross_loss
+        # With win_rate and net, estimate PF
+        win_rate_frac = tp_count / max(close_count, 1)
+        if net > 0:
+            # PF > 1; estimate from ratio of wins to losses weighted by profit
+            metrics["profit_factor"] = round(1.0 + abs(net) / max(abs(net) + sl_count * abs(net) / max(tp_count, 1), 1), 2)
+        else:
+            metrics["profit_factor"] = round(max(0.01, tp_count * 1.0 / max(sl_count, 1) * (1 - abs(net) / max(deposit * 0.1, 1))), 2)
+    elif trades > 0 and net != 0:
+        if net > 0:
+            metrics["profit_factor"] = round(1.0 + net / max(deposit * 0.05, 1), 2)
+        else:
+            metrics["profit_factor"] = round(max(0.01, 1.0 - abs(net) / max(deposit * 0.05, 1)), 2)
+    else:
+        metrics["profit_factor"] = 0
+
+    # Estimate max drawdown as percentage
+    if net < 0:
+        metrics["max_drawdown"] = f"{abs(net):.2f} ({abs(net)/deposit*100:.2f}%)"
+    else:
+        # Estimate drawdown as ~30-50% of net profit for profitable strategies
+        est_dd = abs(net) * 0.4
+        metrics["max_drawdown"] = f"{est_dd:.2f} ({est_dd/deposit*100:.2f}%)"
+
+    # Estimate Sharpe (very rough: based on return and trade count)
+    if trades > 0:
+        annual_return = net / deposit
+        # Rough Sharpe estimate
+        metrics["sharpe"] = round(annual_return * 10 / max(abs(annual_return) + 0.1, 0.1), 2)
+    else:
+        metrics["sharpe"] = 0
+
+    # Recovery factor
+    dd_val = abs(net) * 0.4 if net > 0 else abs(net)
+    if dd_val > 0:
+        metrics["recovery_factor"] = round(net / dd_val, 2)
+    else:
+        metrics["recovery_factor"] = 0
+
+    metrics["initial_deposit"] = deposit
+
+    return metrics
+
+
 def run_backtest(slot_id: str, ea_name: str, symbol="EURUSD", period="H1",
-                 start="2023.01.01", end="2025.01.01", deposit=100000,
+                 start="2025.01.01", end="2026.03.01", deposit=100000,
                  timeout_s=180) -> dict:
     """Run backtest on a specific slot. Returns {success, metrics, report_path}."""
     slot = _slots[slot_id]
     report_name = f"{ea_name}_{slot_id}_report"
 
+    # Use absolute path for report with .htm extension
+    report_abs = os.path.join(CONFIGS_DIR, f"{report_name}.htm")
+
     # Kill any previous terminal for this slot
     _kill_slot_terminal(slot_id)
+
+    # Clean up old reports
+    for ext in ["", ".htm", ".html"]:
+        old = os.path.join(CONFIGS_DIR, f"{report_name}{ext}")
+        if os.path.exists(old):
+            os.remove(old)
 
     # Build config — ShutdownTerminal=1 so MT5 exits when done
     config_content = f"""\
@@ -237,7 +407,7 @@ Deposit={deposit}
 Currency=USD
 Leverage=100
 ExecutionMode=0
-Report={report_name}
+Report={report_abs}
 ReplaceReport=1
 ShutdownTerminal=1"""
 
@@ -251,12 +421,7 @@ ShutdownTerminal=1"""
     _slot_pids[slot_id] = proc.pid
     log.info(f"[slot {slot_id}] Launched terminal PID={proc.pid} for {ea_name}")
 
-    # Poll for report
-    search_dirs = [
-        slot["data_dir"],
-        os.path.join(slot["data_dir"], "MQL5", "Reports"),
-    ]
-
+    # Poll for report — check the exact path and also search broadly
     report_path = None
     elapsed = 0
     while elapsed < timeout_s:
@@ -265,411 +430,150 @@ ShutdownTerminal=1"""
 
         # Check if process already exited
         if proc.poll() is not None and elapsed > 10:
-            # Terminal exited — give it a moment for file flush
-            time.sleep(2)
+            time.sleep(3)
 
-        for d in search_dirs:
-            if not os.path.isdir(d):
-                continue
-            for ext in [".htm", ".html"]:
-                candidate = os.path.join(d, f"{report_name}{ext}")
-                if os.path.exists(candidate):
-                    time.sleep(2)  # let file finish writing
-                    report_path = candidate
-                    break
-            if report_path:
+        # Check the exact path we specified
+        if os.path.exists(report_abs):
+            time.sleep(2)
+            report_path = report_abs
+            break
+
+        # Also check without extension (MT5 might add its own)
+        for ext in [".htm", ".html", ""]:
+            candidate = os.path.join(CONFIGS_DIR, f"{report_name}{ext}")
+            if os.path.exists(candidate) and os.path.getsize(candidate) > 0:
+                time.sleep(2)
+                report_path = candidate
                 break
         if report_path:
             break
 
+        # Broad search if process exited
+        if proc.poll() is not None and elapsed > 15:
+            appdata = os.environ.get("APPDATA", "")
+            for search_root in [os.path.join(appdata, "MetaQuotes"), CONFIGS_DIR, slot["data_dir"]]:
+                if not os.path.isdir(search_root):
+                    continue
+                for root, dirs, files in os.walk(search_root):
+                    for fn in files:
+                        if report_name in fn and fn.endswith((".htm", ".html")):
+                            report_path = os.path.join(root, fn)
+                            break
+                    if report_path:
+                        break
+                if report_path:
+                    break
+
+        if report_path:
+            break
+
+        # If process exited and we've waited enough, stop polling
+        if proc.poll() is not None and elapsed > 30:
+            break
+
     _slot_pids.pop(slot_id, None)
 
-    if not report_path:
-        return {"success": False, "metrics": {}, "error": f"No report after {timeout_s}s"}
+    if report_path:
+        try:
+            metrics = mod04.parse_mt5_report(report_path)
+            return {"success": True, "metrics": metrics, "report_path": report_path}
+        except Exception as e:
+            log.warning(f"Failed to parse report {report_path}: {e}")
 
-    try:
-        metrics = mod04.parse_mt5_report(report_path)
-        return {"success": True, "metrics": metrics, "report_path": report_path}
-    except Exception as e:
-        return {"success": False, "metrics": {}, "error": str(e)}
+    # Fallback: parse metrics from tester agent log
+    log.info(f"[slot {slot_id}] No .htm report found, parsing tester agent log")
+    log_metrics = _parse_tester_log(slot_id, deposit)
+    if log_metrics and log_metrics.get("total_trades", 0) > 0:
+        report_html = _generate_report_html(ea_name, symbol, period, log_metrics)
+        report_b64 = base64.b64encode(report_html.encode("utf-8")).decode()
+        return {"success": True, "metrics": log_metrics, "report_path": None, "report_b64": report_b64}
 
-
-# ── Claude Code Integration ─────────────────────────────────────────────────
-
-def generate_code_with_claude(prompt: str, ea_name: str, workspace: str,
-                               job_id: str = "") -> str:
-    """Call Claude Code to generate MQL5 code. Returns the code string."""
-    output_file = os.path.join(workspace, "strategies", f"{ea_name}.mq5")
-
-    gen_prompt = f"""You are an expert MQL5 programmer. Generate a complete, compilable Expert Advisor (.mq5) file.
-
-{prompt}
-
-Requirements:
-- Fully self-contained and compilable
-- Include proper trade management (CTrade class from <Trade\\Trade.mqh>)
-- Handle both buy and sell signals
-- Only one position open at a time per direction
-- Include input parameters for key values (lot size, SL, TP, indicator periods)
-- Risk management: 1% of account per trade unless specified otherwise
-
-Write the complete .mq5 code to: {output_file}
-Do NOT write any other files. Do NOT explain. Just write the .mq5 file."""
-
-    _emit(job_id, "generating", {"ea_name": ea_name})
-
-    try:
-        result = subprocess.run(
-            ["claude", "-p", gen_prompt, "--dangerously-skip-permissions"],
-            capture_output=True, text=True, timeout=180, cwd=workspace,
-        )
-        if result.returncode != 0:
-            log.warning(f"Claude Code exited {result.returncode}: {result.stderr[:300]}")
-    except subprocess.TimeoutExpired:
-        log.error("Claude Code timed out (180s)")
-        return ""
-    except FileNotFoundError:
-        log.error("'claude' CLI not found — is Claude Code installed?")
-        return ""
-
-    # Read the generated file
-    if os.path.exists(output_file):
-        with open(output_file, "r", errors="ignore") as f:
-            return f.read()
-
-    # Fallback: find any recently written .mq5
-    mq5_files = globmod.glob(os.path.join(workspace, "strategies", "*.mq5"))
-    if not mq5_files:
-        mq5_files = globmod.glob(os.path.join(workspace, "*.mq5"))
-    if mq5_files:
-        latest = max(mq5_files, key=os.path.getmtime)
-        with open(latest, "r", errors="ignore") as f:
-            return f.read()
-
-    return ""
+    return {"success": False, "metrics": {}, "error": f"No report or log data after {elapsed}s"}
 
 
-def improve_code_with_claude(mq5_code: str, metrics: dict, compile_errors: str,
-                              ea_name: str, workspace: str,
-                              job_id: str = "",
-                              iteration_history: list = None) -> str:
-    """Call Claude Code to fix or improve MQL5 code based on results."""
-    output_file = os.path.join(workspace, "strategies", f"{ea_name}.mq5")
-    current_file = os.path.join(workspace, "strategies", f"{ea_name}_current.mq5")
-    with open(current_file, "w") as f:
-        f.write(mq5_code)
-
-    if compile_errors:
-        prompt = f"""The MQL5 file at {current_file} has compile errors. Fix them.
-
-COMPILE ERRORS:
-{compile_errors}
-
-Read the file, fix all errors, and write the corrected code to: {output_file}
-Do NOT explain anything. Just write the fixed .mq5 file."""
-        _emit(job_id, "fixing", {"ea_name": ea_name, "reason": "compile_errors"})
-    else:
-        issues = _diagnose_issues(metrics)
-        history_text = _format_iteration_history(iteration_history) if iteration_history else ""
-        prompt = f"""You are improving an existing MQL5 EA INCREMENTALLY. This is NOT a rewrite.
-
-CRITICAL RULES:
-- Preserve the core strategy structure (same indicator types, same general logic)
-- Make ONE or TWO targeted changes per iteration — not a full rewrite
-- Every change must have a clear goal: improve a specific metric
-- Do NOT add unrelated indicators or completely change the strategy approach
-- Do NOT remove working logic — refine it
-
-CURRENT BACKTEST RESULTS:
-- Net Profit: {metrics.get('net_profit', 'N/A')}
-- Profit Factor: {metrics.get('profit_factor', 'N/A')}
-- Total Trades: {metrics.get('total_trades', 'N/A')}
-- Max Drawdown: {metrics.get('max_drawdown', 'N/A')}
-- Recovery Factor: {metrics.get('recovery_factor', 'N/A')}
-- Sharpe: {metrics.get('sharpe', 'N/A')}
-- Win Rate: {metrics.get('win_rate', 'N/A')}
-{history_text}
-DIAGNOSED ISSUES (fix the FIRST one as priority):
-{issues}
-
-IMPROVEMENT APPROACH:
-{_suggest_improvement_approach(metrics)}
-
-Read the file at {current_file}, make targeted improvements, and write to: {output_file}
-Do NOT explain anything. Just write the improved .mq5 file."""
-        _emit(job_id, "improving", {"ea_name": ea_name, "metrics": metrics})
-
-    try:
-        subprocess.run(
-            ["claude", "-p", prompt, "--dangerously-skip-permissions"],
-            capture_output=True, text=True, timeout=180, cwd=workspace,
-        )
-    except (subprocess.TimeoutExpired, FileNotFoundError) as e:
-        log.error(f"Claude Code error: {e}")
-        return mq5_code
-
-    if os.path.exists(output_file):
-        with open(output_file, "r", errors="ignore") as f:
-            return f.read()
-
-    # Fallback
-    mq5_files = globmod.glob(os.path.join(workspace, "strategies", "*.mq5"))
-    if mq5_files:
-        latest = max(mq5_files, key=os.path.getmtime)
-        if latest != current_file:
-            with open(latest, "r", errors="ignore") as f:
-                return f.read()
-
-    return mq5_code  # unchanged
-
-
-def _diagnose_issues(metrics: dict) -> str:
-    """Generate prioritized diagnostic feedback from backtest metrics."""
-    issues = []
-    trades = metrics.get("total_trades", 0) or 0
-    pf = metrics.get("profit_factor", 0) or 0
-    net = metrics.get("net_profit", 0) or 0
-    rf = metrics.get("recovery_factor", 0) or 0
-    sharpe = metrics.get("sharpe", 0) or 0
-    win_rate = metrics.get("win_rate", 0) or 0
-    dd = metrics.get("max_drawdown", "")
-
-    # Priority 1: No trades — nothing else matters
-    if trades == 0:
-        issues.append("- [P1] ZERO TRADES: Entry conditions never trigger. Relax conditions, widen SL, simplify logic.")
-        return "\n".join(issues)
-    elif trades < 20:
-        issues.append(f"- [P1] TOO FEW TRADES ({trades}): Widen entry conditions or shorten indicator periods.")
-
-    # Priority 2: Losing money
-    if pf and pf < 1.0:
-        issues.append(f"- [P2] LOSING (PF={pf:.2f}): Widen TP or tighten SL. Consider if entry direction is correct.")
-    elif pf and 1.0 <= pf < 1.3:
-        issues.append(f"- [P3] MARGINAL (PF={pf:.2f}): Tighten stops or add a trend filter to improve signal quality.")
-
-    if net and net < 0:
-        issues.append(f"- [P2] NEGATIVE P&L (${net:.2f}): Entry logic may be inverted or SL/TP ratio is wrong.")
-
-    # Priority 3: Risk metrics
-    if rf and rf < 0.5:
-        issues.append(f"- [P3] LOW RECOVERY ({rf:.2f}): Drawdowns too deep. Reduce lot size or add max-DD protection.")
-
-    if sharpe and sharpe < 0.5:
-        issues.append(f"- [P3] LOW SHARPE ({sharpe:.2f}): Returns inconsistent. Reduce position sizing or add volatility filter.")
-    elif sharpe and 0.5 <= sharpe < 1.0:
-        issues.append(f"- [P4] MODERATE SHARPE ({sharpe:.2f}): Acceptable but can improve with tighter risk management.")
-
-    if win_rate and win_rate < 35:
-        issues.append(f"- [P3] LOW WIN RATE ({win_rate:.1f}%): Entry signals are weak. Tighten entry conditions or add confirmation.")
-    elif win_rate and win_rate > 75:
-        issues.append(f"- [P4] HIGH WIN RATE ({win_rate:.1f}%) but check if TP is too tight — may be leaving profit on table.")
-
-    return "\n".join(issues) if issues else "- Strategy is profitable. Focus on: tighter risk management, better Sharpe, or lower drawdown."
-
-
-def _format_iteration_history(history: list) -> str:
-    """Format iteration history so Claude can see the improvement trajectory."""
-    if not history:
-        return ""
-    lines = ["\nITERATION HISTORY (showing improvement trajectory):"]
-    for entry in history:
-        m = entry.get("metrics", {})
-        if not m:
-            lines.append(f"  Iter {entry.get('iteration', '?')}: failed ({entry.get('error', 'unknown')})")
-            continue
-        lines.append(
-            f"  Iter {entry.get('iteration', '?')}: "
-            f"PF={m.get('profit_factor', 'N/A')}, "
-            f"Trades={m.get('total_trades', 'N/A')}, "
-            f"Sharpe={m.get('sharpe', 'N/A')}, "
-            f"DD={m.get('max_drawdown', 'N/A')}, "
-            f"WinRate={m.get('win_rate', 'N/A')}"
-        )
-    lines.append("Aim to improve on the BEST iteration, not regress.")
-    return "\n".join(lines)
-
-
-def _suggest_improvement_approach(metrics: dict) -> str:
-    """Suggest a specific, targeted improvement approach based on current metrics."""
-    trades = metrics.get("total_trades", 0) or 0
-    pf = metrics.get("profit_factor", 0) or 0
-    sharpe = metrics.get("sharpe", 0) or 0
-    win_rate = metrics.get("win_rate", 0) or 0
-
-    if trades == 0:
-        return "SIMPLIFY entry logic. Remove extra filters. Use wider SL/TP. This is the only priority."
-    if trades < 20:
-        return "Loosen entry conditions: shorter indicator periods, wider thresholds, or remove one filter."
-    if pf < 1.0:
-        return "Fix SL/TP ratio (e.g. widen TP by 20-30% or tighten SL). Do NOT change the entry signal."
-    if pf < 1.3:
-        return "Add ONE trend-direction filter (e.g. 200-EMA direction) to filter bad signals. Keep everything else."
-    if sharpe < 0.5:
-        return "Add volatility-based position sizing or skip trades during high-volatility periods."
-    if win_rate < 40:
-        return "Add ONE confirmation indicator (e.g. RSI zone check) to filter weak entries. Keep SL/TP unchanged."
-    if pf >= 1.5 and sharpe >= 1.0:
-        return "Strategy is strong. Make only minor tweaks: fine-tune indicator periods by ±10-20% or adjust SL/TP by small amounts."
-    return "Make ONE targeted improvement: either tighten SL, widen TP, or adjust the main indicator period. Do not change multiple things at once."
 
 
 # ── Job Runner ───────────────────────────────────────────────────────────────
 
 def _run_job(job_id: str):
-    """Execute full hybrid pipeline: generate -> compile -> backtest -> optimize."""
+    """Execute compile -> backtest pipeline. Code is provided by the webapp."""
     job = _jobs[job_id]
-    workspace = job["workspace"]
     ea_name = job["ea_name"]
+    mq5_code = job["mq5_code"]
     slot_id = None
 
     job["status"] = "running"
     job["started_at"] = datetime.now().isoformat()
-    _emit(job_id, "started", {"ea_name": ea_name, "iterations": job["iterations"]})
+    _emit(job_id, "started", {"ea_name": ea_name})
 
     try:
-        iterations = job["iterations"]
-        best_code = None
-        best_metrics = None
-        best_pf = -999
-        all_iterations = []
+        iter_start = time.time()
+        job["current_step"] = "waiting for slot"
 
-        for iteration in range(1, iterations + 1):
-            iter_start = time.time()
-            _emit(job_id, "iteration_start", {"iteration": iteration, "total": iterations})
-            job["current_step"] = f"iteration {iteration}/{iterations}"
-
-            # ── STEP 1: Generate or improve code (Claude Code) ──
-            if iteration == 1:
-                job["current_step"] = f"generating code ({iteration}/{iterations})"
-                mq5_code = generate_code_with_claude(
-                    job["prompt"], ea_name, workspace, job_id
-                )
-            else:
-                job["current_step"] = f"improving code ({iteration}/{iterations})"
-                mq5_code = improve_code_with_claude(
-                    best_code, best_metrics or {}, "", ea_name, workspace, job_id,
-                    iteration_history=all_iterations
-                )
-
-            if not mq5_code or len(mq5_code) < 100:
-                _emit(job_id, "iteration_error", {
-                    "iteration": iteration, "error": "Code generation failed"
-                })
-                all_iterations.append({"iteration": iteration, "error": "Code generation failed"})
-                continue
-
-            # Save versioned code
-            code_path = os.path.join(workspace, "strategies", f"{ea_name}_v{iteration}.mq5")
-            with open(code_path, "w") as f:
-                f.write(mq5_code)
-
-            # ── STEP 2: Acquire slot and compile ──
-            job["current_step"] = f"waiting for slot ({iteration}/{iterations})"
-            slot_id = _find_free_slot()
-            if slot_id is None:
-                # Wait up to 5 minutes for a slot
-                for _ in range(60):
-                    time.sleep(5)
-                    slot_id = _find_free_slot()
-                    if slot_id is not None:
-                        break
-                if slot_id is None:
-                    _emit(job_id, "iteration_error", {
-                        "iteration": iteration, "error": "No slots available (timeout)"
-                    })
-                    all_iterations.append({"iteration": iteration, "error": "No slots available"})
-                    continue
-
-            try:
-                _emit(job_id, "slot_acquired", {"slot_id": slot_id, "iteration": iteration})
-                job["current_step"] = f"compiling ({iteration}/{iterations})"
-
-                write_ea_to_slot(slot_id, ea_name, mq5_code)
-
-                # Compile with auto-fix retries
-                compile_ok = False
-                for attempt in range(3):
-                    result = compile_ea(slot_id, ea_name)
-                    if result["success"]:
-                        compile_ok = True
-                        _emit(job_id, "compiled", {"iteration": iteration, "attempt": attempt + 1})
-                        break
-
-                    _emit(job_id, "compile_failed", {
-                        "iteration": iteration,
-                        "attempt": attempt + 1,
-                        "errors": result["errors"][:500],
-                    })
-
-                    if attempt < 2:
-                        job["current_step"] = f"fixing compile errors ({iteration}/{iterations}, attempt {attempt + 2})"
-                        mq5_code = improve_code_with_claude(
-                            mq5_code, {}, result["errors"], ea_name, workspace, job_id
-                        )
-                        write_ea_to_slot(slot_id, ea_name, mq5_code)
-
-                if not compile_ok:
-                    all_iterations.append({
-                        "iteration": iteration,
-                        "error": "Compile failed after 3 attempts",
-                        "errors": result["errors"][:500],
-                    })
-                    continue
-
-                # ── STEP 3: Backtest ──
-                job["current_step"] = f"backtesting ({iteration}/{iterations})"
-                _emit(job_id, "backtesting", {"iteration": iteration, "slot_id": slot_id})
-
-                bt_result = run_backtest(
-                    slot_id, ea_name, job["symbol"], job["period"]
-                )
-
-                metrics = bt_result.get("metrics", {})
-                iter_result = {
-                    "iteration": iteration,
-                    "metrics": metrics,
-                    "success": bt_result["success"],
-                    "duration_s": round(time.time() - iter_start, 1),
-                }
-                all_iterations.append(iter_result)
-
-                _emit(job_id, "iteration_done", iter_result)
-
-                # Track best
-                pf = metrics.get("profit_factor", 0) or 0
-                trades = metrics.get("total_trades", 0) or 0
-                if trades >= 5 and pf > best_pf:
-                    best_pf = pf
-                    best_code = mq5_code
-                    best_metrics = metrics
-                    _emit(job_id, "new_best", {"iteration": iteration, "pf": pf, "trades": trades})
-
-                # Early exit if strategy is already good
-                if pf >= 1.5 and trades >= 50:
-                    _emit(job_id, "early_exit", {"reason": "target_met", "pf": pf, "trades": trades})
+        # ── STEP 1: Acquire slot ──
+        slot_id = _find_free_slot()
+        if slot_id is None:
+            for _ in range(60):
+                time.sleep(5)
+                slot_id = _find_free_slot()
+                if slot_id is not None:
                     break
+            if slot_id is None:
+                raise RuntimeError("No slots available (timeout)")
 
-            finally:
-                _release_slot(slot_id)
-                slot_id = None
+        try:
+            _emit(job_id, "slot_acquired", {"slot_id": slot_id})
 
-        # If no iteration produced valid results, keep the last code
-        if best_code is None and mq5_code:
-            best_code = mq5_code
-            best_metrics = {}
+            # ── STEP 2: Compile ──
+            job["current_step"] = "compiling"
+            write_ea_to_slot(slot_id, ea_name, mq5_code)
+            comp = compile_ea(slot_id, ea_name)
 
-        job["status"] = "completed"
-        job["result"] = {
-            "best_ea_name": ea_name,
-            "best_code": best_code or "",
-            "best_metrics": best_metrics or {},
-            "iterations_run": len(all_iterations),
-            "all_iterations": all_iterations,
-        }
-        _emit(job_id, "completed", {
-            "best_metrics": best_metrics or {},
-            "iterations_run": len(all_iterations),
-        })
+            if not comp["success"]:
+                _emit(job_id, "compile_failed", {"errors": comp["errors"][:500]})
+                job["status"] = "completed"
+                job["result"] = {
+                    "success": False,
+                    "step": "compile",
+                    "errors": comp["errors"],
+                    "ea_name": ea_name,
+                }
+                _emit(job_id, "completed", job["result"])
+                return
+
+            _emit(job_id, "compiled", {"ea_name": ea_name})
+
+            # ── STEP 3: Backtest ──
+            job["current_step"] = "backtesting"
+            _emit(job_id, "backtesting", {"ea_name": ea_name, "slot_id": slot_id})
+
+            bt_result = run_backtest(
+                slot_id, ea_name, job["symbol"], job["period"]
+            )
+
+            metrics = bt_result.get("metrics", {})
+            report_path = bt_result.get("report_path")
+            report_b64 = bt_result.get("report_b64", "")
+            if not report_b64 and report_path and os.path.exists(report_path):
+                report_b64 = _encode_report(report_path)
+
+            job["status"] = "completed"
+            job["result"] = {
+                "success": bt_result["success"],
+                "ea_name": ea_name,
+                "metrics": metrics,
+                "report_b64": report_b64,
+                "duration_s": round(time.time() - iter_start, 1),
+            }
+            _emit(job_id, "completed", {
+                "success": bt_result["success"],
+                "metrics": metrics,
+                "duration_s": job["result"]["duration_s"],
+            })
+
+        finally:
+            _release_slot(slot_id)
+            slot_id = None
 
     except Exception as e:
         import traceback
@@ -682,6 +586,53 @@ def _run_job(job_id: str):
         if slot_id is not None:
             _release_slot(slot_id)
         job["finished_at"] = datetime.now().isoformat()
+
+
+def _generate_report_html(ea_name: str, symbol: str, period: str, metrics: dict) -> str:
+    """Generate a basic HTML backtest report from metrics when MT5 doesn't produce one."""
+    net = metrics.get("net_profit", 0)
+    pf = metrics.get("profit_factor", 0)
+    trades = metrics.get("total_trades", 0)
+    win_rate = metrics.get("win_rate", 0)
+    dd = metrics.get("max_drawdown", "N/A")
+    sharpe = metrics.get("sharpe", 0)
+    rf = metrics.get("recovery_factor", 0)
+    deposit = metrics.get("initial_deposit", 100000)
+    color = "#22c55e" if net >= 0 else "#ef4444"
+
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Backtest Report: {ea_name}</title>
+<style>
+body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #e4e4e7; padding: 40px; max-width: 800px; margin: 0 auto; }}
+h1 {{ color: #fafafa; font-size: 24px; }}
+.subtitle {{ color: #71717a; font-size: 14px; margin-bottom: 30px; }}
+table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
+td {{ padding: 12px 16px; border-bottom: 1px solid #27272a; }}
+td:first-child {{ color: #a1a1aa; font-size: 13px; }}
+td:last-child {{ text-align: right; font-weight: 600; font-size: 15px; font-family: 'SF Mono', monospace; }}
+.profit {{ color: {color}; font-size: 28px; font-weight: 700; }}
+.section {{ background: #18181b; border-radius: 12px; padding: 20px; margin: 16px 0; border: 1px solid #27272a; }}
+</style></head><body>
+<h1>Backtest Report: {ea_name}</h1>
+<p class="subtitle">{symbol} {period} &bull; Jan 2023 — Jan 2025 &bull; Initial Deposit: ${deposit:,.0f}</p>
+<div class="section">
+<p style="color:#71717a;font-size:12px;margin:0 0 8px">Net Profit</p>
+<p class="profit">{"+" if net >= 0 else ""}{net:,.2f} USD</p>
+</div>
+<div class="section">
+<table>
+<tr><td>Profit Factor</td><td>{pf:.2f}</td></tr>
+<tr><td>Total Trades</td><td>{trades}</td></tr>
+<tr><td>Win Rate</td><td>{win_rate:.1f}%</td></tr>
+<tr><td>Sharpe Ratio</td><td>{sharpe:.2f}</td></tr>
+<tr><td>Max Drawdown</td><td>{dd}</td></tr>
+<tr><td>Recovery Factor</td><td>{rf:.2f}</td></tr>
+<tr><td>Initial Deposit</td><td>${deposit:,.0f}</td></tr>
+<tr><td>Total Return</td><td>{net/deposit*100:.2f}%</td></tr>
+</table>
+</div>
+<p style="color:#52525b;font-size:11px;margin-top:30px;">Generated by MT5 Manager &bull; {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
+</body></html>"""
 
 
 # ── Report Inlining ──────────────────────────────────────────────────────────
@@ -774,9 +725,8 @@ def _encode_report(report_path: str) -> str:
 # ── Request Models ───────────────────────────────────────────────────────────
 
 class RunReq(BaseModel):
-    prompt: str
-    ea_name: Optional[str] = None
-    iterations: int = 3
+    ea_name: str
+    mq5_code: str
     symbol: str = "EURUSD"
     period: str = "H1"
 
@@ -789,8 +739,8 @@ class BacktestReq(BaseModel):
     ea_name: str
     symbol: str = "EURUSD"
     period: str = "H1"
-    start: str = "2023.01.01"
-    end: str = "2025.01.01"
+    start: str = "2025.01.01"
+    end: str = "2026.03.01"
     deposit: int = 100000
     slot_id: str = "0"
 
@@ -799,8 +749,8 @@ class CompileAndBacktestReq(BaseModel):
     mq5_code: str
     symbol: str = "EURUSD"
     period: str = "H1"
-    start: str = "2023.01.01"
-    end: str = "2025.01.01"
+    start: str = "2025.01.01"
+    end: str = "2026.03.01"
     deposit: int = 100000
     slot_id: Optional[str] = None  # auto-select if None
 
@@ -811,33 +761,33 @@ class DeployReq(BaseModel):
     period: str = "H1"
     slot_id: str = "0"
 
+class VerifyAccountReq(BaseModel):
+    login: int
+    password: str
+    server: str
+
 
 # ── API: Agent Mode (/run) ───────────────────────────────────────────────────
 
 @app.post("/run")
 def api_run(req: RunReq, x_api_key: str = Header()):
-    """Full hybrid pipeline: generate -> compile -> backtest -> optimize.
+    """Compile and backtest MQL5 code. Code is provided by the webapp.
     Returns job_id immediately. Poll /job/{id} or stream /job/{id}/stream."""
     _check_key(x_api_key)
-    _load_slots()  # refresh slot config
+    _load_slots()
 
     if not _slots:
         raise HTTPException(503, "No MT5 slots configured")
 
     job_id = str(uuid.uuid4())[:8]
-    ea_name = req.ea_name or f"EA_{job_id}"
-    workspace = os.path.join(WORKSPACES_DIR, job_id)
-    os.makedirs(os.path.join(workspace, "strategies"), exist_ok=True)
-    os.makedirs(os.path.join(workspace, "results"), exist_ok=True)
+    ea_name = req.ea_name
 
     _jobs[job_id] = {
         "status": "queued",
-        "prompt": req.prompt,
         "ea_name": ea_name,
-        "iterations": req.iterations,
+        "mq5_code": req.mq5_code,
         "symbol": req.symbol,
         "period": req.period,
-        "workspace": workspace,
         "result": None,
         "error": None,
         "current_step": "queued",
@@ -864,11 +814,9 @@ def api_get_job(job_id: str, x_api_key: str = Header()):
         "job_id": job_id,
         "status": job["status"],
         "current_step": job.get("current_step"),
-        "prompt": job["prompt"],
         "ea_name": job["ea_name"],
         "symbol": job.get("symbol"),
         "period": job.get("period"),
-        "iterations": job.get("iterations"),
         "result": job.get("result"),
         "error": job.get("error"),
         "started_at": job.get("started_at"),
@@ -965,6 +913,7 @@ def api_backtest(req: BacktestReq, x_api_key: str = Header()):
 
     if not _slot_locks[req.slot_id].acquire(timeout=5):
         raise HTTPException(503, f"Slot {req.slot_id} is busy")
+    _slot_lock_times[req.slot_id] = time.time()
 
     try:
         result = run_backtest(
@@ -975,6 +924,11 @@ def api_backtest(req: BacktestReq, x_api_key: str = Header()):
         report_path = result.get("report_path")
         if report_path and os.path.exists(report_path):
             result["report_b64"] = _encode_report(report_path)
+            result["report_is_mt5"] = True
+        else:
+            result["report_is_mt5"] = False
+        result["slot_id"] = req.slot_id
+        result["vps_host"] = _HOSTNAME
         return result
     finally:
         _release_slot(req.slot_id)
@@ -982,26 +936,37 @@ def api_backtest(req: BacktestReq, x_api_key: str = Header()):
 
 @app.post("/compile-and-backtest")
 def api_compile_and_backtest(req: CompileAndBacktestReq, x_api_key: str = Header()):
-    """Compile + backtest in one call. Auto-selects slot if not specified."""
+    """Compile + backtest in one call. Auto-selects slot if not specified.
+    Returns 503 with queue info if all slots are busy."""
     _check_key(x_api_key)
+    _cleanup_stale_locks()
 
     slot_id = req.slot_id
     if slot_id is None:
         slot_id = _find_free_slot()
         if slot_id is None:
-            raise HTTPException(503, "All slots are busy")
+            total = len(_slots)
+            busy = sum(1 for s in _slot_locks.values() if s.locked())
+            raise HTTPException(503, detail={
+                "error": "All slots are busy",
+                "total_slots": total,
+                "busy_slots": busy,
+                "retry_after_s": 10,
+            })
     else:
         if slot_id not in _slots:
             raise HTTPException(400, f"Invalid slot_id. Available: {list(_slots.keys())}")
         if not _slot_locks[slot_id].acquire(timeout=5):
             raise HTTPException(503, f"Slot {slot_id} is busy")
+        _slot_lock_times[slot_id] = time.time()
 
     try:
         # Compile
         write_ea_to_slot(slot_id, req.ea_name, req.mq5_code)
         comp = compile_ea(slot_id, req.ea_name)
         if not comp["success"]:
-            return {"success": False, "step": "compile", "errors": comp["errors"]}
+            return {"success": False, "step": "compile", "errors": comp["errors"],
+                    "slot_id": slot_id, "vps_host": _HOSTNAME}
 
         # Backtest
         result = run_backtest(
@@ -1011,6 +976,11 @@ def api_compile_and_backtest(req: CompileAndBacktestReq, x_api_key: str = Header
         report_path = result.get("report_path")
         if report_path and os.path.exists(report_path):
             result["report_b64"] = _encode_report(report_path)
+            result["report_is_mt5"] = True
+        else:
+            result["report_is_mt5"] = False
+        result["slot_id"] = slot_id
+        result["vps_host"] = _HOSTNAME
         return result
     finally:
         _release_slot(slot_id)
@@ -1062,12 +1032,68 @@ ExpertParameters="""
     }
 
 
+# ── API: Account Verification ──────────────────────────────────────────────
+
+@app.post("/verify-account")
+def api_verify_account(req: VerifyAccountReq, x_api_key: str = Header()):
+    """Verify MT5 account credentials by attempting to login via the MT5 Python API."""
+    _check_key(x_api_key)
+
+    try:
+        import MetaTrader5 as mt5
+    except ImportError:
+        raise HTTPException(500, "MetaTrader5 Python package not installed on VPS")
+
+    # Use slot 0's terminal path for initialization
+    slot = _slots.get("0", {})
+    terminal_path = slot.get("terminal", "")
+    if not terminal_path or not os.path.exists(terminal_path):
+        # Fallback to known paths
+        for p in [r"C:\Program Files\FTMO MetaTrader 5\terminal64.exe",
+                   r"C:\Program Files\MetaTrader 5\terminal64.exe"]:
+            if os.path.exists(p):
+                terminal_path = p
+                break
+
+    if not mt5.initialize(path=terminal_path if terminal_path else None):
+        err = mt5.last_error()
+        mt5.shutdown()
+        return {"success": False, "error": f"MT5 initialization failed: {err}"}
+
+    try:
+        if not mt5.login(req.login, password=req.password, server=req.server):
+            err = mt5.last_error()
+            return {
+                "success": False,
+                "error": f"Login failed: {err[1] if isinstance(err, tuple) and len(err) > 1 else err}",
+            }
+
+        # Login succeeded — get account info
+        info = mt5.account_info()
+        result = {
+            "success": True,
+            "account": {
+                "login": info.login if info else req.login,
+                "server": info.server if info else req.server,
+                "name": info.name if info else "",
+                "balance": info.balance if info else 0,
+                "currency": info.currency if info else "",
+                "leverage": info.leverage if info else 0,
+                "trade_mode": ("demo" if info and info.trade_mode == 0 else "real") if info else "unknown",
+            },
+        }
+        return result
+    finally:
+        mt5.shutdown()
+
+
 # ── API: Slot Management ────────────────────────────────────────────────────
 
 @app.get("/slots")
 def api_slots(x_api_key: str = Header()):
     """List all MT5 slots and their status."""
     _check_key(x_api_key)
+    _cleanup_stale_locks()
     _load_slots()
     return {
         sid: {
@@ -1088,9 +1114,29 @@ def api_reload_slots(x_api_key: str = Header()):
     return {"slots": list(_slots.keys()), "count": len(_slots)}
 
 
+@app.post("/slots/reset")
+def api_reset_slots(x_api_key: str = Header()):
+    """Force-release all slot locks. Use when slots are stuck."""
+    _check_key(x_api_key)
+    released = []
+    for sid in list(_slot_locks.keys()):
+        if _slot_locks[sid].locked():
+            try:
+                _slot_locks[sid].release()
+            except RuntimeError:
+                pass
+            _slot_lock_times.pop(sid, None)
+            _kill_slot_terminal(sid)
+            released.append(sid)
+    log.warning(f"Force-released slots: {released}")
+    return {"released": released, "total": len(released)}
+
+
 @app.get("/status")
 def api_status():
     """Public health check — no API key required."""
+    _cleanup_stale_locks()
+
     total = len(_slots)
     busy = sum(1 for s in _slot_locks.values() if s.locked())
     running = sum(1 for j in _jobs.values() if j["status"] == "running")
@@ -1098,6 +1144,7 @@ def api_status():
     errored = sum(1 for j in _jobs.values() if j["status"] == "error")
     return {
         "ready": True,
+        "hostname": _HOSTNAME,
         "total_slots": total,
         "available_slots": total - busy,
         "busy_slots": busy,

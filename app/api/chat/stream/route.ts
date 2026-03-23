@@ -13,7 +13,7 @@ When asked to BUILD a strategy:
 2. Parameters the user can adjust (keep short)
 3. Strategy JSON between ---STRATEGY_JSON_START--- and ---STRATEGY_JSON_END---:
    {"name":"Name","market":"XAUUSD","timeframe":"H1","entry_rules":["Rule 1","Rule 2"],"exit_rules":["Exit 1"],"risk_logic":"Description"}
-4. COMPLETE MQL5 EA code between ---MQL5_CODE_START--- and ---MQL5_CODE_END---
+4. COMPLETE MQL5 EA code between ---MQL5_CODE_START--- and ---MQL5_CODE_END--- (IMPORTANT: close with _END_ not _START_)
 
 CRITICAL MQL5 RULES — FOLLOW EXACTLY OR THE EA WILL PRODUCE 0 TRADES:
 - Use #include <Trade\\Trade.mqh> and CTrade trade; — this is the ONLY way to open trades
@@ -72,8 +72,26 @@ function parseResponse(content: string) {
     try { metadata.strategy_snapshot = JSON.parse(stratMatch[1]); metadata.type = 'strategy' } catch {}
   }
 
+  // Match code block — also handle when Claude mistakenly uses START as closing tag
   const codeMatch = content.match(/---MQL5_CODE_START---\s*([\s\S]*?)\s*---MQL5_CODE_END---/)
-  if (codeMatch) metadata.mql5_code = codeMatch[1].trim()
+  if (codeMatch) {
+    metadata.mql5_code = codeMatch[1].trim()
+  } else {
+    // Fallback: Claude used ---MQL5_CODE_START--- twice (START as closing tag)
+    const parts = content.split(/---MQL5_CODE_START---/)
+    if (parts.length >= 3) {
+      // Code is between the first and second occurrence
+      metadata.mql5_code = parts[1].trim()
+    } else if (parts.length === 2) {
+      // Only one START and no END — take everything after it, strip trailing markers
+      const raw = parts[1]
+        .replace(/---\w+_(?:START|END)---[\s\S]*$/, '')
+        .trim()
+      if (raw.includes('#include') || raw.includes('OnTick') || raw.includes('CTrade')) {
+        metadata.mql5_code = raw
+      }
+    }
+  }
 
   const btMatch = content.match(/---BACKTEST_JSON_START---\s*([\s\S]*?)\s*---BACKTEST_JSON_END---/)
   if (btMatch) {
@@ -82,7 +100,7 @@ function parseResponse(content: string) {
 
   const display = content
     .replace(/---STRATEGY_JSON_START---[\s\S]*?---STRATEGY_JSON_END---/g, '')
-    .replace(/---MQL5_CODE_START---[\s\S]*?---MQL5_CODE_END---/g, '')
+    .replace(/---MQL5_CODE_START---[\s\S]*?---MQL5_CODE_(?:END|START)---/g, '')
     .replace(/---BACKTEST_JSON_START---[\s\S]*?---BACKTEST_JSON_END---/g, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
@@ -100,7 +118,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { chatId, message } = body
+    const { chatId, message, currentCode, currentStrategy } = body
 
     // Check for template
     const template = getTemplateByName(message)
@@ -150,8 +168,7 @@ export async function POST(request: NextRequest) {
           if (template) {
             const explanation = `**${template.name}** — ${template.market} ${template.timeframe}\n\n${template.description}\n\n**Original prompt:**\n> ${template.prompt}`
             const stratJson = JSON.stringify(template.strategySnapshot, null, 2)
-            const backtestJson = JSON.stringify(template.backtestResults, null, 2)
-            fullContent = `${explanation}\n\n---STRATEGY_JSON_START---\n${stratJson}\n---STRATEGY_JSON_END---\n\n---MQL5_CODE_START---\n${template.mql5Code}\n---MQL5_CODE_END---\n\n---BACKTEST_JSON_START---\n${backtestJson}\n---BACKTEST_JSON_END---`
+            fullContent = `${explanation}\n\n---STRATEGY_JSON_START---\n${stratJson}\n---STRATEGY_JSON_END---\n\n---MQL5_CODE_START---\n${template.mql5Code}\n---MQL5_CODE_END---`
             send({ type: 'delta', text: explanation })
           }
           // ── CLAUDE API: generate response ──
@@ -205,10 +222,42 @@ export async function POST(request: NextRequest) {
                 }
               }
 
+              // If DB history doesn't contain the code but the client sent it,
+              // inject it so Claude has full context (handles race condition
+              // where template messages haven't been saved to DB yet)
+              const historyHasCode = chatMessages.some(
+                m => m.role === 'assistant' && typeof m.content === 'string' && m.content.includes('---MQL5_CODE_START---')
+              )
+              if (!historyHasCode && currentCode) {
+                const strategyContext = currentStrategy
+                  ? `\nStrategy: ${JSON.stringify(currentStrategy)}\n`
+                  : ''
+                // Prepend as a user→assistant exchange so Claude sees the full context
+                // before the user's follow-up message
+                const contextPair: Anthropic.MessageParam[] = [
+                  { role: 'user', content: 'Here is my current EA strategy and code.' },
+                  { role: 'assistant', content: `Here is your current EA code:${strategyContext}\n\n---MQL5_CODE_START---\n${currentCode}\n---MQL5_CODE_END---` },
+                ]
+                chatMessages.unshift(...contextPair)
+              }
+
               // Ensure first message is from user (Claude API requirement)
               if (chatMessages.length === 0 || chatMessages[0].role !== 'user') {
                 chatMessages.unshift({ role: 'user', content: message })
               }
+
+              // Ensure strict user/assistant alternation (merge consecutive same-role)
+              const merged: Anthropic.MessageParam[] = []
+              for (const m of chatMessages) {
+                const last = merged[merged.length - 1]
+                if (last && last.role === m.role) {
+                  last.content = (last.content as string) + '\n\n' + (m.content as string)
+                } else {
+                  merged.push({ ...m })
+                }
+              }
+              chatMessages.length = 0
+              chatMessages.push(...merged)
 
               try {
                 const messageStream = anthropic.messages.stream({

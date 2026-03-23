@@ -201,6 +201,21 @@ export default function AIBuilderPage() {
         return
       }
 
+      // Extract latest MQL5 code + strategy context from messages so the API
+      // has full context even if DB history hasn't been saved yet (race condition)
+      let currentMql5Code: string | undefined
+      let currentStrategy: unknown | undefined
+      for (let i = messages.length - 1; i >= 0; i--) {
+        const meta = messages[i].metadata
+        if (!currentMql5Code && meta?.mql5_code) currentMql5Code = meta.mql5_code as string
+        if (!currentStrategy && meta?.strategy_snapshot) currentStrategy = meta.strategy_snapshot
+        if (currentMql5Code && currentStrategy) break
+      }
+
+      const payload: Record<string, unknown> = { chatId: currentChatId, message }
+      if (currentMql5Code) payload.currentCode = currentMql5Code
+      if (currentStrategy) payload.currentStrategy = currentStrategy
+
       // Try the API call
       let res = await fetch('/api/chat/stream', {
         method: 'POST',
@@ -208,7 +223,7 @@ export default function AIBuilderPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ chatId: currentChatId, message }),
+        body: JSON.stringify(payload),
         signal: controller.signal,
       })
 
@@ -224,7 +239,7 @@ export default function AIBuilderPage() {
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${token}`,
               },
-              body: JSON.stringify({ chatId: currentChatId, message }),
+              body: JSON.stringify(payload),
               signal: controller.signal,
             })
           }
@@ -390,7 +405,6 @@ export default function AIBuilderPage() {
         metadata: {
           type: 'strategy' as const,
           strategy_snapshot: clientTemplate.strategySnapshot,
-          backtest_snapshot: clientTemplate.backtestResults,
           mql5_code: clientTemplate.mql5Code,
         },
         created_at: new Date().toISOString(),
@@ -400,8 +414,11 @@ export default function AIBuilderPage() {
       setMessages([userMsg, assistantMsg])
 
       // Save to DB — do it async but don't swallow errors
-      const token = session.access_token
       ;(async () => {
+        // Get a fresh token to avoid 401 from expired session state
+        const { data: { session: freshSession } } = await supabase.auth.getSession()
+        const token = freshSession?.access_token || session?.access_token
+        if (!token) { console.error('No auth token available'); return }
         try {
           // 1. Create strategy
           let strategyId: string | null = null
@@ -410,11 +427,7 @@ export default function AIBuilderPage() {
             const stratRes = await fetch('/api/strategies', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-              body: JSON.stringify({ name, market: clientTemplate.market || 'XAUUSD', status: 'backtested',
-                sharpe_ratio: clientTemplate.backtestResults?.sharpe ?? null,
-                max_drawdown: clientTemplate.backtestResults?.max_drawdown ?? null,
-                win_rate: clientTemplate.backtestResults?.win_rate ?? null,
-                total_return: clientTemplate.backtestResults?.total_return ?? null,
+              body: JSON.stringify({ name, market: clientTemplate.market || 'XAUUSD', status: 'draft',
                 strategy_summary: clientTemplate.strategySnapshot ?? null,
                 mql5_code: clientTemplate.mql5Code ?? null,
               }),
@@ -450,7 +463,6 @@ export default function AIBuilderPage() {
                     { role: 'assistant', content: explanation, metadata: {
                       type: 'strategy',
                       strategy_snapshot: clientTemplate.strategySnapshot,
-                      backtest_snapshot: clientTemplate.backtestResults,
                       mql5_code: clientTemplate.mql5Code,
                     }},
                   ]}),
@@ -468,9 +480,13 @@ export default function AIBuilderPage() {
 
     // Non-template: create strategy + chat, then navigate to chat page with prompt
     try {
+      const { data: { session: freshSess } } = await supabase.auth.getSession()
+      const tkn = freshSess?.access_token || session?.access_token
+      if (!tkn) { toast.error('Session expired. Please sign in again.'); return }
+
       const stratRes = await fetch('/api/strategies', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tkn}` },
         body: JSON.stringify({ name, market: 'XAUUSD', status: 'draft' }),
       })
       if (!stratRes.ok) throw new Error('Failed to create strategy')
@@ -480,7 +496,7 @@ export default function AIBuilderPage() {
 
       const chatRes = await fetch('/api/chats', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tkn}` },
         body: JSON.stringify({ title: savedName, strategy_id: strategyId }),
       })
       if (!chatRes.ok) throw new Error('Failed to create chat')

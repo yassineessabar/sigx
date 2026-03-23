@@ -243,10 +243,10 @@ export default function StrategyDetailPage() {
                         const bt = tpl?.backtestResults || (strategy.sharpe_ratio ? {
                           sharpe: Number(strategy.sharpe_ratio), max_drawdown: Number(strategy.max_drawdown),
                           win_rate: Number(strategy.win_rate), total_return: Number(strategy.total_return),
-                          profit_factor: tpl?.backtestResults.profit_factor ?? 0,
-                          total_trades: tpl?.backtestResults.total_trades ?? 0,
-                          net_profit: tpl?.backtestResults.net_profit ?? 0,
-                          equity_curve: strategy.equity_curve || tpl?.backtestResults.equity_curve || [],
+                          profit_factor: tpl?.backtestResults?.profit_factor ?? 0,
+                          total_trades: tpl?.backtestResults?.total_trades ?? 0,
+                          net_profit: tpl?.backtestResults?.net_profit ?? 0,
+                          equity_curve: strategy.equity_curve || tpl?.backtestResults?.equity_curve || [],
                         } : undefined)
 
                         const explanation = tpl
@@ -283,10 +283,10 @@ export default function StrategyDetailPage() {
                       const bt = tpl?.backtestResults || (strategy.sharpe_ratio ? {
                         sharpe: Number(strategy.sharpe_ratio), max_drawdown: Number(strategy.max_drawdown),
                         win_rate: Number(strategy.win_rate), total_return: Number(strategy.total_return),
-                        profit_factor: tpl?.backtestResults.profit_factor ?? 0,
-                        total_trades: tpl?.backtestResults.total_trades ?? 0,
-                        net_profit: tpl?.backtestResults.net_profit ?? 0,
-                        equity_curve: strategy.equity_curve || tpl?.backtestResults.equity_curve || [],
+                        profit_factor: tpl?.backtestResults?.profit_factor ?? 0,
+                        total_trades: tpl?.backtestResults?.total_trades ?? 0,
+                        net_profit: tpl?.backtestResults?.net_profit ?? 0,
+                        equity_curve: strategy.equity_curve || tpl?.backtestResults?.equity_curve || [],
                       } : undefined)
 
                       const explanation = tpl
@@ -546,7 +546,7 @@ function StrategyCurveSVG({ strategy }: { strategy: Strategy }) {
 
   // Use real equity curve from DB first, then template, then generate placeholder
   const data = (strategy.equity_curve?.length ? strategy.equity_curve.map(p => p.equity) : null)
-    || tpl?.backtestResults.equity_curve?.map(p => p.equity)
+    || tpl?.backtestResults?.equity_curve?.map(p => p.equity)
     || generateCurveData(strategy.name.charCodeAt(0), Number(strategy.total_return || 0))
 
   const w = 400, h = 120, p = 4

@@ -315,7 +315,8 @@ export function ChatThread({ messages, isGenerating, streamingContent, pipelineS
   const displayedStreaming = streamingContent ? cleanStreamingDisplay(streamingContent) : ''
   // Detect different streaming states
   const hasRawStream = !!streamingContent && streamingContent.length > 0
-  const isStreamingCode = hasRawStream && streamingContent.includes('---MQL5_CODE_START---') && !streamingContent.includes('---MQL5_CODE_END---')
+  const codeStartCount = hasRawStream ? (streamingContent.match(/---MQL5_CODE_START---/g) || []).length : 0
+  const isStreamingCode = hasRawStream && codeStartCount === 1 && !streamingContent.includes('---MQL5_CODE_END---')
   const isStreamingStrategy = hasRawStream && streamingContent.includes('---STRATEGY_JSON_START---') && !streamingContent.includes('---STRATEGY_JSON_END---')
   const showThinking = isGenerating && !displayedStreaming && !hasRawStream
 

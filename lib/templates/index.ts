@@ -16,7 +16,7 @@ export interface TemplateEA {
     exit_rules: string[]
     risk_logic: string
   }
-  backtestResults: {
+  backtestResults?: {
     sharpe: number
     max_drawdown: number
     win_rate: number
@@ -25,7 +25,7 @@ export interface TemplateEA {
     total_trades: number
     net_profit: number
     equity_curve: { date: string; equity: number }[]
-  }
+  } | null
 }
 
 const TEMPLATES: Record<string, Omit<TemplateEA, 'mql5Code'>> = {
@@ -51,17 +51,6 @@ const TEMPLATES: Record<string, Omit<TemplateEA, 'mql5Code'>> = {
       ],
       risk_logic: '1% risk per trade. Max 2 concurrent positions. Position size based on range-derived SL.',
     },
-    backtestResults: {
-      sharpe: 0.45, max_drawdown: 3.2, win_rate: 52.0, total_return: 5.86,
-      profit_factor: 1.04, total_trades: 25, net_profit: 585.65,
-      equity_curve: [
-        { date: '2023-01-01', equity: 10000 }, { date: '2023-04-01', equity: 10120 },
-        { date: '2023-07-01', equity: 10050 }, { date: '2023-10-01', equity: 10280 },
-        { date: '2024-01-01', equity: 10200 }, { date: '2024-04-01', equity: 10380 },
-        { date: '2024-07-01', equity: 10320 }, { date: '2024-10-01', equity: 10500 },
-        { date: '2025-01-01', equity: 10586 },
-      ],
-    },
   },
   'trend-rider': {
     id: 'trend-rider',
@@ -84,17 +73,6 @@ const TEMPLATES: Record<string, Omit<TemplateEA, 'mql5Code'>> = {
       ],
       risk_logic: '1% risk per trade. Max 2 concurrent positions. ATR-based dynamic stops with trailing.',
     },
-    backtestResults: {
-      sharpe: 1.10, max_drawdown: 8.5, win_rate: 48.6, total_return: 52.08,
-      profit_factor: 1.10, total_trades: 364, net_profit: 5208.02,
-      equity_curve: [
-        { date: '2023-01-01', equity: 10000 }, { date: '2023-04-01', equity: 10800 },
-        { date: '2023-07-01', equity: 11200 }, { date: '2023-10-01', equity: 10900 },
-        { date: '2024-01-01', equity: 11800 }, { date: '2024-04-01', equity: 12500 },
-        { date: '2024-07-01', equity: 13100 }, { date: '2024-10-01', equity: 14200 },
-        { date: '2025-01-01', equity: 15208 },
-      ],
-    },
   },
   'mean-reversion': {
     id: 'mean-reversion',
@@ -115,17 +93,6 @@ const TEMPLATES: Record<string, Omit<TemplateEA, 'mql5Code'>> = {
         'TP = 1.5 × ATR(14)',
       ],
       risk_logic: '1% risk per trade. Max 2 concurrent positions.',
-    },
-    backtestResults: {
-      sharpe: 0.55, max_drawdown: 6.8, win_rate: 50.2, total_return: 22.96,
-      profit_factor: 1.02, total_trades: 259, net_profit: 2296.28,
-      equity_curve: [
-        { date: '2023-01-01', equity: 10000 }, { date: '2023-04-01', equity: 10350 },
-        { date: '2023-07-01', equity: 10150 }, { date: '2023-10-01', equity: 10600 },
-        { date: '2024-01-01', equity: 10450 }, { date: '2024-04-01', equity: 10900 },
-        { date: '2024-07-01', equity: 11200 }, { date: '2024-10-01', equity: 11800 },
-        { date: '2025-01-01', equity: 12296 },
-      ],
     },
   },
 }

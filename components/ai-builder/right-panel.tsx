@@ -15,6 +15,9 @@ interface RightPanelProps {
   strategySnapshot: ChatMessageMetadata['strategy_snapshot'] | null
   backtestSnapshot: ChatMessageMetadata['backtest_snapshot'] | null
   reportHtmlB64?: string | null
+  reportIsMt5?: boolean
+  slotId?: string | null
+  vpsHost?: string | null
   mql5Code: string | null
   isOpen: boolean
   onToggle: () => void
@@ -39,6 +42,9 @@ export function RightPanel({
   strategySnapshot,
   backtestSnapshot,
   reportHtmlB64,
+  reportIsMt5,
+  slotId,
+  vpsHost,
   mql5Code,
   isOpen,
   onToggle,
@@ -151,7 +157,15 @@ export function RightPanel({
               {strategySnapshot || backtestSnapshot ? (
                 <>
                   {backtestSnapshot && (
-                    <BacktestPreview backtest={backtestSnapshot} reportHtmlB64={reportHtmlB64} />
+                    <BacktestPreview
+                      backtest={backtestSnapshot}
+                      reportHtmlB64={reportHtmlB64}
+                      reportIsMt5={reportIsMt5}
+                      slotId={slotId}
+                      vpsHost={vpsHost}
+                      symbol={(strategySnapshot as Record<string, unknown> | null)?.market as string || null}
+                      timeframe={(strategySnapshot as Record<string, unknown> | null)?.timeframe as string || null}
+                    />
                   )}
                   {backtestSnapshot && (
                     <StrategyScore backtest={backtestSnapshot} onAction={onSendPrompt} />

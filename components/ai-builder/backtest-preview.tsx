@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react'
 import { EquityCurve } from '@/components/charts/equity-curve'
-import { TrendingUp, TrendingDown, BarChart3, Target, Download, DollarSign } from 'lucide-react'
+import { TrendingUp, TrendingDown, BarChart3, Target, ExternalLink, DollarSign, Server } from 'lucide-react'
 
 interface BacktestPreviewProps {
   backtest: {
@@ -19,13 +19,18 @@ interface BacktestPreviewProps {
     _estimated?: boolean
   }
   reportHtmlB64?: string | null
+  reportIsMt5?: boolean
+  slotId?: string | null
+  vpsHost?: string | null
+  symbol?: string | null
+  timeframe?: string | null
 }
 
-export function BacktestPreview({ backtest, reportHtmlB64 }: BacktestPreviewProps) {
+export function BacktestPreview({ backtest, reportHtmlB64, reportIsMt5, slotId, vpsHost, symbol, timeframe }: BacktestPreviewProps) {
   const hasTrades = backtest.total_trades > 0
   const isEstimated = (backtest as Record<string, unknown>)._estimated === true
 
-  const handleDownloadReport = useCallback(() => {
+  const handleViewReport = useCallback(() => {
     if (!reportHtmlB64) return
     try {
       // Decode base64 to raw bytes (preserves binary data like embedded chart images)
@@ -39,15 +44,9 @@ export function BacktestPreview({ backtest, reportHtmlB64 }: BacktestPreviewProp
       const blob = new Blob([bytes], { type: mimeType })
 
       const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `backtest-report-${new Date().toISOString().slice(0, 10)}.html`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      window.open(url, '_blank')
     } catch {
-      // Fallback: let the browser decode the base64 natively (preserves all binary)
+      // Fallback: let the browser decode the base64 natively
       const dataUri = `data:text/html;base64,${reportHtmlB64}`
       window.open(dataUri, '_blank')
     }
@@ -61,13 +60,13 @@ export function BacktestPreview({ backtest, reportHtmlB64 }: BacktestPreviewProp
             {isEstimated ? 'Estimated Results' : 'Backtest Results'}
           </span>
           <div className="flex items-center gap-2">
-            {reportHtmlB64 && (
+            {reportHtmlB64 && reportIsMt5 && (
               <button
-                onClick={handleDownloadReport}
+                onClick={handleViewReport}
                 className="flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium text-foreground/40 hover:text-foreground/70 bg-foreground/[0.04] hover:bg-foreground/[0.08] border border-foreground/[0.06] transition-all"
-                title="Download full MT5 HTML report"
+                title="View full MT5 HTML report"
               >
-                <Download size={11} />
+                <ExternalLink size={11} />
                 Full Report
               </button>
             )}
@@ -79,9 +78,17 @@ export function BacktestPreview({ backtest, reportHtmlB64 }: BacktestPreviewProp
             </span>
           </div>
         </div>
-        <p className="text-[11px] text-foreground/25 mt-1.5">
-          {isEstimated ? 'Estimated • ' : ''}Backtest period: Jan 2023 — Jan 2025 • {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-        </p>
+        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+          <p className="text-[11px] text-foreground/25">
+            {isEstimated ? 'Estimated • ' : ''}{symbol || 'XAUUSD'} {timeframe || 'H1'} • Jan 2025 — Mar 2026 • {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </p>
+          {(vpsHost || slotId) && (
+            <span className="flex items-center gap-1 text-[10px] text-foreground/20">
+              <Server size={9} />
+              {vpsHost || 'VPS'}{slotId !== null && slotId !== undefined ? ` · slot ${slotId}` : ''}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Key metrics — large display */}

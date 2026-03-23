@@ -396,7 +396,7 @@ export default function StrategiesPage() {
 
                   const curveData = realCurve?.length
                     ? realCurve.map(p => p.equity)
-                    : tpl?.backtestResults.equity_curve?.map(p => p.equity)
+                    : tpl?.backtestResults?.equity_curve?.map((p: { equity: number }) => p.equity)
                       || generateCurve(s.name.charCodeAt(0), Number(s.total_return || 0))
 
                   return (

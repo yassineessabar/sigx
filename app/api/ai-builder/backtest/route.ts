@@ -41,18 +41,19 @@ async function findFreeSlot(workerUrl: string): Promise<string | null> {
   }
 }
 
-async function getQueueInfo(workerUrl: string): Promise<{ total: number; busy: number; available: number }> {
+async function getQueueInfo(workerUrl: string): Promise<{ total: number; busy: number; available: number; hostname: string }> {
   try {
     const res = await fetch(`${workerUrl}/status`, { headers: workerHeaders() })
-    if (!res.ok) return { total: 1, busy: 1, available: 0 }
+    if (!res.ok) return { total: 1, busy: 1, available: 0, hostname: '' }
     const data = await res.json()
     return {
       total: data.total_slots || 1,
       busy: data.busy_slots || 0,
       available: data.available_slots || 0,
+      hostname: data.hostname || '',
     }
   } catch {
-    return { total: 1, busy: 1, available: 0 }
+    return { total: 1, busy: 1, available: 0, hostname: '' }
   }
 }
 
@@ -85,6 +86,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { ea_name, mq5_code, symbol, period, start, end } = await request.json()
+    console.log(`[BACKTEST] Called: ea=${ea_name} symbol=${symbol} period=${period} code_len=${mq5_code?.length} worker=${process.env.MT5_MANAGER_URL}`)
 
     if (!ea_name || !mq5_code) {
       return NextResponse.json(
@@ -128,17 +130,19 @@ export async function POST(request: NextRequest) {
           // Poll for a free slot, streaming position updates
           const deadline = Date.now() + MAX_QUEUE_WAIT_MS
           let position = 1
+          let vpsHostname = ''
           while (Date.now() < deadline) {
             const info = await getQueueInfo(workerUrl)
+            if (info.hostname) vpsHostname = info.hostname
             position = info.busy - info.available + 1
             if (position < 1) position = 1
-            send({ type: 'queue', position, busy: info.busy, total: info.total })
+            send({ type: 'queue', position, busy: info.busy, total: info.total, vps_host: vpsHostname })
 
             // Try to get a slot
             const slot = await findFreeSlot(workerUrl)
             if (slot) {
               slotId = slot
-              send({ type: 'queue_done' })
+              send({ type: 'queue_done', slot_id: slot, vps_host: vpsHostname })
               break
             }
             await new Promise(resolve => setTimeout(resolve, QUEUE_POLL_INTERVAL))
@@ -151,7 +155,7 @@ export async function POST(request: NextRequest) {
           }
 
           // Slot acquired — run the backtest
-          send({ type: 'status', message: 'Compiling and backtesting...' })
+          send({ type: 'status', message: `Compiling and backtesting on ${vpsHostname || 'VPS'} · slot ${slotId}...` })
           let currentCode = mq5_code
           let lastResult = await tryCompileAndBacktest(workerUrl, ea_name, currentCode, sym, per, start, end)
 
@@ -285,7 +289,13 @@ async function tryCompileAndBacktest(
       return {
         supported: true,
         success: true,
-        data: { success: true, metrics, equity_curve, report_b64: data.report_b64 || null },
+        data: {
+          success: true, metrics, equity_curve,
+          report_b64: data.report_b64 || null,
+          report_is_mt5: data.report_is_mt5 ?? false,
+          slot_id: data.slot_id ?? null,
+          vps_host: data.vps_host ?? null,
+        },
       }
     }
 
@@ -352,7 +362,13 @@ async function runSeparateCalls(
     if (!data.success) return { success: false, error: data.error || 'Backtest returned no results' }
     const metrics = normalizeMetrics(data.metrics)
     const equity_curve = parseEquityCurve(data.report_b64, metrics)
-    return { success: true, metrics, equity_curve, report_b64: data.report_b64 || null }
+    return {
+      success: true, metrics, equity_curve,
+      report_b64: data.report_b64 || null,
+      report_is_mt5: data.report_is_mt5 ?? false,
+      slot_id: data.slot_id ?? slotId,
+      vps_host: data.vps_host ?? null,
+    }
   } catch (err) {
     if ((err as Error).name === 'AbortError') return { success: false, error: 'Backtest timed out (4 min)' }
     return { success: false, error: `Backtest error: ${(err as Error).message}` }
@@ -447,7 +463,13 @@ async function fallbackSeparateCalls(
     const metrics = normalizeMetrics(data.metrics)
     const equity_curve = parseEquityCurve(data.report_b64, metrics)
 
-    return NextResponse.json({ success: true, metrics, equity_curve, report_b64: data.report_b64 || null })
+    return NextResponse.json({
+      success: true, metrics, equity_curve,
+      report_b64: data.report_b64 || null,
+      report_is_mt5: data.report_is_mt5 ?? false,
+      slot_id: data.slot_id ?? slotId,
+      vps_host: data.vps_host ?? null,
+    })
   } catch (err) {
     if ((err as Error).name === 'AbortError') {
       return NextResponse.json({
@@ -585,31 +607,24 @@ function parseEquityCurve(
 
   if (reportB64) {
     try {
-      const html = Buffer.from(reportB64, 'base64').toString('utf16le')
+      const buf = Buffer.from(reportB64, 'base64')
+      // Detect encoding: UTF-16LE BOM (0xFF 0xFE) vs UTF-8
+      const html = (buf[0] === 0xff && buf[1] === 0xfe)
+        ? buf.toString('utf16le')
+        : buf.toString('utf-8')
+
+      // Try to extract balance values from MT5 HTML report table rows
       const balanceMatches = [...html.matchAll(/>(\d+\.\d{2})<\/td>\s*<\/tr>/gi)]
       if (balanceMatches.length > 0) {
         for (let i = 0; i < Math.min(balanceMatches.length, 12); i++) {
           const val = parseFloat(balanceMatches[i][1])
           if (val > 100) {
             const month = String(Math.floor(i * 12 / balanceMatches.length) + 1).padStart(2, '0')
-            equity_curve.push({ date: `2024-${month}-01`, equity: val })
+            equity_curve.push({ date: `2025-${month}-01`, equity: val })
           }
         }
       }
     } catch { /* ignore parse errors */ }
-  }
-
-  if (equity_curve.length === 0 && metrics.total_trades > 0) {
-    const start = 10000
-    const end = start + metrics.net_profit
-    for (let i = 0; i < 12; i++) {
-      const progress = i / 11
-      const noise = Math.sin(i * 1.7) * 200 + Math.cos(i * 0.8) * 100
-      equity_curve.push({
-        date: `2024-${String(i + 1).padStart(2, '0')}-01`,
-        equity: Math.round(start + (end - start) * progress + noise),
-      })
-    }
   }
 
   return equity_curve

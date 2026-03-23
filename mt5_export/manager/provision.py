@@ -27,11 +27,11 @@ CONFIG_PATH = os.path.join(BASE_DIR, "manager", "config.json")
 CONFIGS_DIR = os.path.join(BASE_DIR, "configs")
 
 # Source MT5 to copy from
-SOURCE_MT5 = r"C:\Program Files\FTMO MetaTrader 5"
+SOURCE_MT5 = r"C:\Program Files\MetaTrader 5"
 
-# Main FTMO install (slot 0 — always available)
+# Main install (slot 0 — always available)
 MAIN_MT5_DIR = SOURCE_MT5
-MAIN_DATA_DIR = r"C:\Users\Administrator\AppData\Roaming\MetaQuotes\Terminal\49CDDEAA95A409ED22BD2287BB67CB9C"
+MAIN_DATA_DIR = r"C:\Users\Administrator\AppData\Roaming\MetaQuotes\Terminal\D0E8209F77C8CF37AD8BF550E51FF075"
 
 
 def load_config() -> dict:
@@ -171,6 +171,39 @@ When done, output a JSON block:
 """
 
 
+def _copy_account_from_main(target_data_dir: str):
+    """Copy MetaQuotes account config and history data from the main slot (slot 0) to a new slot."""
+    main_data = MAIN_DATA_DIR
+    if not os.path.exists(main_data):
+        log.warning("  Main data dir not found, skipping account copy")
+        return
+
+    # Copy common.ini (contains Login and Server settings)
+    src_ini = os.path.join(main_data, "config", "common.ini")
+    dst_ini = os.path.join(target_data_dir, "config", "common.ini")
+    if os.path.exists(src_ini):
+        os.makedirs(os.path.dirname(dst_ini), exist_ok=True)
+        shutil.copy2(src_ini, dst_ini)
+        log.info("  Copied common.ini (account config)")
+
+    # Copy accounts.dat and servers.dat
+    for fname in ["accounts.dat", "servers.dat"]:
+        src = os.path.join(main_data, "config", fname)
+        dst = os.path.join(target_data_dir, "config", fname)
+        if os.path.exists(src):
+            shutil.copy2(src, dst)
+            log.info(f"  Copied {fname}")
+
+    # Copy MetaQuotes-Demo bases (history data)
+    src_bases = os.path.join(main_data, "bases", "MetaQuotes-Demo")
+    dst_bases = os.path.join(target_data_dir, "bases", "MetaQuotes-Demo")
+    if os.path.exists(src_bases):
+        if os.path.exists(dst_bases):
+            shutil.rmtree(dst_bases, ignore_errors=True)
+        shutil.copytree(src_bases, dst_bases, dirs_exist_ok=True)
+        log.info("  Copied MetaQuotes-Demo history data")
+
+
 def create_workspace(slot_id: str, mt5_dir: str, data_dir: str) -> str:
     """Create workspace directory with CLAUDE.md for a slot."""
     workspace = os.path.join(WORKSPACES_DIR, f"slot{slot_id}")
@@ -253,15 +286,20 @@ def create_slot(slot_id: int | None = None) -> bool:
     time.sleep(3)
 
     # Step 4: Find data folder
-    log.info("[4/5] Finding data folder...")
+    log.info("[4/6] Finding data folder...")
     data_dir = find_data_folder(slot_dir)
     if data_dir:
         log.info(f"  Found: {data_dir}")
     else:
         log.warning("  Data folder not found — set manually in config.json")
 
-    # Step 5: Create workspace
-    log.info("[5/5] Creating workspace...")
+    # Step 5: Copy MetaQuotes account config and history from slot 0 (or any working slot)
+    log.info("[5/6] Copying MetaQuotes account config and history...")
+    if data_dir:
+        _copy_account_from_main(data_dir)
+
+    # Step 6: Create workspace
+    log.info("[6/6] Creating workspace...")
     metaeditor = os.path.join(slot_dir, "metaeditor64.exe")
     if not os.path.exists(metaeditor):
         metaeditor = os.path.join(SOURCE_MT5, "metaeditor64.exe")

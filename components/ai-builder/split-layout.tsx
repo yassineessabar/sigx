@@ -46,9 +46,12 @@ async function readBacktestResponse(
       try {
         const msg = JSON.parse(line)
         if (msg.type === 'queue') {
-          onStatus(`Queued · Position ${msg.position} · ${msg.busy}/${msg.total} slots busy`)
+          const vps = msg.vps_host ? ` · ${msg.vps_host}` : ''
+          onStatus(`Queued · Position ${msg.position} · ${msg.busy}/${msg.total} slots busy${vps}`)
         } else if (msg.type === 'queue_done') {
-          onStatus('Slot acquired · Compiling and backtesting...')
+          const vps = msg.vps_host || 'VPS'
+          const slot = msg.slot_id != null ? ` · slot ${msg.slot_id}` : ''
+          onStatus(`Slot acquired · ${vps}${slot} · Compiling and backtesting...`)
         } else if (msg.type === 'status') {
           onStatus(msg.message || 'Processing...')
         } else if (msg.type === 'result') {
@@ -113,8 +116,8 @@ export function SplitLayout({
       if (!code && meta?.mql5_code) {
         code = meta.mql5_code as string
         codeFound = true
-        // Check if THIS message also has backtest results
-        btForCode = !!meta?.backtest_snapshot
+        // Check if THIS message also has REAL (non-estimated) backtest results
+        btForCode = !!meta?.backtest_snapshot && !(meta?.backtest_snapshot as Record<string, unknown>)?._estimated
       }
       // Also extract code from user messages (uploaded .mq5 files)
       if (!code && msg.role === 'user' && msg.content) {
@@ -127,11 +130,12 @@ export function SplitLayout({
       }
       if (!sid && meta?.strategy_id) sid = meta.strategy_id as string
     }
-    // Also check: is there ANY backtest_result message with matching code?
+    // Also check: is there ANY real (non-estimated) backtest_result message with matching code?
     if (codeFound && !btForCode && code) {
       for (let i = 0; i < messages.length; i++) {
         const meta = messages[i].metadata
-        if (meta?.type === 'backtest_result' && meta?.backtest_snapshot && meta?.mql5_code === code) {
+        if (meta?.type === 'backtest_result' && meta?.backtest_snapshot && meta?.mql5_code === code
+            && !(meta?.backtest_snapshot as Record<string, unknown>)?._estimated) {
           btForCode = true
           backtest = meta.backtest_snapshot
           break
@@ -162,6 +166,9 @@ export function SplitLayout({
   const [optimizedCode, setOptimizedCode] = useState<string | null>(null)
   const [optimizedBacktest, setOptimizedBacktest] = useState<ChatMessageType['metadata']['backtest_snapshot'] | null>(null)
   const [reportHtmlB64, setReportHtmlB64] = useState<string | null>(null)
+  const [reportIsMt5, setReportIsMt5] = useState(false)
+  const [backtestSlotId, setBacktestSlotId] = useState<string | null>(null)
+  const [backtestVpsHost, setBacktestVpsHost] = useState<string | null>(null)
 
   // Compile/backtest error popup state
   const [compileErrorPopup, setCompileErrorPopup] = useState<{ error: string } | null>(null)
@@ -410,8 +417,8 @@ export function SplitLayout({
 
               setIsBacktesting(true)
               setBacktestJustFinished(false)
-              const start = startDate || '2023.01.01'
-              const end = endDate || '2025.01.01'
+              const start = startDate || '2025.01.01'
+              const end = endDate || '2026.03.01'
               const dateLabel = `${start.replace(/\./g, '/').slice(0,7)} – ${end.replace(/\./g, '/').slice(0,7)}`
               setPipelineStatus(`Compiling and backtesting on MT5... · ${symbol} · H1 · ${dateLabel}`)
 
@@ -518,6 +525,9 @@ export function SplitLayout({
                   }
                   setOptimizedBacktest(btSnapshot)
                   if (data.report_b64) setReportHtmlB64(data.report_b64)
+                  setReportIsMt5(!!data.report_is_mt5)
+                  if (data.slot_id) setBacktestSlotId(String(data.slot_id))
+                  if (data.vps_host) setBacktestVpsHost(String(data.vps_host))
 
                   // Save as a version
                   const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')
@@ -695,6 +705,9 @@ export function SplitLayout({
                   }
                   setOptimizedBacktest(btSnapshot)
                   if (data.report_b64) setReportHtmlB64(data.report_b64)
+                  setReportIsMt5(!!data.report_is_mt5)
+                  if (data.slot_id) setBacktestSlotId(String(data.slot_id))
+                  if (data.vps_host) setBacktestVpsHost(String(data.vps_host))
 
                   const profitSign = btSnapshot.net_profit >= 0 ? '+' : ''
                   setPipelineStatus(`✓ Backtest complete · ${symbol} H1 · ${btSnapshot.total_trades} trades · PF ${btSnapshot.profit_factor.toFixed(2)} · ${profitSign}$${btSnapshot.net_profit.toFixed(0)}`)
@@ -730,6 +743,9 @@ export function SplitLayout({
             strategySnapshot={latestStrategy}
             backtestSnapshot={displayBacktest}
             reportHtmlB64={reportHtmlB64}
+            reportIsMt5={reportIsMt5}
+            slotId={backtestSlotId}
+            vpsHost={backtestVpsHost}
             mql5Code={displayCode}
             isOpen={panelOpen}
             onToggle={() => setPanelOpen((prev) => !prev)}
