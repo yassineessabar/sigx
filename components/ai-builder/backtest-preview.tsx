@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react'
 import { EquityCurve } from '@/components/charts/equity-curve'
-import { TrendingUp, TrendingDown, BarChart3, Target, ExternalLink, DollarSign, Server } from 'lucide-react'
+import { TrendingUp, TrendingDown, BarChart3, Target, Download, DollarSign, Server } from 'lucide-react'
 
 interface BacktestPreviewProps {
   backtest: {
@@ -30,23 +30,26 @@ export function BacktestPreview({ backtest, reportHtmlB64, reportIsMt5, slotId, 
   const hasTrades = backtest.total_trades > 0
   const isEstimated = (backtest as Record<string, unknown>)._estimated === true
 
-  const handleViewReport = useCallback(() => {
+  const handleDownloadReport = useCallback(() => {
     if (!reportHtmlB64) return
     try {
-      // Decode base64 to raw bytes (preserves binary data like embedded chart images)
       const binaryStr = atob(reportHtmlB64)
       const bytes = new Uint8Array(binaryStr.length)
       for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i)
 
-      // Detect UTF-16LE BOM (0xFF 0xFE) — MT5 default encoding
       const isUtf16 = bytes[0] === 0xFF && bytes[1] === 0xFE
       const mimeType = isUtf16 ? 'text/html; charset=utf-16le' : 'text/html; charset=utf-8'
       const blob = new Blob([bytes], { type: mimeType })
 
       const url = URL.createObjectURL(blob)
-      window.open(url, '_blank')
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `backtest-report-${new Date().toISOString().slice(0, 10)}.html`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
     } catch {
-      // Fallback: let the browser decode the base64 natively
       const dataUri = `data:text/html;base64,${reportHtmlB64}`
       window.open(dataUri, '_blank')
     }
@@ -60,14 +63,14 @@ export function BacktestPreview({ backtest, reportHtmlB64, reportIsMt5, slotId, 
             {isEstimated ? 'Estimated Results' : 'Backtest Results'}
           </span>
           <div className="flex items-center gap-2">
-            {reportHtmlB64 && reportIsMt5 && (
+            {reportHtmlB64 && (
               <button
-                onClick={handleViewReport}
+                onClick={handleDownloadReport}
                 className="flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium text-foreground/40 hover:text-foreground/70 bg-foreground/[0.04] hover:bg-foreground/[0.08] border border-foreground/[0.06] transition-all"
-                title="View full MT5 HTML report"
+                title="Download backtest report"
               >
-                <ExternalLink size={11} />
-                Full Report
+                <Download size={11} />
+                Report
               </button>
             )}
             <span className={`rounded-full px-2.5 py-0.5 text-[12px] font-medium ${
