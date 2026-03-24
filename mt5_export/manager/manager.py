@@ -55,7 +55,7 @@ mod04 = import_module("04_analyse_results")
 
 # ── App ──────────────────────────────────────────────────────────────────────
 app = FastAPI(title="MT5 Strategy Builder — Hybrid Manager", version="2.0")
-API_KEY = os.getenv("MT5_WORKER_KEY", "changeme")
+API_KEY = os.getenv("MT5_WORKER_KEY", "3oe4v2igbVUB9kh1iMiXfES6KVNK6EA3TMl50k9S")
 import socket as _socket
 _HOSTNAME = _socket.gethostname()
 
