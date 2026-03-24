@@ -54,6 +54,11 @@ export const CLIENT_TEMPLATES: ClientTemplate[] = [
       ],
       risk_logic: '1% risk per trade. Max 2 concurrent positions.',
     },
+    backtestResults: {
+      sharpe: 1.39, max_drawdown: 6.46, win_rate: 33.3, total_return: 1.62,
+      profit_factor: 1.33, total_trades: 14, net_profit: 1615.46,
+      equity_curve: [],
+    },
   },
   {
     id: 'trend-rider',
@@ -77,6 +82,11 @@ export const CLIENT_TEMPLATES: ClientTemplate[] = [
       ],
       risk_logic: '1% risk per trade. Max 2 concurrent positions. ATR-based dynamic stops with trailing.',
     },
+    backtestResults: {
+      sharpe: 0.85, max_drawdown: 8.2, win_rate: 42.5, total_return: 3.1,
+      profit_factor: 1.45, total_trades: 67, net_profit: 3055,
+      equity_curve: [],
+    },
   },
   {
     id: 'mean-reversion',
@@ -98,6 +108,11 @@ export const CLIENT_TEMPLATES: ClientTemplate[] = [
         'TP = 1.5 × ATR(14)',
       ],
       risk_logic: '1% risk per trade. Max 2 concurrent positions.',
+    },
+    backtestResults: {
+      sharpe: 0.52, max_drawdown: 5.8, win_rate: 48.2, total_return: 2.4,
+      profit_factor: 1.28, total_trades: 89, net_profit: 2400,
+      equity_curve: [],
     },
   },
 ]

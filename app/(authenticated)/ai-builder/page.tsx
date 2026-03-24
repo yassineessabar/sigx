@@ -414,13 +414,18 @@ export default function AIBuilderPage() {
           type: 'strategy' as const,
           strategy_snapshot: clientTemplate.strategySnapshot,
           mql5_code: clientTemplate.mql5Code,
+          // Include pre-computed backtest results so preview shows immediately
+          ...(clientTemplate.backtestResults ? {
+            backtest_snapshot: clientTemplate.backtestResults,
+          } : {}),
         },
         created_at: new Date().toISOString(),
       }
 
       setIsGenerating(false)
       setMessages([userMsg, assistantMsg])
-      setLoadedFromTemplate(true)
+      // Don't auto-trigger backtest — template already has results
+      setLoadedFromTemplate(false)
 
       // Save to DB — do it async but don't swallow errors
       ;(async () => {
