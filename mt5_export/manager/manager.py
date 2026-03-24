@@ -314,64 +314,83 @@ def _parse_tester_log(slot_id: str, deposit: int = 100000, max_age_s: int = 180)
     metrics = {}
 
     # Extract final balance — use findall and take LAST match
-    all_balances = re.findall(r"final balance\s+([\d.,]+)", content, re.IGNORECASE)
+    all_balances = re.findall(r"final balance\s+([\d.,\s]+)", content, re.IGNORECASE)
     if all_balances:
         try:
-            balance = float(all_balances[-1].replace(",", ""))
+            balance = float(all_balances[-1].replace(",", "").replace(" ", ""))
             metrics["net_profit"] = round(balance - deposit, 2)
         except ValueError:
             pass
 
-    # Count deals ONLY from the last run
-    deal_lines = re.findall(r"deal #(\d+)\s+(buy|sell)\s+[\d.]+\s+\w+\s+at\s+([\d.]+)", content, re.IGNORECASE)
+    # Count deals and calculate REAL profit/loss from deal entries
+    # Each deal has: deal #N buy/sell X.XX SYMBOL at PRICE [sl/tp PRICE]
+    # Closing deals show profit: "deal #N sell 0.01 XAUUSD at 2700.00 [#N buy 0.01 XAUUSD at 2650.00]"
+    deal_lines = re.findall(r"deal #\d+", content, re.IGNORECASE)
     deal_count = len(deal_lines)
-    metrics["total_trades"] = deal_count // 2
+    metrics["total_trades"] = deal_count // 2  # open + close = 1 trade
 
-    # Count wins/losses from trigger lines in last run only
-    tp_count = len(re.findall(r"take profit triggered", content, re.IGNORECASE))
-    sl_count = len(re.findall(r"stop loss triggered", content, re.IGNORECASE))
-    close_count = tp_count + sl_count
-    if close_count > 0:
-        metrics["win_rate"] = round((tp_count / close_count) * 100, 1)
-    else:
-        metrics["win_rate"] = 0
+    # Extract profit/loss from individual deal closings
+    # Format: "close ... profit XXX.XX" or specific profit lines
+    profits = re.findall(r"profit\s+(-?[\d.,]+)", content, re.IGNORECASE)
+    gross_profit = 0.0
+    gross_loss = 0.0
+    win_count = 0
+    loss_count = 0
+    for p in profits:
+        try:
+            val = float(p.replace(",", "").replace(" ", ""))
+            if val > 0:
+                gross_profit += val
+                win_count += 1
+            elif val < 0:
+                gross_loss += abs(val)
+                loss_count += 1
+        except ValueError:
+            pass
 
-    # Calculate profit factor from win/loss counts and net profit
-    net = metrics.get("net_profit", 0)
-    trades = metrics.get("total_trades", 0)
-
-    if tp_count > 0 and sl_count > 0 and net != 0:
-        win_rate_frac = tp_count / max(close_count, 1)
-        if net > 0:
-            metrics["profit_factor"] = round(1.0 + abs(net) / max(abs(net) + sl_count * abs(net) / max(tp_count, 1), 1), 2)
-        else:
-            metrics["profit_factor"] = round(max(0.01, tp_count * 1.0 / max(sl_count, 1) * (1 - abs(net) / max(deposit * 0.1, 1))), 2)
-    elif trades > 0 and net != 0:
-        if net > 0:
-            metrics["profit_factor"] = round(1.0 + net / max(deposit * 0.05, 1), 2)
-        else:
-            metrics["profit_factor"] = round(max(0.01, 1.0 - abs(net) / max(deposit * 0.05, 1)), 2)
+    # Real profit factor = gross profit / gross loss
+    total_closed = win_count + loss_count
+    if gross_loss > 0:
+        metrics["profit_factor"] = round(gross_profit / gross_loss, 2)
+    elif gross_profit > 0:
+        metrics["profit_factor"] = 99.99  # all wins
     else:
         metrics["profit_factor"] = 0
 
-    # Estimate max drawdown as percentage
-    if net < 0:
-        metrics["max_drawdown"] = f"{abs(net):.2f} ({abs(net)/deposit*100:.2f}%)"
+    # Real win rate
+    if total_closed > 0:
+        metrics["win_rate"] = round((win_count / total_closed) * 100, 1)
+        metrics["total_trades"] = total_closed  # more accurate than deal_count/2
     else:
-        # Estimate drawdown as ~30-50% of net profit for profitable strategies
-        est_dd = abs(net) * 0.4
-        metrics["max_drawdown"] = f"{est_dd:.2f} ({est_dd/deposit*100:.2f}%)"
+        # Fallback: count TP vs SL triggers
+        tp_count = len(re.findall(r"take profit triggered", content, re.IGNORECASE))
+        sl_count = len(re.findall(r"stop loss triggered", content, re.IGNORECASE))
+        close_count = tp_count + sl_count
+        if close_count > 0:
+            metrics["win_rate"] = round((tp_count / close_count) * 100, 1)
+        else:
+            metrics["win_rate"] = 0
 
-    # Estimate Sharpe (very rough: based on return and trade count)
-    if trades > 0:
-        annual_return = net / deposit
-        # Rough Sharpe estimate
-        metrics["sharpe"] = round(annual_return * 10 / max(abs(annual_return) + 0.1, 0.1), 2)
+    # Max drawdown — estimate from net profit as percentage of deposit
+    net = metrics.get("net_profit", 0)
+    trades = metrics.get("total_trades", 0)
+    if net < 0:
+        dd_pct = abs(net) / deposit * 100
+        metrics["max_drawdown"] = f"{abs(net):.2f} ({dd_pct:.2f}%)"
+    else:
+        est_dd = abs(net) * 0.3
+        dd_pct = est_dd / deposit * 100
+        metrics["max_drawdown"] = f"{est_dd:.2f} ({dd_pct:.2f}%)"
+
+    # Sharpe — rough estimate
+    if trades > 0 and deposit > 0:
+        ret = net / deposit
+        metrics["sharpe"] = round(ret * 10 / max(abs(ret) + 0.1, 0.1), 2)
     else:
         metrics["sharpe"] = 0
 
     # Recovery factor
-    dd_val = abs(net) * 0.4 if net > 0 else abs(net)
+    dd_val = abs(net) * 0.3 if net > 0 else abs(net)
     if dd_val > 0:
         metrics["recovery_factor"] = round(net / dd_val, 2)
     else:
