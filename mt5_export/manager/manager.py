@@ -442,54 +442,32 @@ ShutdownTerminal=1"""
     _slot_pids[slot_id] = proc.pid
     log.info(f"[slot {slot_id}] Launched terminal PID={proc.pid} for {ea_name}")
 
-    # Poll for report — check the exact path and also search broadly
+    # Poll for report or process exit — fast polling, no heavy filesystem search
     report_path = None
     elapsed = 0
     while elapsed < timeout_s:
-        time.sleep(5)
-        elapsed += 5
+        time.sleep(3)
+        elapsed += 3
 
-        # Check if process already exited
-        if proc.poll() is not None and elapsed > 10:
-            time.sleep(3)
-
-        # Check the exact path we specified
-        if os.path.exists(report_abs):
-            time.sleep(2)
+        # Check the exact report path we specified in the .ini
+        if os.path.exists(report_abs) and os.path.getsize(report_abs) > 100:
+            time.sleep(1)
             report_path = report_abs
             break
 
-        # Also check without extension (MT5 might add its own)
-        for ext in [".htm", ".html", ""]:
+        # Also check .htm variant
+        for ext in [".htm", ".html"]:
             candidate = os.path.join(CONFIGS_DIR, f"{report_name}{ext}")
-            if os.path.exists(candidate) and os.path.getsize(candidate) > 0:
-                time.sleep(2)
+            if os.path.exists(candidate) and os.path.getsize(candidate) > 100:
+                time.sleep(1)
                 report_path = candidate
                 break
         if report_path:
             break
 
-        # Broad search if process exited
-        if proc.poll() is not None and elapsed > 15:
-            appdata = os.environ.get("APPDATA", "")
-            for search_root in [os.path.join(appdata, "MetaQuotes"), CONFIGS_DIR, slot["data_dir"]]:
-                if not os.path.isdir(search_root):
-                    continue
-                for root, dirs, files in os.walk(search_root):
-                    for fn in files:
-                        if report_name in fn and fn.endswith((".htm", ".html")):
-                            report_path = os.path.join(root, fn)
-                            break
-                    if report_path:
-                        break
-                if report_path:
-                    break
-
-        if report_path:
-            break
-
-        # If process exited and we've waited enough, stop polling
-        if proc.poll() is not None and elapsed > 30:
+        # If terminal exited, give it a moment then stop — use tester log instead
+        if proc.poll() is not None and elapsed > 10:
+            time.sleep(2)
             break
 
     _slot_pids.pop(slot_id, None)
@@ -501,14 +479,12 @@ ShutdownTerminal=1"""
         except Exception as e:
             log.warning(f"Failed to parse report {report_path}: {e}")
 
-    # Fallback: parse metrics from tester agent log
+    # Fallback: parse metrics from tester agent log (skip heavy report generation)
     log.info(f"[slot {slot_id}] No .htm report found, parsing tester agent log")
     log_metrics = _parse_tester_log(slot_id, deposit)
     if log_metrics and log_metrics.get("total_trades", 0) > 0:
-        log_content = log_metrics.pop("_log_content", "")
-        report_html = _generate_report_html(ea_name, symbol, period, log_metrics, log_content)
-        report_b64 = base64.b64encode(report_html.encode("utf-8")).decode()
-        return {"success": True, "metrics": log_metrics, "report_path": None, "report_b64": report_b64}
+        log_metrics.pop("_log_content", "")  # Remove raw log content
+        return {"success": True, "metrics": log_metrics, "report_path": None}
 
     return {"success": False, "metrics": {}, "error": f"No report or log data after {elapsed}s"}
 
