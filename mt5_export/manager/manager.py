@@ -401,7 +401,9 @@ def _parse_tester_log(slot_id: str, deposit: int = 100000, max_age_s: int = 180)
         metrics["recovery_factor"] = 0
 
     metrics["initial_deposit"] = deposit
-    metrics["_log_content"] = content  # Pass log content for report generation
+    # Include last 100 lines of log for debugging
+    log_lines = content.strip().split('\n')
+    metrics["_log_tail"] = '\n'.join(log_lines[-100:])
 
     return metrics
 
@@ -427,8 +429,7 @@ def run_backtest(slot_id: str, ea_name: str, symbol="EURUSD", period="H1",
         if os.path.exists(old):
             os.remove(old)
 
-    # Build config — ShutdownTerminal=1 so MT5 exits when done
-    # MT5 terminals are already logged in — no [Common] section needed
+    # Build config — generate report for accurate metrics + download
     config_content = f"""\
 [Tester]
 Expert={ea_name}
@@ -442,6 +443,8 @@ Deposit={deposit}
 Currency=USD
 Leverage=100
 ExecutionMode=0
+Report={report_abs}
+ReplaceReport=1
 ShutdownTerminal=1"""
 
     config_path = os.path.join(CONFIGS_DIR, f"{ea_name}_{slot_id}.ini")
@@ -454,23 +457,46 @@ ShutdownTerminal=1"""
     _slot_pids[slot_id] = proc.pid
     log.info(f"[slot {slot_id}] Launched terminal PID={proc.pid} for {ea_name}")
 
-    # Wait for terminal to finish — just poll process exit, no report needed
+    # Wait for report file or process exit
+    report_path = None
     elapsed = 0
     while elapsed < timeout_s:
-        time.sleep(2)
-        elapsed += 2
-        if proc.poll() is not None:
-            time.sleep(1)  # Brief pause for log file to flush
+        time.sleep(3)
+        elapsed += 3
+
+        # Check if report was written
+        if os.path.exists(report_abs) and os.path.getsize(report_abs) > 100:
+            time.sleep(1)
+            report_path = report_abs
+            break
+
+        # If terminal exited, give it a moment for file flush then stop
+        if proc.poll() is not None and elapsed > 10:
+            time.sleep(2)
+            # One last check for the report
+            if os.path.exists(report_abs) and os.path.getsize(report_abs) > 100:
+                report_path = report_abs
             break
 
     _slot_pids.pop(slot_id, None)
+
+    # Parse the MT5 HTML report — this has the REAL metrics
+    if report_path and os.path.exists(report_path):
+        try:
+            report_b64 = _encode_report(report_path)
+            metrics = mod04.parse_mt5_report(report_path)
+            metrics["initial_deposit"] = deposit
+            return {"success": True, "metrics": metrics, "report_path": report_path, "report_b64": report_b64}
+        except Exception as e:
+            log.warning(f"Failed to parse report {report_path}: {e}")
 
     # Fallback: parse metrics from tester agent log (skip heavy report generation)
     log.info(f"[slot {slot_id}] No .htm report found, parsing tester agent log")
     log_metrics = _parse_tester_log(slot_id, deposit)
     if log_metrics and log_metrics.get("total_trades", 0) > 0:
-        log_metrics.pop("_log_content", "")  # Remove raw log content
-        return {"success": True, "metrics": log_metrics, "report_path": None}
+        log_metrics.pop("_log_content", "")
+        log_tail = log_metrics.pop("_log_tail", "")
+        return {"success": True, "metrics": log_metrics, "report_path": None, "_log_tail": log_tail}
 
     return {"success": False, "metrics": {}, "error": f"No report or log data after {elapsed}s"}
 
