@@ -705,6 +705,11 @@ export function SplitLayout({
               setTimeout(() => { setPipelineStatus(null); setBacktestJustFinished(false) }, 3000)
             } : undefined}
             onFocusPrompt={(hint) => promptInputRef.current?.focus(hint)}
+            onSeeCode={() => {
+              setPanelOpen(true)
+              // Dispatch event to switch to code tab
+              window.dispatchEvent(new CustomEvent('sigx-show-code-tab'))
+            }}
           />
           <PromptInput
             ref={promptInputRef}

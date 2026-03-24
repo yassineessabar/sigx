@@ -28,6 +28,7 @@ interface ChatThreadProps {
   onRunBacktest?: (startDate?: string, endDate?: string) => void
   onStopBacktest?: () => void
   onFocusPrompt?: (placeholder?: string) => void
+  onSeeCode?: () => void
 }
 
 function MetricDelta({ label, current, previous, unit = '', higherIsBetter = true }: {
@@ -190,9 +191,10 @@ function ThinkingBubble() {
   )
 }
 
-function BacktestLauncher({ onRunBacktest, onFocusPrompt }: {
+function BacktestLauncher({ onRunBacktest, onFocusPrompt, onSeeCode }: {
   onRunBacktest: (startDate?: string, endDate?: string) => void
   onFocusPrompt?: (placeholder?: string) => void
+  onSeeCode?: () => void
 }) {
   const [showDates, setShowDates] = useState(false)
   const [startDate, setStartDate] = useState('2023.01.01')
@@ -228,7 +230,7 @@ function BacktestLauncher({ onRunBacktest, onFocusPrompt }: {
           </div>
         )}
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             data-auto-backtest-trigger
             onClick={() => onRunBacktest(showDates ? startDate : undefined, showDates ? endDate : undefined)}
@@ -237,6 +239,15 @@ function BacktestLauncher({ onRunBacktest, onFocusPrompt }: {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             Run Backtest
           </button>
+          {onSeeCode && (
+            <button
+              onClick={onSeeCode}
+              className="rounded-full border border-foreground/[0.12] bg-foreground/[0.04] px-4 py-2 text-[13px] font-medium text-foreground/60 hover:text-foreground/80 hover:bg-foreground/[0.08] transition-colors flex items-center gap-2"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              See Code
+            </button>
+          )}
           <button
             onClick={() => setShowDates(!showDates)}
             className={`rounded-full border px-3 py-2 text-[11px] font-medium transition-colors ${
@@ -268,7 +279,7 @@ function cleanStreamingDisplay(text: string): string {
   return clean.replace(/\n{3,}/g, '\n\n').trim()
 }
 
-export function ChatThread({ messages, isGenerating, streamingContent, pipelineStatus, backtestData, previousBacktest, pipelineError, hasCode, needsBacktest, isBacktesting, onEditMessage, onRegenerateMessage, onSend, onRetry, onRunBacktest, onStopBacktest, onFocusPrompt }: ChatThreadProps) {
+export function ChatThread({ messages, isGenerating, streamingContent, pipelineStatus, backtestData, previousBacktest, pipelineError, hasCode, needsBacktest, isBacktesting, onEditMessage, onRegenerateMessage, onSend, onRetry, onRunBacktest, onStopBacktest, onFocusPrompt, onSeeCode }: ChatThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const [hasHadMessages, setHasHadMessages] = useState(false)
@@ -427,7 +438,7 @@ export function ChatThread({ messages, isGenerating, streamingContent, pipelineS
 
         {/* Run Backtest button — shows when code exists but hasn't been backtested yet */}
         {needsBacktest && !isBacktesting && !isGenerating && !pipelineError && onRunBacktest && (
-          <BacktestLauncher onRunBacktest={onRunBacktest} onFocusPrompt={onFocusPrompt} />
+          <BacktestLauncher onRunBacktest={onRunBacktest} onFocusPrompt={onFocusPrompt} onSeeCode={onSeeCode} />
         )}
 
         {/* Backtesting in progress indicator with stop button */}

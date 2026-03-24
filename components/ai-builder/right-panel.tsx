@@ -81,6 +81,13 @@ export function RightPanel({
     }
   }, [mql5Code, hasBacktest, hasAutoSwitched, activeTab])
 
+  // Listen for "See Code" button click from chat
+  useEffect(() => {
+    const handler = () => setActiveTab('code')
+    window.addEventListener('sigx-show-code-tab', handler)
+    return () => window.removeEventListener('sigx-show-code-tab', handler)
+  }, [])
+
   // Find the best iteration by profit_factor
   const bestIteration = hybridIterations.length > 0
     ? hybridIterations.reduce((best, curr) => {
