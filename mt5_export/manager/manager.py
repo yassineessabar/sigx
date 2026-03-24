@@ -405,18 +405,9 @@ def run_backtest(slot_id: str, ea_name: str, symbol="EURUSD", period="H1",
             os.remove(old)
 
     # Build config — ShutdownTerminal=1 so MT5 exits when done
-    # If account credentials are provided, add [Common] section so MT5 logs into the correct broker
-    common_section = ""
-    if account_login and account_password and account_server:
-        common_section = f"""\
-[Common]
-Login={account_login}
-Password={account_password}
-Server={account_server}
-"""
-
+    # MT5 terminals are already logged in — no [Common] section needed
     config_content = f"""\
-{common_section}[Tester]
+[Tester]
 Expert={ea_name}
 Symbol={symbol}
 Period={period}
