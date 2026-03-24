@@ -419,8 +419,6 @@ Deposit={deposit}
 Currency=USD
 Leverage=100
 ExecutionMode=0
-Report={report_abs}
-ReplaceReport=1
 ShutdownTerminal=1"""
 
     config_path = os.path.join(CONFIGS_DIR, f"{ea_name}_{slot_id}.ini")
@@ -433,42 +431,16 @@ ShutdownTerminal=1"""
     _slot_pids[slot_id] = proc.pid
     log.info(f"[slot {slot_id}] Launched terminal PID={proc.pid} for {ea_name}")
 
-    # Poll for report or process exit — fast polling, no heavy filesystem search
-    report_path = None
+    # Wait for terminal to finish — just poll process exit, no report needed
     elapsed = 0
     while elapsed < timeout_s:
-        time.sleep(3)
-        elapsed += 3
-
-        # Check the exact report path we specified in the .ini
-        if os.path.exists(report_abs) and os.path.getsize(report_abs) > 100:
-            time.sleep(1)
-            report_path = report_abs
-            break
-
-        # Also check .htm variant
-        for ext in [".htm", ".html"]:
-            candidate = os.path.join(CONFIGS_DIR, f"{report_name}{ext}")
-            if os.path.exists(candidate) and os.path.getsize(candidate) > 100:
-                time.sleep(1)
-                report_path = candidate
-                break
-        if report_path:
-            break
-
-        # If terminal exited, give it a moment then stop — use tester log instead
-        if proc.poll() is not None and elapsed > 10:
-            time.sleep(2)
+        time.sleep(2)
+        elapsed += 2
+        if proc.poll() is not None:
+            time.sleep(1)  # Brief pause for log file to flush
             break
 
     _slot_pids.pop(slot_id, None)
-
-    if report_path:
-        try:
-            metrics = mod04.parse_mt5_report(report_path)
-            return {"success": True, "metrics": metrics, "report_path": report_path}
-        except Exception as e:
-            log.warning(f"Failed to parse report {report_path}: {e}")
 
     # Fallback: parse metrics from tester agent log (skip heavy report generation)
     log.info(f"[slot {slot_id}] No .htm report found, parsing tester agent log")
