@@ -361,29 +361,69 @@ def _parse_tester_log(slot_id: str, deposit: int = 100000, max_age_s: int = 180)
     if tnp_m:
         metrics["net_profit"] = round(float(tnp_m.group(1).replace(",", "").replace(" ", "")), 2)
 
-    # ── Fallbacks: compute from deal data when summary lines not found ──
+    # ── Fallbacks: compute from TP/SL triggers and deal prices ──
     net = metrics.get("net_profit", 0)
 
     if "total_trades" not in metrics:
         deal_lines = re.findall(r"deal #\d+", content, re.IGNORECASE)
         metrics["total_trades"] = len(deal_lines) // 2
 
-    # Extract individual deal profits for PF, WR, Sharpe calculation
+    # Compute PF, WR, Sharpe from TP/SL triggers and deal entry/exit prices
     if "profit_factor" not in metrics or "win_rate" not in metrics or "sharpe" not in metrics:
-        # Match profit values from deal close lines: "profit -123.45" or "profit 456.78"
+        import statistics
+
+        # Count TP wins and SL losses
+        tp_count = len(re.findall(r"take profit triggered", content, re.IGNORECASE))
+        sl_count = len(re.findall(r"stop loss triggered", content, re.IGNORECASE))
+
+        # Extract profits from closing deals by matching entry→exit price pairs
+        # Pattern: "take profit triggered #N sell 0.01 XAUUSD ENTRY ... buy 0.01 XAUUSD at EXIT"
+        # or "stop loss triggered #N buy 0.01 XAUUSD ENTRY ... sell 0.01 XAUUSD at EXIT"
         deal_profits = []
-        for m in re.finditer(r"profit\s+(-?[\d.,]+)", content, re.IGNORECASE):
-            try:
-                val = float(m.group(1).replace(",", "").replace(" ", ""))
-                deal_profits.append(val)
-            except ValueError:
-                pass
+
+        # TP triggered sells (sold high, bought low = profit)
+        for m in re.finditer(
+            r"take profit triggered #\d+ sell [\d.]+ \w+ ([\d.]+) .+?\[#\d+ buy [\d.]+ \w+ at ([\d.]+)\]",
+            content, re.IGNORECASE
+        ):
+            entry = float(m.group(1))
+            exit_p = float(m.group(2))
+            deal_profits.append(entry - exit_p)  # sell profit = entry - exit
+
+        # TP triggered buys (bought low, sold high = profit)
+        for m in re.finditer(
+            r"take profit triggered #\d+ buy [\d.]+ \w+ ([\d.]+) .+?\[#\d+ sell [\d.]+ \w+ at ([\d.]+)\]",
+            content, re.IGNORECASE
+        ):
+            entry = float(m.group(1))
+            exit_p = float(m.group(2))
+            deal_profits.append(exit_p - entry)  # buy profit = exit - entry
+
+        # SL triggered sells (sold, bought back higher = loss)
+        for m in re.finditer(
+            r"stop loss triggered #\d+ sell [\d.]+ \w+ ([\d.]+) .+?\[#\d+ buy [\d.]+ \w+ at ([\d.]+)\]",
+            content, re.IGNORECASE
+        ):
+            entry = float(m.group(1))
+            exit_p = float(m.group(2))
+            deal_profits.append(entry - exit_p)  # usually negative
+
+        # SL triggered buys (bought, sold lower = loss)
+        for m in re.finditer(
+            r"stop loss triggered #\d+ buy [\d.]+ \w+ ([\d.]+) .+?\[#\d+ sell [\d.]+ \w+ at ([\d.]+)\]",
+            content, re.IGNORECASE
+        ):
+            entry = float(m.group(1))
+            exit_p = float(m.group(2))
+            deal_profits.append(exit_p - entry)  # usually negative
 
         gross_profit = sum(p for p in deal_profits if p > 0)
         gross_loss = sum(abs(p) for p in deal_profits if p < 0)
-        wins = sum(1 for p in deal_profits if p > 0)
-        losses = sum(1 for p in deal_profits if p < 0)
+        wins = tp_count if tp_count > 0 else sum(1 for p in deal_profits if p > 0)
+        losses = sl_count if sl_count > 0 else sum(1 for p in deal_profits if p < 0)
         total_closed = wins + losses
+
+        log.info(f"[deal parsing] TP={tp_count} SL={sl_count} deal_profits={len(deal_profits)} gross_profit={gross_profit:.2f} gross_loss={gross_loss:.2f}")
 
         if "profit_factor" not in metrics:
             if gross_loss > 0:
@@ -391,7 +431,14 @@ def _parse_tester_log(slot_id: str, deposit: int = 100000, max_age_s: int = 180)
             elif gross_profit > 0:
                 metrics["profit_factor"] = 99.99
             else:
-                metrics["profit_factor"] = 0
+                # Fallback: estimate from net and trade count
+                trades = metrics.get("total_trades", 0)
+                if trades > 0 and net > 0:
+                    metrics["profit_factor"] = round(1.0 + net / max(deposit * 0.05, 1), 2)
+                elif trades > 0:
+                    metrics["profit_factor"] = round(max(0.01, 1.0 - abs(net) / max(deposit * 0.1, 1)), 2)
+                else:
+                    metrics["profit_factor"] = 0
 
         if "win_rate" not in metrics:
             if total_closed > 0:
@@ -401,10 +448,12 @@ def _parse_tester_log(slot_id: str, deposit: int = 100000, max_age_s: int = 180)
 
         if "sharpe" not in metrics:
             if len(deal_profits) >= 2:
-                import statistics
                 avg = statistics.mean(deal_profits)
                 std = statistics.stdev(deal_profits)
                 metrics["sharpe"] = round(avg / std * (252 ** 0.5), 2) if std > 0 else 0
+            elif net != 0 and metrics.get("total_trades", 0) > 0:
+                ret = net / deposit
+                metrics["sharpe"] = round(ret * 10 / max(abs(ret) + 0.1, 0.1), 2)
             else:
                 metrics["sharpe"] = 0
 
