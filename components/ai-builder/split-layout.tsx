@@ -476,12 +476,24 @@ export function SplitLayout({
               // Prevent double-click / duplicate auto-trigger
               if (isBacktesting) return
 
-              // CRITICAL: Read code from ref to avoid stale closure.
-              // The inline handler captures displayCode at render time,
-              // but if the AI just updated the code, the closure is stale.
-              // The ref always has the latest value.
-              const currentCode = displayCodeRef.current
+              // CRITICAL: Read code FRESH from messages at click time.
+              // Do NOT rely on closure-captured displayCode or refs —
+              // they can be stale if React hasn't re-rendered yet.
+              // Scan messages backwards to find the LATEST mql5_code.
+              let currentCode: string | null = null
+              for (let i = messages.length - 1; i >= 0; i--) {
+                const meta = messages[i].metadata
+                if (meta?.mql5_code) {
+                  currentCode = meta.mql5_code as string
+                  break
+                }
+              }
+              // Also check optimizedCode (from editor edits or optimize runs)
+              if (optimizedCode) currentCode = optimizedCode
+
               if (!currentCode) return
+
+              console.log(`[BACKTEST_CLICK] Using code: ${currentCode.length} chars, first_line="${currentCode.split('\n')[0]}"`)
 
               const strat = latestStrategy as { name?: string; market?: string } | undefined
               // Use unique EA name per run to prevent VPS caching stale .ex5/.htm results
