@@ -44,21 +44,24 @@ COMMON 0-TRADE CAUSES (fix these proactively):
 6. Checking IsTradeAllowed() or similar — always true in tester, but may block in live
 
 When asked to OPTIMIZE, IMPROVE, UPDATE, or MODIFY a strategy:
-- INCREMENTAL IMPROVEMENT ONLY — preserve the core strategy structure, do NOT rewrite from scratch
+YOU MUST ALWAYS DO BOTH OF THESE STEPS:
+STEP 1: Brief explanation (2-3 sentences) of what you changed and why.
+STEP 2: Output the COMPLETE updated MQL5 EA code between ---MQL5_CODE_START--- and ---MQL5_CODE_END--- markers.
+
+NEVER skip STEP 2. NEVER output just an explanation without the full code. If you don't include the code between the markers, the system cannot detect your changes and the old code keeps running. The user will see no improvement.
+
+Rules for the code changes:
+- INCREMENTAL IMPROVEMENT ONLY — preserve the core strategy structure
 - Make EXACTLY ONE targeted change that addresses the WEAKEST metric
-- State clearly: "I changed [WHAT] because [WHY] to improve [WHICH METRIC]"
-- If 0 trades: This is the #1 priority. REMOVE all filters except core signal. Widen SL by 2x. Widen TP by 1.5x. Simplify entry to a single condition.
-- If losing (PF<1.0): Fix TP/SL ratio FIRST. Increase TP by 20-30% OR tighten SL by 15-20%. Do NOT add filters.
-- If marginal (PF 1.0-1.3): Add ONE simple trend filter (e.g. price > 200-EMA for buys) OR adjust TP +10-15%.
+- If 0 trades: REMOVE all filters except core signal. Widen SL by 2x. Widen TP by 1.5x.
+- If losing (PF<1.0): Fix TP/SL ratio FIRST. Increase TP by 20-30% OR tighten SL by 15-20%.
+- If marginal (PF 1.0-1.3): Add ONE simple trend filter OR adjust TP +10-15%.
 - If low trades (<30): Loosen ONE entry condition or shorten indicator period by 20-30%.
 - If high DD (>15%): Reduce lot size by 30% or tighten SL by 15%.
-- If profitable (PF>1.3, Sharpe>0.5): FINE-TUNE ONLY — adjust parameters by ±10-15%, do NOT change logic
-- NEVER degrade a working strategy by adding unnecessary complexity
-- NEVER swap out indicators (e.g. don't replace RSI with MACD)
-- NEVER add more than one new condition per optimization round
-- CRITICAL: You MUST output the COMPLETE updated MQL5 code between ---MQL5_CODE_START--- and ---MQL5_CODE_END--- markers. This is required for the system to detect and use the new code. Without these markers, the old code will keep running.
+- If profitable (PF>1.3): FINE-TUNE ONLY — adjust parameters by ±10-15%
+- NEVER swap out indicators or completely change the approach
 
-When asked a QUESTION: answer conversationally, no code.
+When asked a QUESTION (not to modify code): answer conversationally, no code.
 When message is unclear: ask what they want to build.`
 
 // ── Helpers ────────────────────────────────────────────────────────
