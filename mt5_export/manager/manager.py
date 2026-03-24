@@ -113,6 +113,7 @@ def startup():
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 def _check_key(x_api_key: str):
+    log.info(f"Auth check: received='{x_api_key[:10]}...' expected='{API_KEY[:10]}...' match={x_api_key == API_KEY}")
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API key")
 
@@ -429,7 +430,7 @@ def run_backtest(slot_id: str, ea_name: str, symbol="EURUSD", period="H1",
         if os.path.exists(old):
             os.remove(old)
 
-    # Build config — generate report for accurate metrics + download
+    # Build config — no Report= to avoid "Saving report" popup blocking MT5
     config_content = f"""\
 [Tester]
 Expert={ea_name}
@@ -443,8 +444,6 @@ Deposit={deposit}
 Currency=USD
 Leverage=100
 ExecutionMode=0
-Report={report_abs}
-ReplaceReport=1
 ShutdownTerminal=1"""
 
     config_path = os.path.join(CONFIGS_DIR, f"{ea_name}_{slot_id}.ini")
@@ -457,38 +456,16 @@ ShutdownTerminal=1"""
     _slot_pids[slot_id] = proc.pid
     log.info(f"[slot {slot_id}] Launched terminal PID={proc.pid} for {ea_name}")
 
-    # Wait for report file or process exit
-    report_path = None
+    # Wait for terminal to finish
     elapsed = 0
     while elapsed < timeout_s:
-        time.sleep(3)
-        elapsed += 3
-
-        # Check if report was written
-        if os.path.exists(report_abs) and os.path.getsize(report_abs) > 100:
+        time.sleep(2)
+        elapsed += 2
+        if proc.poll() is not None:
             time.sleep(1)
-            report_path = report_abs
-            break
-
-        # If terminal exited, give it a moment for file flush then stop
-        if proc.poll() is not None and elapsed > 10:
-            time.sleep(2)
-            # One last check for the report
-            if os.path.exists(report_abs) and os.path.getsize(report_abs) > 100:
-                report_path = report_abs
             break
 
     _slot_pids.pop(slot_id, None)
-
-    # Parse the MT5 HTML report — this has the REAL metrics
-    if report_path and os.path.exists(report_path):
-        try:
-            report_b64 = _encode_report(report_path)
-            metrics = mod04.parse_mt5_report(report_path)
-            metrics["initial_deposit"] = deposit
-            return {"success": True, "metrics": metrics, "report_path": report_path, "report_b64": report_b64}
-        except Exception as e:
-            log.warning(f"Failed to parse report {report_path}: {e}")
 
     # Fallback: parse metrics from tester agent log (skip heavy report generation)
     log.info(f"[slot {slot_id}] No .htm report found, parsing tester agent log")
