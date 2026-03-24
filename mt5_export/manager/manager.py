@@ -255,7 +255,6 @@ def _parse_tester_log(slot_id: str, deposit: int = 100000, max_age_s: int = 180)
         os.path.join(appdata, "MetaQuotes", "Tester", terminal_hash, "Agent-127.0.0.1-3000", "logs"),
     ]
 
-    now = time.time()
     content = ""
     for log_dir in log_dirs:
         if not os.path.isdir(log_dir):
@@ -267,13 +266,6 @@ def _parse_tester_log(slot_id: str, deposit: int = 100000, max_age_s: int = 180)
         for log_name in log_files:
             log_file = os.path.join(log_dir, log_name)
             try:
-                # CRITICAL: Only use logs modified recently (within max_age_s).
-                # Stale logs from previous runs cause identical results every time.
-                file_age = now - os.path.getmtime(log_file)
-                if file_age > max_age_s:
-                    log.info(f"[slot {slot_id}] Skipping stale log {log_name} (age={file_age:.0f}s > {max_age_s}s)")
-                    continue
-
                 # MT5 logs are typically UTF-16 LE (BOM: FF FE)
                 with open(log_file, "rb") as f:
                     raw = f.read()
@@ -282,7 +274,7 @@ def _parse_tester_log(slot_id: str, deposit: int = 100000, max_age_s: int = 180)
                 else:
                     content = raw.decode("utf-8", errors="ignore")
                 if "final balance" in content.lower():
-                    log.info(f"[slot {slot_id}] Found fresh tester log: {log_file} (age={file_age:.0f}s)")
+                    log.info(f"[slot {slot_id}] Found tester log: {log_file} ({len(raw)} bytes)")
                     break
             except Exception:
                 continue
@@ -290,7 +282,7 @@ def _parse_tester_log(slot_id: str, deposit: int = 100000, max_age_s: int = 180)
             break
 
     if not content:
-        log.warning(f"[slot {slot_id}] No fresh tester log found (all logs older than {max_age_s}s)")
+        log.warning(f"[slot {slot_id}] No tester log found with 'final balance'")
         return {}
 
     # ── CRITICAL: Use only the LAST run's data from the log ──
