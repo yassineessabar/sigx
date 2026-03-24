@@ -162,7 +162,7 @@ export function BacktestPreview({ backtest, reportHtmlB64, reportIsMt5, slotId, 
         )}
         <MetricCell
           label="Initial Capital"
-          value={`$${(backtest.initial_deposit || 10000).toLocaleString()}`}
+          value={`$${(backtest.initial_deposit || 100000).toLocaleString()}`}
           icon={<DollarSign className="h-3 w-3" />}
           positive={true}
         />
