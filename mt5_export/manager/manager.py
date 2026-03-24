@@ -522,13 +522,17 @@ ShutdownTerminal=1"""
     _slot_pids[slot_id] = proc.pid
     log.info(f"[slot {slot_id}] Launched terminal PID={proc.pid} for {ea_name}")
 
-    # Wait for terminal to finish
+    # Wait for terminal to finish backtest
+    # Must wait at least 15s even if terminal exits early — the backtest
+    # runs as a subprocess and the tester log needs time to be written
+    MIN_WAIT = 15
     elapsed = 0
     while elapsed < timeout_s:
-        time.sleep(2)
-        elapsed += 2
-        if proc.poll() is not None:
-            time.sleep(1)
+        time.sleep(3)
+        elapsed += 3
+        # Only check process exit after minimum wait
+        if elapsed >= MIN_WAIT and proc.poll() is not None:
+            time.sleep(2)  # Extra pause for log file flush
             break
 
     _slot_pids.pop(slot_id, None)
