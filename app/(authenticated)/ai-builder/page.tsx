@@ -310,6 +310,13 @@ export default function AIBuilderPage() {
             } else if (data.type === 'done' && data.message) {
               setStreamingContent('')
               setPipelineStatus(null)
+              // Debug: check if AI response has code
+              const hasMql5 = !!data.message?.metadata?.mql5_code
+              const codeLen = hasMql5 ? (data.message.metadata.mql5_code as string).length : 0
+              console.log(`[AI_RESPONSE] done event: hasMql5Code=${hasMql5} codeLen=${codeLen} metadataKeys=${Object.keys(data.message?.metadata || {})} contentLen=${data.message?.content?.length}`)
+              if (!hasMql5 && data.message?.content?.includes('OnTick')) {
+                console.warn(`[AI_RESPONSE] WARNING: Response contains MQL5 code in content but NOT in metadata.mql5_code! The code was not captured by parseResponse()`)
+              }
               setMessages((prev) => [...prev, data.message])
               // Update title from strategy name if available
               const stratName = data.message?.metadata?.strategy_snapshot?.name

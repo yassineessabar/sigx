@@ -145,6 +145,17 @@ export function SplitLayout({
         }
       }
     }
+    // Debug: which message has the code?
+    if (code) {
+      for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].metadata?.mql5_code === code) {
+          console.log(`[LATEST_CODE] Found in msg[${i}/${messages.length}] role=${messages[i].role} len=${code.length} first50=${code.slice(0,50).replace(/\n/g,' ')}`)
+          break
+        }
+      }
+    } else {
+      console.log(`[LATEST_CODE] NO CODE FOUND in ${messages.length} messages. Messages with metadata:`, messages.filter(m => m.metadata && Object.keys(m.metadata).length > 0).map((m,i) => ({ i, role: m.role, keys: Object.keys(m.metadata) })))
+    }
     return { latestStrategy: strategy, latestBacktest: backtest, latestCode: code, latestStrategyId: sid, codeHasBacktest: btForCode, codeFromUpload }
   }, [messages])
 
