@@ -43,7 +43,7 @@ COMMON 0-TRADE CAUSES (fix these proactively):
 5. Wrong indicator period — period 200 on H1 needs 200+ bars of history
 6. Checking IsTradeAllowed() or similar — always true in tester, but may block in live
 
-When asked to OPTIMIZE or IMPROVE with backtest results:
+When asked to OPTIMIZE, IMPROVE, UPDATE, or MODIFY a strategy:
 - INCREMENTAL IMPROVEMENT ONLY — preserve the core strategy structure, do NOT rewrite from scratch
 - Make EXACTLY ONE targeted change that addresses the WEAKEST metric
 - State clearly: "I changed [WHAT] because [WHY] to improve [WHICH METRIC]"
@@ -53,10 +53,10 @@ When asked to OPTIMIZE or IMPROVE with backtest results:
 - If low trades (<30): Loosen ONE entry condition or shorten indicator period by 20-30%.
 - If high DD (>15%): Reduce lot size by 30% or tighten SL by 15%.
 - If profitable (PF>1.3, Sharpe>0.5): FINE-TUNE ONLY — adjust parameters by ±10-15%, do NOT change logic
-- ALWAYS generate the full updated code, not just snippets
 - NEVER degrade a working strategy by adding unnecessary complexity
 - NEVER swap out indicators (e.g. don't replace RSI with MACD)
 - NEVER add more than one new condition per optimization round
+- CRITICAL: You MUST output the COMPLETE updated MQL5 code between ---MQL5_CODE_START--- and ---MQL5_CODE_END--- markers. This is required for the system to detect and use the new code. Without these markers, the old code will keep running.
 
 When asked a QUESTION: answer conversationally, no code.
 When message is unclear: ask what they want to build.`
@@ -95,13 +95,36 @@ function parseResponse(content: string) {
     }
 
     // Fallback 2: Claude output code in a markdown code block (```mql5 or ```cpp or ```)
-    // This happens often when Claude "improves" code without using the markers
     if (!metadata.mql5_code) {
-      const mdCodeMatch = content.match(/```(?:mql5|mql4|cpp|c\+\+)?\s*\n([\s\S]*?)```/)
-      if (mdCodeMatch) {
-        const candidate = mdCodeMatch[1].trim()
-        // Only accept if it looks like real MQL5 code (has key patterns)
-        if (candidate.includes('#include') || (candidate.includes('OnTick') && candidate.includes('trade.'))) {
+      // Try all markdown code blocks and pick the longest one that looks like MQL5
+      const mdBlocks = [...content.matchAll(/```(?:mql5|mql4|cpp|c\+\+|c)?\s*\n([\s\S]*?)```/g)]
+      let bestCandidate = ''
+      for (const match of mdBlocks) {
+        const candidate = match[1].trim()
+        if (candidate.length > bestCandidate.length &&
+            (candidate.includes('#include') || candidate.includes('OnTick') || candidate.includes('OnInit'))) {
+          bestCandidate = candidate
+        }
+      }
+      if (bestCandidate.length > 100) {
+        metadata.mql5_code = bestCandidate
+      }
+    }
+
+    // Fallback 3: Raw code in the response (no markers, no markdown fences)
+    // Detect if the response contains a substantial block of MQL5 code
+    if (!metadata.mql5_code) {
+      // Look for #include <Trade\Trade.mqh> followed by code
+      const rawCodeMatch = content.match(/(#include\s*<Trade[\s\S]{200,})/)
+      if (rawCodeMatch) {
+        // Extract from #include to the end of the last closing brace
+        let candidate = rawCodeMatch[1]
+        // Trim any trailing explanation text after the code
+        const lastBrace = candidate.lastIndexOf('}')
+        if (lastBrace > candidate.length * 0.5) {
+          candidate = candidate.slice(0, lastBrace + 1).trim()
+        }
+        if (candidate.includes('OnTick') && candidate.length > 300) {
           metadata.mql5_code = candidate
         }
       }
@@ -348,6 +371,7 @@ export async function POST(request: NextRequest) {
 
           // Parse response
           const { display, metadata } = parseResponse(fullContent)
+          console.log(`[CHAT_STREAM] parseResponse: mql5_code=${metadata.mql5_code ? `${(metadata.mql5_code as string).length} chars` : 'NOT FOUND'}, strategy=${!!metadata.strategy_snapshot}, fullContent_len=${fullContent.length}, has_markers=${fullContent.includes('MQL5_CODE_START')}, has_markdown=${fullContent.includes('\`\`\`')}`)
 
           // Send done event FIRST so the client gets the response immediately
           const messageId = crypto.randomUUID()
