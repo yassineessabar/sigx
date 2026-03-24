@@ -239,8 +239,9 @@ def compile_ea(slot_id: str, ea_name: str) -> dict:
     return {"success": False, "errors": errors}
 
 
-def _parse_tester_log(slot_id: str, deposit: int = 100000) -> dict:
-    """Parse the MT5 tester log to extract backtest metrics when no .htm report is available."""
+def _parse_tester_log(slot_id: str, deposit: int = 100000, max_age_s: int = 180) -> dict:
+    """Parse the MT5 tester log to extract backtest metrics when no .htm report is available.
+    Only uses logs modified within the last max_age_s seconds to avoid returning stale results."""
     data_dir = _slots[slot_id]["data_dir"]
     terminal_hash = os.path.basename(data_dir)
     appdata = os.environ.get("APPDATA", "")
@@ -253,6 +254,7 @@ def _parse_tester_log(slot_id: str, deposit: int = 100000) -> dict:
         os.path.join(appdata, "MetaQuotes", "Tester", terminal_hash, "Agent-127.0.0.1-3000", "logs"),
     ]
 
+    now = time.time()
     content = ""
     for log_dir in log_dirs:
         if not os.path.isdir(log_dir):
@@ -261,9 +263,16 @@ def _parse_tester_log(slot_id: str, deposit: int = 100000) -> dict:
             [f for f in os.listdir(log_dir) if f.endswith(".log")],
             reverse=True
         )
-        if log_files:
-            log_file = os.path.join(log_dir, log_files[0])
+        for log_name in log_files:
+            log_file = os.path.join(log_dir, log_name)
             try:
+                # CRITICAL: Only use logs modified recently (within max_age_s).
+                # Stale logs from previous runs cause identical results every time.
+                file_age = now - os.path.getmtime(log_file)
+                if file_age > max_age_s:
+                    log.info(f"[slot {slot_id}] Skipping stale log {log_name} (age={file_age:.0f}s > {max_age_s}s)")
+                    continue
+
                 # MT5 logs are typically UTF-16 LE (BOM: FF FE)
                 with open(log_file, "rb") as f:
                     raw = f.read()
@@ -272,12 +281,15 @@ def _parse_tester_log(slot_id: str, deposit: int = 100000) -> dict:
                 else:
                     content = raw.decode("utf-8", errors="ignore")
                 if "final balance" in content.lower():
-                    log.info(f"[slot {slot_id}] Found tester log: {log_file}")
+                    log.info(f"[slot {slot_id}] Found fresh tester log: {log_file} (age={file_age:.0f}s)")
                     break
             except Exception:
                 continue
+        if content:
+            break
 
     if not content:
+        log.warning(f"[slot {slot_id}] No fresh tester log found (all logs older than {max_age_s}s)")
         return {}
 
     # ── CRITICAL: Use only the LAST run's data from the log ──
