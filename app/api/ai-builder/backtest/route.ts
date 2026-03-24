@@ -460,6 +460,41 @@ function parseReportMetrics(reportB64: string | undefined): Record<string, numbe
   }
 }
 
+/**
+ * Extract drawdown as a percentage. The VPS returns formats like:
+ *   "130.46 (0.13%)" — dollar amount + percentage in parens
+ *   0.13 — already a percentage from HTML report parser
+ *   "33.23%" — percentage string
+ */
+function parseDrawdownPct(fromReport: number | undefined, rawValue: unknown, deposit: number): number {
+  // HTML report value is already a percentage
+  if (fromReport != null && !isNaN(fromReport)) return Math.abs(fromReport)
+
+  if (typeof rawValue === 'number') {
+    // If it's a small number (<100), it's likely already a percentage
+    // If large, it's a dollar amount — convert
+    if (Math.abs(rawValue) < 100) return Math.abs(rawValue)
+    return deposit > 0 ? Math.abs(rawValue / deposit * 100) : Math.abs(rawValue)
+  }
+
+  if (typeof rawValue === 'string') {
+    // Try to extract percentage from "130.46 (0.13%)" format
+    const pctMatch = rawValue.match(/\(([\d.]+)%\)/)
+    if (pctMatch) return parseFloat(pctMatch[1])
+
+    // Try "33.23%" format
+    const pctDirect = rawValue.match(/([\d.]+)%/)
+    if (pctDirect) return parseFloat(pctDirect[1])
+
+    // Fallback: parse the number and convert from dollars to pct
+    const num = parseNum(rawValue)
+    if (num > 0 && deposit > 0) return num / deposit * 100
+    return Math.abs(num)
+  }
+
+  return 0
+}
+
 function normalizeMetrics(raw: Record<string, unknown>, reportB64?: string) {
   // Parse the HTML report — this is the authoritative source for metrics.
   // The VPS Python parser only estimates some values (drawdown, sharpe)
@@ -473,7 +508,7 @@ function normalizeMetrics(raw: Record<string, unknown>, reportB64?: string) {
   return {
     // Prefer HTML report values (accurate) over VPS estimates
     sharpe: parseNum(fromReport.sharpe ?? raw.sharpe ?? raw.sharpe_ratio),
-    max_drawdown: Math.abs(parseNum(fromReport.max_drawdown ?? raw.max_drawdown ?? raw.max_dd)) || 0,
+    max_drawdown: parseDrawdownPct(fromReport.max_drawdown, raw.max_drawdown ?? raw.max_dd, initialDeposit),
     win_rate: parseNum(fromReport.win_rate ?? raw.win_rate ?? raw.win_pct),
     total_return: totalReturn,
     profit_factor: parseNum(fromReport.profit_factor ?? raw.profit_factor),
