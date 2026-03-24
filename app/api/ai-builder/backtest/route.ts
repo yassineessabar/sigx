@@ -148,15 +148,10 @@ export async function POST(request: NextRequest) {
             return
           }
         } else {
-          // Get hostname even when no queue
-          const info = await getQueueInfo(workerUrl)
-          vpsHostname = info.hostname || ''
+          vpsHostname = 'VPS'
         }
 
-        send({ type: 'status', message: `Slot acquired · ${vpsHostname || 'VPS'} · slot ${slotId}` })
-
-        // ── Step 2: Compile ──
-        send({ type: 'status', message: `Compiling ${ea_name}.mq5 on ${vpsHostname || 'VPS'}...` })
+        send({ type: 'status', message: `Compiling & backtesting on ${vpsHostname}...` })
 
         let currentCode = mq5_code
         let lastResult = await tryCompileAndBacktest(workerUrl, ea_name, currentCode, sym, per, start, end)
@@ -177,11 +172,7 @@ export async function POST(request: NextRequest) {
           }
 
           if (lastResult.success) {
-            // The compile+backtest call already completed — backtest ran on VPS
-            send({ type: 'status', message: `Compiled successfully · Backtest running on ${sym} ${per}...` })
-            // Small delay so user sees the backtest step
-            await new Promise(resolve => setTimeout(resolve, 500))
-            send({ type: 'status', message: `Backtest complete · Parsing results...` })
+            send({ type: 'status', message: `Backtest complete` })
             send({ type: 'result', data: lastResult.data })
           } else {
             const cleanError = lastResult.compileError
@@ -225,7 +216,7 @@ async function tryCompileAndBacktest(
 ) {
   try {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 240_000)
+    const timeout = setTimeout(() => controller.abort(), 90_000)
 
     const res = await fetch(`${workerUrl}/compile-and-backtest`, {
       method: 'POST',
@@ -346,7 +337,7 @@ async function runSeparateCalls(
   onStep?.(`Running backtest on ${symbol} ${period}...`)
   try {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 240_000)
+    const timeout = setTimeout(() => controller.abort(), 90_000)
     const res = await fetch(`${workerUrl}/backtest`, {
       method: 'POST',
       headers: workerHeaders(),
