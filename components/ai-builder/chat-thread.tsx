@@ -134,7 +134,7 @@ function OptimizeSuggestions({ backtest, previousBacktest, onSend }: {
           {issues.map((s) => (
             <button
               key={s.label}
-              onClick={() => onSend(s.prompt)}
+              onClick={() => onSend(s.prompt + '\n\nIMPORTANT: Output the COMPLETE updated MQL5 code between ---MQL5_CODE_START--- and ---MQL5_CODE_END--- markers.')}
               className={`rounded-full border px-3.5 py-1.5 text-[12px] font-medium transition-all ${
                 s.severity === 'critical'
                   ? 'border-red-500/20 bg-red-500/[0.06] text-red-400 hover:bg-red-500/[0.12]'
@@ -154,13 +154,13 @@ function OptimizeSuggestions({ backtest, previousBacktest, onSend }: {
             type="text"
             value={customInput}
             onChange={(e) => setCustomInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && customInput.trim()) { onSend(customInput.trim()); setCustomInput('') } }}
+            onKeyDown={(e) => { if (e.key === 'Enter' && customInput.trim()) { onSend(customInput.trim() + '\n\nIMPORTANT: Output the COMPLETE updated MQL5 code between ---MQL5_CODE_START--- and ---MQL5_CODE_END--- markers.'); setCustomInput('') } }}
             placeholder="Or describe what to change..."
             className="flex-1 rounded-full border border-foreground/[0.08] bg-foreground/[0.02] px-4 py-1.5 text-[12px] text-foreground/70 placeholder:text-foreground/25 focus:outline-none focus:border-foreground/[0.15]"
           />
           {customInput.trim() && (
             <button
-              onClick={() => { onSend(customInput.trim()); setCustomInput('') }}
+              onClick={() => { onSend(customInput.trim() + '\n\nIMPORTANT: Output the COMPLETE updated MQL5 code between ---MQL5_CODE_START--- and ---MQL5_CODE_END--- markers.'); setCustomInput('') }}
               className="rounded-full bg-foreground/[0.08] px-3 py-1.5 text-[11px] font-medium text-foreground/60 hover:bg-foreground/[0.12] transition-colors"
             >
               Send
