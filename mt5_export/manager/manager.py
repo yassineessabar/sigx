@@ -361,24 +361,52 @@ def _parse_tester_log(slot_id: str, deposit: int = 100000, max_age_s: int = 180)
     if tnp_m:
         metrics["net_profit"] = round(float(tnp_m.group(1).replace(",", "").replace(" ", "")), 2)
 
-    # ── Fallbacks for missing values ──
+    # ── Fallbacks: compute from deal data when summary lines not found ──
     net = metrics.get("net_profit", 0)
-    trades = metrics.get("total_trades", 0)
 
     if "total_trades" not in metrics:
         deal_lines = re.findall(r"deal #\d+", content, re.IGNORECASE)
         metrics["total_trades"] = len(deal_lines) // 2
 
-    if "profit_factor" not in metrics:
-        metrics["profit_factor"] = 0
+    # Extract individual deal profits for PF, WR, Sharpe calculation
+    if "profit_factor" not in metrics or "win_rate" not in metrics or "sharpe" not in metrics:
+        # Match profit values from deal close lines: "profit -123.45" or "profit 456.78"
+        deal_profits = []
+        for m in re.finditer(r"profit\s+(-?[\d.,]+)", content, re.IGNORECASE):
+            try:
+                val = float(m.group(1).replace(",", "").replace(" ", ""))
+                deal_profits.append(val)
+            except ValueError:
+                pass
 
-    if "win_rate" not in metrics:
-        tp_count = len(re.findall(r"take profit triggered", content, re.IGNORECASE))
-        sl_count = len(re.findall(r"stop loss triggered", content, re.IGNORECASE))
-        if tp_count + sl_count > 0:
-            metrics["win_rate"] = round((tp_count / (tp_count + sl_count)) * 100, 1)
-        else:
-            metrics["win_rate"] = 0
+        gross_profit = sum(p for p in deal_profits if p > 0)
+        gross_loss = sum(abs(p) for p in deal_profits if p < 0)
+        wins = sum(1 for p in deal_profits if p > 0)
+        losses = sum(1 for p in deal_profits if p < 0)
+        total_closed = wins + losses
+
+        if "profit_factor" not in metrics:
+            if gross_loss > 0:
+                metrics["profit_factor"] = round(gross_profit / gross_loss, 2)
+            elif gross_profit > 0:
+                metrics["profit_factor"] = 99.99
+            else:
+                metrics["profit_factor"] = 0
+
+        if "win_rate" not in metrics:
+            if total_closed > 0:
+                metrics["win_rate"] = round((wins / total_closed) * 100, 1)
+            else:
+                metrics["win_rate"] = 0
+
+        if "sharpe" not in metrics:
+            if len(deal_profits) >= 2:
+                import statistics
+                avg = statistics.mean(deal_profits)
+                std = statistics.stdev(deal_profits)
+                metrics["sharpe"] = round(avg / std * (252 ** 0.5), 2) if std > 0 else 0
+            else:
+                metrics["sharpe"] = 0
 
     if "max_drawdown" not in metrics:
         if net < 0:
@@ -386,9 +414,6 @@ def _parse_tester_log(slot_id: str, deposit: int = 100000, max_age_s: int = 180)
             metrics["max_drawdown"] = f"{abs(net):.2f} ({dd_pct:.2f}%)"
         else:
             metrics["max_drawdown"] = "0.00 (0.00%)"
-
-    if "sharpe" not in metrics:
-        metrics["sharpe"] = 0
 
     if "recovery_factor" not in metrics:
         metrics["recovery_factor"] = 0
